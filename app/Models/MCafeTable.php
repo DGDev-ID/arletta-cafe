@@ -19,7 +19,7 @@ class MCafeTable extends Model
 
     public function cafe(): BelongsTo
     {
-        return $this->belongsTo(MCafe::class);
+        return $this->belongsTo(MCafe::class, 'cafe_id');
     }
 
     public function transactions(): HasMany

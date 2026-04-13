@@ -47,4 +47,14 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function cafeAdmins()
+    {
+        return $this->hasMany(CafeAdmin::class, 'user_id');
+    }
+
+    public function cafeCashiers()
+    {
+        return $this->hasMany(CafeCashier::class, 'user_id');
+    }
 }

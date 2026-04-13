@@ -1,18 +1,50 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import type { BreadcrumbItemType } from '@/types';
+import { usePage } from '@inertiajs/vue3';
+import { Notyf } from 'notyf';
+import { watch, onMounted } from 'vue';
+import 'notyf/notyf.min.css';
+import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
+import type { BreadcrumbItem } from '@/types';
 
-interface Props {
-    breadcrumbs?: BreadcrumbItemType[];
-}
+type Props = {
+    breadcrumbs?: BreadcrumbItem[];
+};
 
 withDefaults(defineProps<Props>(), {
     breadcrumbs: () => [],
 });
+
+const notyf = new Notyf({
+    duration: 3000,
+    position: { x: 'right', y: 'bottom' },
+    ripple: true,
+    dismissible: true,
+});
+
+const page = usePage();
+
+watch(
+    () => page.props.flash,
+    (flash: any) => {
+        if (flash?.success) {
+            notyf.success(flash.success);
+        }
+        if (flash?.error) {
+            notyf.error(flash.error);
+        }
+    },
+    { deep: true }
+);
+
+onMounted(() => {
+    const flash = page.props.flash as any;
+    if (flash?.success) notyf.success(flash.success);
+    if (flash?.error) notyf.error(flash.error);
+});
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbs">
+    <AppSidebarLayout :breadcrumbs="breadcrumbs">
         <slot />
-    </AppLayout>
+    </AppSidebarLayout>
 </template>

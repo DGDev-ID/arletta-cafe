@@ -17,7 +17,7 @@ class MCafe extends Model
 
     public function tables(): HasMany
     {
-        return $this->hasMany(MCafeTable::class);
+        return $this->hasMany(MCafeTable::class, 'cafe_id');
     }
 
     public function menuCategories(): HasMany
@@ -38,5 +38,15 @@ class MCafe extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    public function cafeAdmins(): HasMany
+    {
+        return $this->hasMany(CafeAdmin::class, 'cafe_id');
+    }
+
+    public function cafeCashiers(): HasMany
+    {
+        return $this->hasMany(CafeCashier::class, 'cafe_id');
     }
 }
