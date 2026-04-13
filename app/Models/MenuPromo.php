@@ -22,6 +22,6 @@ class MenuPromo extends Model
 
     public function menu(): BelongsTo
     {
-        return $this->belongsTo(MMenu::class);
+        return $this->belongsTo(MMenu::class, 'menu_id');
     }
 }

@@ -11,10 +11,12 @@ return new class extends Migration
         Schema::create('m_menus', function (Blueprint $table) {
             $table->id();
             $table->foreignId('cafe_id')->constrained('m_cafes')->cascadeOnDelete();
+            $table->foreignId('menu_category_id')->nullable()->constrained('m_menu_categories')->nullOnDelete();
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('img_url')->nullable();
             $table->decimal('price', 12, 2);
+            $table->enum('status', ['available', 'unavailable'])->default('available');
             $table->timestamps();
         });
     }

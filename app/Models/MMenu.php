@@ -15,6 +15,8 @@ class MMenu extends Model
         'description',
         'img_url',
         'price',
+        'status',
+        'menu_category_id',
     ];
 
     protected function casts(): array
@@ -31,16 +33,21 @@ class MMenu extends Model
 
     public function promo(): HasOne
     {
-        return $this->hasOne(MenuPromo::class);
+        return $this->hasOne(MenuPromo::class, 'menu_id');
     }
 
     public function menuMaterials(): HasMany
     {
-        return $this->hasMany(MenuMaterial::class);
+        return $this->hasMany(MenuMaterial::class, 'menu_id');
     }
 
     public function transactionDetails(): HasMany
     {
-        return $this->hasMany(TransactionDetail::class);
+        return $this->hasMany(TransactionDetail::class, 'menu_id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(MMenuCategory::class, 'menu_category_id');
     }
 }

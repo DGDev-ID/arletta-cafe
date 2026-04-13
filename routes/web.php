@@ -3,6 +3,7 @@
 use App\Http\Controllers\Dashboard\Master\CafeTableController;
 use App\Http\Controllers\Dashboard\Master\MaterialController;
 use App\Http\Controllers\Dashboard\Master\MenuCategoryController;
+use App\Http\Controllers\Dashboard\Master\MenuController;
 use App\Http\Controllers\Dashboard\Master\UnitController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -26,6 +27,9 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('material', MaterialController::class);
 
         Route::resource('menu-category', MenuCategoryController::class)->except(['show']);
+
+        Route::resource('menu', MenuController::class);
+        Route::patch('menu/{menu}/toggle-status', [MenuController::class, 'toggleStatus'])->name('menu.toggle-status');
     });
 });
 

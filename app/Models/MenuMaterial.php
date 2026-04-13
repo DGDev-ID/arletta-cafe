@@ -23,16 +23,16 @@ class MenuMaterial extends Model
 
     public function menu(): BelongsTo
     {
-        return $this->belongsTo(Menu::class);
+        return $this->belongsTo(MMenu::class, 'menu_id');
     }
 
     public function material(): BelongsTo
     {
-        return $this->belongsTo(Material::class);
+        return $this->belongsTo(MMaterial::class, 'material_id');
     }
 
     public function unit(): BelongsTo
     {
-        return $this->belongsTo(Unit::class);
+        return $this->belongsTo(MUnit::class, 'unit_id');
     }
 }
