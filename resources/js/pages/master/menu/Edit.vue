@@ -60,7 +60,7 @@ const form = useForm({
     })),
 });
 
-const submit = () => form.post(`/master/menu/${props.data.id}`, { _method: 'put' });
+const submit = () => form.put(`/master/menu/${props.data.id}`);
 </script>
 
 <template>
