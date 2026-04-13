@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Dashboard\Master\CafeTableController;
+use App\Http\Controllers\Dashboard\Master\UnitController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -13,11 +14,12 @@ Route::get('dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware(['auth'])->group(function () {
-    Route::prefix('master')->group(function () {
+    Route::prefix('master')->name('master.')->group(function () {
         Route::resource('cafe', CafeTableController::class)->except(['show']);
-        // Cafe Tables
-        Route::post('{cafeId}/table', [CafeTableController::class, 'storeTable'])->name('master.cafe.table.store');
-        Route::delete('{cafeId}/table/{tableId}', [CafeTableController::class, 'destroyTable'])->name('master.cafe.table.destroy');
+        Route::post('{cafeId}/table', [CafeTableController::class, 'storeTable'])->name('cafe.table.store');
+        Route::delete('{cafeId}/table/{tableId}', [CafeTableController::class, 'destroyTable'])->name('cafe.table.destroy');
+
+        Route::resource('unit', UnitController::class)->except(['show']);
     });
 });
 

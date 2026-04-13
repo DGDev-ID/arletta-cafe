@@ -8,14 +8,14 @@ import Pagination from '@/components/Pagination.vue';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Cafe & Table',
-        href: '/master/cafe',
+        title: 'Unit',
+        href: '/master/unit',
     },
 ];
 
-const deleteCafe = (id: number) => {
-    if (confirm('Apakah Anda yakin ingin menghapus cafe ini?')) {
-        router.delete(`/master/cafe/${id}`);
+const deleteUnit = (id: number) => {
+    if (confirm('Apakah Anda yakin ingin menghapus unit ini?')) {
+        router.delete(`/master/unit/${id}`);
     }
 };
 
@@ -27,19 +27,18 @@ defineProps<{
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
 
-        <Head title="Cafe & Table" />
+        <Head title="Unit" />
 
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <!-- Header -->
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <Heading variant="small" title="Master Cafe"
-                        description="Kelola daftar cafe, lokasi, dan list meja cafe." />
+                    <Heading variant="small" title="Master Unit" description="Kelola daftar unit." />
 
-                    <Link href="/master/cafe/create"
+                    <Link href="/master/unit/create"
                         class="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90">
-                        Tambah Cafe
+                        Tambah Unit
                     </Link>
                 </div>
 
@@ -49,14 +48,13 @@ defineProps<{
                         <thead class="bg-muted/50">
                             <tr class="text-muted-foreground">
                                 <th class="px-6 py-4 text-left font-medium">No</th>
-                                <th class="px-6 py-4 text-left font-medium">Nama Cafe</th>
-                                <th class="px-6 py-4 text-left font-medium">Lokasi</th>
+                                <th class="px-6 py-4 text-left font-medium">Nama Unit</th>
                                 <th class="px-6 py-4 text-right font-medium">Aksi</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            <tr v-for="(cafe, index) in data.data" :key="cafe.id"
+                            <tr v-for="(unit, index) in data.data" :key="unit.id"
                                 class="border-t hover:bg-muted/40 transition">
                                 <!-- No -->
                                 <td class="px-6 py-4">
@@ -65,12 +63,7 @@ defineProps<{
 
                                 <!-- Name -->
                                 <td class="px-6 py-4 font-medium">
-                                    {{ cafe.name }}
-                                </td>
-
-                                <!-- address -->
-                                <td class="px-6 py-4 font-medium">
-                                    {{ cafe.address }}
+                                    {{ unit.name }}
                                 </td>
 
                                 <!-- Action -->
@@ -78,16 +71,16 @@ defineProps<{
                                     <div class="flex justify-end items-center gap-3">
 
                                         <!-- Edit -->
-                                        <Link :href="`/master/cafe/${cafe.id}/edit`"
+                                        <Link :href="`/master/unit/${unit.id}/edit`"
                                             class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-yellow-100 text-yellow-600 hover:bg-yellow-500 hover:text-white transition"
-                                            title="Edit Cafe">
+                                            title="Edit Unit">
                                             <Pencil :size="16" />
                                         </Link>
 
                                         <!-- Delete -->
-                                        <button @click="deleteCafe(cafe.id)" type="button"
+                                        <button @click="deleteUnit(unit.id)" type="button"
                                             class="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition"
-                                            title="Hapus Cafe">
+                                            title="Hapus Unit">
                                             <Trash2 :size="16" />
                                         </button>
 
@@ -98,7 +91,7 @@ defineProps<{
                             <!-- Empty -->
                             <tr v-if="data.data.length === 0">
                                 <td colspan="3" class="px-6 py-10 text-center text-muted-foreground">
-                                    Belum ada data cafe.
+                                    Belum ada data unit.
                                 </td>
                             </tr>
                         </tbody>
