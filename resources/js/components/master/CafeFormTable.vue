@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
 import { router, useForm } from '@inertiajs/vue3';
-import { Pencil, Plus, Trash2 } from 'lucide-vue-next';
+import { Plus, QrCode, Trash2 } from 'lucide-vue-next';
+import QRCode from 'qrcode';
 
 interface CafeTable {
     id: number;
@@ -11,6 +12,7 @@ interface CafeTable {
 }
 
 const props = defineProps<{
+    m_cafe: any;
     cafeId: number;
     tables: CafeTable[];
 }>();
@@ -32,6 +34,20 @@ const deleteTable = (tableId: number) => {
         router.delete(`/master/cafe/${props.cafeId}/table/${tableId}`, {
             preserveScroll: true,
         });
+    }
+};
+
+const downloadQR = async (table: CafeTable) => {
+    try {
+        const url = `https://cafe.arlettaluxury.com?cafe_id=${props.m_cafe.unique_id}&table_id=${table.id}`;
+        const dataUrl = await QRCode.toDataURL(url);
+
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `${props.m_cafe.name} - ${table.name}.png`;
+        link.click();
+    } catch (error) {
+        console.error(error);
     }
 };
 </script>
@@ -57,32 +73,28 @@ const deleteTable = (tableId: number) => {
                 </tr>
             </thead>
             <tbody>
-                <tr
-                    v-for="(table, index) in tables"
-                    :key="table.id"
-                    class="border-t hover:bg-muted/40 transition"
-                >
+                <tr v-for="(table, index) in tables" :key="table.id" class="border-t hover:bg-muted/40 transition">
                     <td class="px-6 py-3">{{ index + 1 }}</td>
                     <td class="px-6 py-3 font-medium">{{ table.name }}</td>
                     <td class="px-6 py-3 text-muted-foreground">{{ table.description ?? '-' }}</td>
                     <td class="px-6 py-3">
-                        <span
-                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                            :class="table.status === 'available'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-orange-100 text-orange-700'"
-                        >
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="table.status === 'available'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-orange-100 text-orange-700'">
                             {{ table.status === 'available' ? 'Tersedia' : 'Terpakai' }}
                         </span>
                     </td>
                     <td class="px-6 py-3 text-right">
                         <div class="flex justify-end gap-2">
-                            <button
-                                type="button"
-                                @click="deleteTable(table.id)"
+                            <button type="button" @click="downloadQR(table)"
+                                class="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition"
+                                title="Download QR">
+                                <QrCode :size="14" />
+                            </button>
+
+                            <button type="button" @click="deleteTable(table.id)"
                                 class="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition"
-                                title="Hapus Meja"
-                            >
+                                title="Hapus Meja">
                                 <Trash2 :size="14" />
                             </button>
                         </div>
@@ -105,27 +117,17 @@ const deleteTable = (tableId: number) => {
             </p>
             <form @submit.prevent="addTable" class="flex flex-col sm:flex-row gap-3">
                 <div class="flex-1 grid gap-1">
-                    <input
-                        v-model="form.name"
-                        required
-                        placeholder="Nama meja (contoh: Meja 01)"
-                        class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
+                    <input v-model="form.name" required placeholder="Nama meja (contoh: Meja 01)"
+                        class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                     <InputError :message="form.errors.name" />
                 </div>
                 <div class="flex-1 grid gap-1">
-                    <input
-                        v-model="form.description"
-                        placeholder="Deskripsi (opsional)"
-                        class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
+                    <input v-model="form.description" placeholder="Deskripsi (opsional)"
+                        class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                     <InputError :message="form.errors.description" />
                 </div>
-                <button
-                    type="submit"
-                    :disabled="form.processing"
-                    class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-sm transition hover:opacity-90 disabled:opacity-50 whitespace-nowrap self-start"
-                >
+                <button type="submit" :disabled="form.processing"
+                    class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-sm transition hover:opacity-90 disabled:opacity-50 whitespace-nowrap self-start">
                     <Plus :size="15" />
                     {{ form.processing ? 'Menambahkan...' : 'Tambah Meja' }}
                 </button>

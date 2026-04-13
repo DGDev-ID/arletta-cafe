@@ -23,6 +23,7 @@ interface CafeTableItem {
 const props = defineProps<{
     data: {
         id: number;
+        unique_id: string;
         name: string;
         address: string;
         address_coordinate: string;
@@ -82,7 +83,7 @@ const submit = () => form.put(`/master/cafe/${props.data.id}`);
                 />
 
                 <!-- Meja -->
-                <CafeFormTable :cafe-id="data.id" :tables="data.tables" />
+                <CafeFormTable :cafe-id="data.id" :tables="data.tables" :m_cafe="data" />
 
             </div>
         </div>
