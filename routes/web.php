@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Dashboard\Master\CafeTableController;
+use App\Http\Controllers\Dashboard\Master\MaterialController;
 use App\Http\Controllers\Dashboard\Master\UnitController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -20,6 +21,8 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('{cafeId}/table/{tableId}', [CafeTableController::class, 'destroyTable'])->name('cafe.table.destroy');
 
         Route::resource('unit', UnitController::class)->except(['show']);
+
+        Route::resource('material', MaterialController::class);
     });
 });
 

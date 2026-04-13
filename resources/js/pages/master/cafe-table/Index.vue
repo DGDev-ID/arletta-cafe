@@ -97,7 +97,7 @@ defineProps<{
 
                             <!-- Empty -->
                             <tr v-if="data.data.length === 0">
-                                <td colspan="3" class="px-6 py-10 text-center text-muted-foreground">
+                                <td colspan="4" class="px-6 py-10 text-center text-muted-foreground">
                                     Belum ada data cafe.
                                 </td>
                             </tr>

@@ -46,6 +46,6 @@ class MMaterial extends Model
 
     public function inboundOutbounds(): HasMany
     {
-        return $this->hasMany(MaterialInboundOutbound::class);
+        return $this->hasMany(MaterialInboundOutbound::class, 'material_id');
     }
 }

@@ -28,7 +28,7 @@ class MaterialInboundOutbound extends Model
 
     public function material(): BelongsTo
     {
-        return $this->belongsTo(MMaterial::class);
+        return $this->belongsTo(MMaterial::class, 'material_id');
     }
 
     public function baseUnit(): BelongsTo
