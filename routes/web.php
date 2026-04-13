@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Dashboard\Master\CafeTableController;
 use App\Http\Controllers\Dashboard\Master\MaterialController;
+use App\Http\Controllers\Dashboard\Master\MenuCategoryController;
 use App\Http\Controllers\Dashboard\Master\UnitController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -23,6 +24,8 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('unit', UnitController::class)->except(['show']);
 
         Route::resource('material', MaterialController::class);
+
+        Route::resource('menu-category', MenuCategoryController::class)->except(['show']);
     });
 });
 
