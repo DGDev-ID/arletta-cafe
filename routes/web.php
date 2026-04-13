@@ -5,6 +5,9 @@ use App\Http\Controllers\Dashboard\Master\MaterialController;
 use App\Http\Controllers\Dashboard\Master\MenuCategoryController;
 use App\Http\Controllers\Dashboard\Master\MenuController;
 use App\Http\Controllers\Dashboard\Master\UnitController;
+use App\Http\Controllers\Dashboard\UserManagement\ManageAdminController;
+use App\Http\Controllers\Dashboard\UserManagement\ManageCashierController;
+use App\Http\Controllers\Dashboard\UserManagement\ManageBackofficeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -30,6 +33,29 @@ Route::middleware(['auth'])->group(function () {
 
         Route::resource('menu', MenuController::class);
         Route::patch('menu/{menu}/toggle-status', [MenuController::class, 'toggleStatus'])->name('menu.toggle-status');
+    });
+
+    Route::prefix('user-management')->name('user-management.')->group(function () {
+        Route::prefix('admin')->name('admin.')->group(function () {
+            Route::get('/', [ManageAdminController::class, 'index'])->name('index');
+            Route::get('/search-users', [ManageAdminController::class, 'searchUsers'])->name('search-users');
+            Route::post('/assign', [ManageAdminController::class, 'assign'])->name('assign');
+            Route::delete('/{id}/revoke', [ManageAdminController::class, 'revoke'])->name('revoke');
+        });
+
+        Route::prefix('cashier')->name('cashier.')->group(function () {
+            Route::get('/', [ManageCashierController::class, 'index'])->name('index');
+            Route::get('/search-users', [ManageCashierController::class, 'searchUsers'])->name('search-users');
+            Route::post('/assign', [ManageCashierController::class, 'assign'])->name('assign');
+            Route::delete('/{id}/revoke', [ManageCashierController::class, 'revoke'])->name('revoke');
+        });
+
+        Route::prefix('backoffice')->name('backoffice.')->group(function () {
+            Route::get('/', [ManageBackofficeController::class, 'index'])->name('index');
+            Route::get('/search-users', [ManageBackofficeController::class, 'searchUsers'])->name('search-users');
+            Route::post('/assign', [ManageBackofficeController::class, 'assign'])->name('assign');
+            Route::delete('/{id}/revoke', [ManageBackofficeController::class, 'revoke'])->name('revoke');
+        });
     });
 });
 
