@@ -8,18 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('cafe_tables', function (Blueprint $table) {
+        Schema::create('m_units', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('cafe_id')->constrained('cafes')->cascadeOnDelete();
             $table->string('name');
-            $table->enum('status', ['available', 'occupied'])->default('available');
-            $table->text('description')->nullable();
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('cafe_tables');
+        Schema::dropIfExists('m_units');
     }
 };

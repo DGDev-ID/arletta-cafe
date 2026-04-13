@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Unit extends Model
+class MUnit extends Model
 {
     protected $fillable = [
         'name',
@@ -13,6 +13,6 @@ class Unit extends Model
 
     public function materials(): HasMany
     {
-        return $this->hasMany(Material::class, 'base_unit_id');
+        return $this->hasMany(MMaterial::class, 'base_unit_id');
     }
 }

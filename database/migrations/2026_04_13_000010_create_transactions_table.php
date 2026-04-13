@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('cafe_id')->constrained('cafes')->cascadeOnDelete();
-            $table->foreignId('table_id')->constrained('cafe_tables')->cascadeOnDelete();
+            $table->foreignId('cafe_id')->constrained('m_cafes')->cascadeOnDelete();
+            $table->foreignId('table_id')->constrained('m_cafe_tables')->cascadeOnDelete();
             $table->decimal('price', 12, 2);
             $table->decimal('fee', 12, 2)->default(0);
             $table->decimal('total_price', 12, 2);

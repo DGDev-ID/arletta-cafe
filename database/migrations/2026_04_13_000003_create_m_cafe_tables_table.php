@@ -8,19 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('menus', function (Blueprint $table) {
+        Schema::create('m_cafe_tables', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('cafe_id')->constrained('cafes')->cascadeOnDelete();
+            $table->foreignId('cafe_id')->constrained('m_cafes')->cascadeOnDelete();
             $table->string('name');
+            $table->enum('status', ['available', 'occupied'])->default('available');
             $table->text('description')->nullable();
-            $table->string('img_url')->nullable();
-            $table->decimal('price', 12, 2);
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('menus');
+        Schema::dropIfExists('m_cafe_tables');
     }
 };

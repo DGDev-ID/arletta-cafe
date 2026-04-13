@@ -10,9 +10,9 @@ return new class extends Migration
     {
         Schema::create('unit_material_converters', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('material_id')->constrained('materials')->cascadeOnDelete();
-            $table->foreignId('from_unit_id')->constrained('units')->restrictOnDelete();
-            $table->foreignId('to_unit_id')->constrained('units')->restrictOnDelete();
+            $table->foreignId('material_id')->constrained('m_materials')->cascadeOnDelete();
+            $table->foreignId('from_unit_id')->constrained('m_units')->restrictOnDelete();
+            $table->foreignId('to_unit_id')->constrained('m_units')->restrictOnDelete();
             $table->decimal('multiplier', 12, 4);
             $table->timestamps();
         });

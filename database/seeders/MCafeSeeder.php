@@ -2,33 +2,33 @@
 
 namespace Database\Seeders;
 
-use App\Models\Cafe;
-use App\Models\CafeTable;
-use App\Models\Material;
+use App\Models\MCafe;
+use App\Models\MCafeTable;
+use App\Models\MMaterial;
 use App\Models\MaterialInboundOutbound;
-use App\Models\Menu;
-use App\Models\MenuCategory;
+use App\Models\MMenu;
+use App\Models\MMenuCategory;
 use App\Models\MenuMaterial;
 use App\Models\MenuPromo;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
-use App\Models\Unit;
+use App\Models\MUnit;
 use App\Models\UnitMaterialConverter;
 use Illuminate\Database\Seeder;
 
-class CafeSeeder extends Seeder
+class MCafeSeeder extends Seeder
 {
     public function run(): void
     {
         // Units
         $units = collect([
             'gram', 'kilogram', 'mililiter', 'liter', 'pcs', 'sendok', 'sachet',
-        ])->map(fn ($name) => Unit::create(['name' => $name]));
+        ])->map(fn ($name) => MUnit::create(['name' => $name]));
 
         $unitMap = $units->keyBy('name');
 
         // Cafe
-        $cafe = Cafe::create([
+        $cafe = MCafe::create([
             'unique_id' => 'CAFE-001',
             'name' => 'Arletta Coffee & Eatery',
             'address' => 'Jl. Sudirman No. 12, Jakarta Selatan',
@@ -43,14 +43,14 @@ class CafeSeeder extends Seeder
             ['name' => 'Meja 3', 'status' => 'occupied', 'description' => 'Meja VIP sofa'],
             ['name' => 'Meja 4', 'status' => 'available', 'description' => 'Meja bar counter'],
             ['name' => 'Meja 5', 'status' => 'available', 'description' => 'Meja teras lantai 2'],
-        ])->map(fn ($t) => CafeTable::create(array_merge($t, ['cafe_id' => $cafe->id])));
+        ])->map(fn ($t) => MCafeTable::create(array_merge($t, ['cafe_id' => $cafe->id])));
 
         // Menu Categories
-        $catMinuman = MenuCategory::create(['cafe_id' => $cafe->id, 'name' => 'Minuman', 'description' => 'Semua jenis minuman']);
-        $catKopi = MenuCategory::create(['cafe_id' => $cafe->id, 'name' => 'Kopi', 'parent_id' => $catMinuman->id, 'description' => 'Menu berbasis kopi']);
-        $catNonKopi = MenuCategory::create(['cafe_id' => $cafe->id, 'name' => 'Non-Kopi', 'parent_id' => $catMinuman->id, 'description' => 'Minuman tanpa kopi']);
-        $catMakanan = MenuCategory::create(['cafe_id' => $cafe->id, 'name' => 'Makanan', 'description' => 'Semua jenis makanan']);
-        $catSnack = MenuCategory::create(['cafe_id' => $cafe->id, 'name' => 'Snack', 'parent_id' => $catMakanan->id, 'description' => 'Cemilan ringan']);
+        $catMinuman = MMenuCategory::create(['cafe_id' => $cafe->id, 'name' => 'Minuman', 'description' => 'Semua jenis minuman']);
+        $catKopi = MMenuCategory::create(['cafe_id' => $cafe->id, 'name' => 'Kopi', 'parent_id' => $catMinuman->id, 'description' => 'Menu berbasis kopi']);
+        $catNonKopi = MMenuCategory::create(['cafe_id' => $cafe->id, 'name' => 'Non-Kopi', 'parent_id' => $catMinuman->id, 'description' => 'Minuman tanpa kopi']);
+        $catMakanan = MMenuCategory::create(['cafe_id' => $cafe->id, 'name' => 'Makanan', 'description' => 'Semua jenis makanan']);
+        $catSnack = MMenuCategory::create(['cafe_id' => $cafe->id, 'name' => 'Snack', 'parent_id' => $catMakanan->id, 'description' => 'Cemilan ringan']);
 
         // Menus
         $menuData = [
@@ -64,7 +64,7 @@ class CafeSeeder extends Seeder
             ['name' => 'Roti Bakar Coklat', 'description' => 'Roti panggang dengan selai coklat', 'price' => 18000],
         ];
 
-        $menus = collect($menuData)->map(fn ($m) => Menu::create(array_merge($m, ['cafe_id' => $cafe->id])));
+        $menus = collect($menuData)->map(fn ($m) => MMenu::create(array_merge($m, ['cafe_id' => $cafe->id])));
 
         // Menu Promos (beberapa menu dapat promo)
         MenuPromo::create(['menu_id' => $menus[0]->id, 'type' => 'discount_percent', 'discount_amount' => 10]);
@@ -85,7 +85,7 @@ class CafeSeeder extends Seeder
             ['name' => 'Telur Ayam', 'base_unit_id' => $unitMap['pcs']->id, 'stock' => 100, 'avg_buy_price' => 2500],
         ];
 
-        $materials = collect($materialData)->map(fn ($m) => Material::create(array_merge($m, ['cafe_id' => $cafe->id])));
+        $materials = collect($materialData)->map(fn ($m) => MMaterial::create(array_merge($m, ['cafe_id' => $cafe->id])));
 
         // Unit converters (contoh: gram -> kilogram)
         UnitMaterialConverter::create([
@@ -191,7 +191,7 @@ class CafeSeeder extends Seeder
 
                 // Buat outbound material untuk transaksi sukses
                 if ($tc['status'] === 'success') {
-                    $menu = Menu::find($detail['menu_id']);
+                    $menu = MMenu::find($detail['menu_id']);
                     $menuMats = MenuMaterial::where('menu_id', $menu->id)->get();
 
                     foreach ($menuMats as $mm) {

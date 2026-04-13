@@ -29,12 +29,12 @@ class Transaction extends Model
 
     public function cafe(): BelongsTo
     {
-        return $this->belongsTo(Cafe::class);
+        return $this->belongsTo(MCafe::class);
     }
 
     public function table(): BelongsTo
     {
-        return $this->belongsTo(CafeTable::class, 'table_id');
+        return $this->belongsTo(MCafeTable::class, 'table_id');
     }
 
     public function details(): HasMany

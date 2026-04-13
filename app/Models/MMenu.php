@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class Menu extends Model
+class MMenu extends Model
 {
     protected $fillable = [
         'cafe_id',
@@ -26,7 +26,7 @@ class Menu extends Model
 
     public function cafe(): BelongsTo
     {
-        return $this->belongsTo(Cafe::class);
+        return $this->belongsTo(MCafe::class);
     }
 
     public function promo(): HasOne

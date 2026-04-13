@@ -28,16 +28,16 @@ class MaterialInboundOutbound extends Model
 
     public function material(): BelongsTo
     {
-        return $this->belongsTo(Material::class);
+        return $this->belongsTo(MMaterial::class);
     }
 
     public function baseUnit(): BelongsTo
     {
-        return $this->belongsTo(Unit::class, 'base_unit_id');
+        return $this->belongsTo(MUnit::class, 'base_unit_id');
     }
 
     public function transactionDetail(): BelongsTo
     {
-        return $this->belongsTo(TransactionDetail::class);
+        return $this->belongsTo(TransactionDetail::class, 'transaction_detail_id');
     }
 }

@@ -8,15 +8,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('units', function (Blueprint $table) {
+        Schema::create('m_cafes', function (Blueprint $table) {
             $table->id();
+            $table->string('unique_id')->unique();
             $table->string('name');
+            $table->text('address');
+            $table->string('address_coordinate')->nullable();
+            $table->text('description')->nullable();
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('units');
+        Schema::dropIfExists('m_cafes');
     }
 };

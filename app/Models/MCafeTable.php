@@ -6,27 +6,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class MenuCategory extends Model
+class MCafeTable extends Model
 {
+    protected $table = 'm_cafe_tables';
+
     protected $fillable = [
         'cafe_id',
         'name',
-        'parent_id',
+        'status',
         'description',
     ];
 
     public function cafe(): BelongsTo
     {
-        return $this->belongsTo(Cafe::class);
+        return $this->belongsTo(MCafe::class);
     }
 
-    public function parent(): BelongsTo
+    public function transactions(): HasMany
     {
-        return $this->belongsTo(MenuCategory::class, 'parent_id');
-    }
-
-    public function children(): HasMany
-    {
-        return $this->hasMany(MenuCategory::class, 'parent_id');
+        return $this->hasMany(Transaction::class, 'table_id');
     }
 }

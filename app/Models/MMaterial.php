@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Material extends Model
+class MMaterial extends Model
 {
     protected $fillable = [
         'cafe_id',
@@ -26,12 +26,12 @@ class Material extends Model
 
     public function cafe(): BelongsTo
     {
-        return $this->belongsTo(Cafe::class);
+        return $this->belongsTo(MCafe::class);
     }
 
     public function baseUnit(): BelongsTo
     {
-        return $this->belongsTo(Unit::class, 'base_unit_id');
+        return $this->belongsTo(MUnit::class, 'base_unit_id');
     }
 
     public function converters(): HasMany

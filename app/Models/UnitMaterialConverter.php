@@ -23,16 +23,16 @@ class UnitMaterialConverter extends Model
 
     public function material(): BelongsTo
     {
-        return $this->belongsTo(Material::class);
+        return $this->belongsTo(MMaterial::class);
     }
 
     public function fromUnit(): BelongsTo
     {
-        return $this->belongsTo(Unit::class, 'from_unit_id');
+        return $this->belongsTo(MUnit::class, 'from_unit_id');
     }
 
     public function toUnit(): BelongsTo
     {
-        return $this->belongsTo(Unit::class, 'to_unit_id');
+        return $this->belongsTo(MUnit::class, 'to_unit_id');
     }
 }
