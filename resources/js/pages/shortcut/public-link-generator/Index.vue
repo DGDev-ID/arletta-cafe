@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
-import { Copy, Check, Link2 } from 'lucide-vue-next';
+import { Copy, Check, Link2, ExternalLink } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface Cafe {
@@ -45,10 +45,17 @@ const copyLink = async () => {
     copied.value = true;
     setTimeout(() => (copied.value = false), 2000);
 };
+
+const openLink = () => {
+    if (!generatedLink.value) return;
+
+    window.open(generatedLink.value, '_blank');
+};
 </script>
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
+
         <Head title="Public Link Generator" />
 
         <div class="min-h-screen bg-muted/40 py-10">
@@ -75,18 +82,16 @@ const copyLink = async () => {
                     <div class="grid gap-2">
                         <label class="text-sm font-medium leading-none">Tipe Link</label>
                         <div class="grid grid-cols-2 gap-3">
-                            <button type="button" @click="selectedType = 'for-public'"
-                                :class="selectedType === 'for-public'
-                                    ? 'border-primary bg-primary/10 text-primary'
-                                    : 'border-border hover:bg-muted/60'"
+                            <button type="button" @click="selectedType = 'for-public'" :class="selectedType === 'for-public'
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border hover:bg-muted/60'"
                                 class="cursor-pointer flex flex-col items-start gap-1 rounded-xl border px-4 py-3 text-left transition">
                                 <span class="text-sm font-medium">For Public</span>
                                 <span class="text-xs text-muted-foreground">Akses menu untuk pelanggan</span>
                             </button>
-                            <button type="button" @click="selectedType = 'for-kitchen'"
-                                :class="selectedType === 'for-kitchen'
-                                    ? 'border-primary bg-primary/10 text-primary'
-                                    : 'border-border hover:bg-muted/60'"
+                            <button type="button" @click="selectedType = 'for-kitchen'" :class="selectedType === 'for-kitchen'
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border hover:bg-muted/60'"
                                 class="cursor-pointer flex flex-col items-start gap-1 rounded-xl border px-4 py-3 text-left transition">
                                 <span class="text-sm font-medium">For Kitchen</span>
                                 <span class="text-xs text-muted-foreground">Akses tampilan dapur</span>
@@ -101,20 +106,28 @@ const copyLink = async () => {
                     </button>
 
                     <!-- Result -->
-                    <Transition
-                        enter-active-class="transition ease-out duration-200"
-                        enter-from-class="opacity-0 translate-y-1"
-                        enter-to-class="opacity-100 translate-y-0">
+                    <Transition enter-active-class="transition ease-out duration-200"
+                        enter-from-class="opacity-0 translate-y-1" enter-to-class="opacity-100 translate-y-0">
                         <div v-if="generatedLink" class="space-y-2">
                             <label class="text-sm font-medium leading-none">Public Link Generated</label>
                             <div class="flex items-center gap-2 rounded-xl border bg-muted/30 px-4 py-3">
-                                <span class="flex-1 text-sm text-foreground break-all select-all">{{ generatedLink }}</span>
-                                <button type="button" @click="copyLink"
-                                    :class="copied ? 'text-green-600' : 'text-muted-foreground hover:text-foreground'"
-                                    class="cursor-pointer shrink-0 transition" :title="copied ? 'Tersalin!' : 'Salin link'">
-                                    <Check v-if="copied" :size="18" />
-                                    <Copy v-else :size="18" />
-                                </button>
+                                <span class="flex-1 text-sm text-foreground break-all select-all">{{ generatedLink
+                                }}</span>
+
+                                <div class="flex flex-row gap-4">
+                                    <button type="button" @click="openLink"
+                                        :class="copied ? 'text-green-600' : 'text-muted-foreground hover:text-foreground'"
+                                        class="cursor-pointer shrink-0 transition" title="Buka link di tab baru">
+                                        <ExternalLink :size="18" />
+                                    </button>
+                                    <button type="button" @click="copyLink"
+                                        :class="copied ? 'text-green-600' : 'text-muted-foreground hover:text-foreground'"
+                                        class="cursor-pointer shrink-0 transition"
+                                        :title="copied ? 'Tersalin!' : 'Salin link'">
+                                        <Check v-if="copied" :size="18" />
+                                        <Copy v-else :size="18" />
+                                    </button>
+                                </div>
                             </div>
                             <p v-if="copied" class="text-xs text-green-600">Link berhasil disalin!</p>
                         </div>
