@@ -11,6 +11,7 @@ use App\Http\Controllers\Dashboard\UserManagement\ManageCashierController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageBackofficeController;
 use App\Http\Controllers\Dashboard\Management\UnitMaterialConverterController;
 use App\Http\Controllers\Dashboard\Management\InboundOutboundMaterialController;
+use App\Http\Controllers\Dashboard\Transaction\HistoryTransactionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -72,6 +73,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('inbound-outbound-material', [InboundOutboundMaterialController::class, 'store'])->name('inbound-outbound-material.store');
         Route::get('inbound-outbound-material/materials-by-cafe', [InboundOutboundMaterialController::class, 'getMaterialsByCafe'])->name('inbound-outbound-material.materials-by-cafe');
         Route::get('inbound-outbound-material/check-unit-converter', [InboundOutboundMaterialController::class, 'checkUnitConverter'])->name('inbound-outbound-material.check-unit-converter');
+    });
+
+    Route::prefix('transaction')->name('transaction.')->group(function () {
+        Route::get('history', [HistoryTransactionController::class, 'index'])->name('history.index');
+        Route::get('history/export', [HistoryTransactionController::class, 'export'])->name('history.export');
+        Route::get('history/{id}', [HistoryTransactionController::class, 'show'])->name('history.show');
     });
 });
 
