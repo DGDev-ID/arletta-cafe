@@ -35,7 +35,7 @@ class CafeTableController extends Controller
             'description'        => 'nullable|string',
         ]);
 
-        $validated['unique_id'] = 'CAFE-' . strtoupper(Str::random(8));
+        $validated['unique_id'] = 'cafe_' . strtolower(Str::random(20));
 
         MCafe::create($validated);
 

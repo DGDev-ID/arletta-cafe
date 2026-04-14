@@ -87,6 +87,14 @@ const transactionNavItems: NavItem[] = [
         icon: DollarSign,
     },
 ];
+
+const shortcutNavItems: NavItem[] = [
+    {
+        title: 'Public Link Generator',
+        href: '/shortcut/public-link-generator',
+        icon: Send,
+    }
+]
 </script>
 
 <template>
@@ -109,6 +117,7 @@ const transactionNavItems: NavItem[] = [
             <NavMain :items="userMamagementNavItems" :title="'User Management'" />
             <NavMain :items="managementNavItems" :title="'Management'" />
             <NavMain :items="transactionNavItems" :title="'Transaction'" />
+            <NavMain :items="shortcutNavItems" :title="'Shortcut'" />
         </SidebarContent>
 
         <SidebarFooter>

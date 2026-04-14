@@ -12,6 +12,7 @@ use App\Http\Controllers\Dashboard\UserManagement\ManageBackofficeController;
 use App\Http\Controllers\Dashboard\Management\UnitMaterialConverterController;
 use App\Http\Controllers\Dashboard\Management\InboundOutboundMaterialController;
 use App\Http\Controllers\Dashboard\Transaction\HistoryTransactionController;
+use App\Http\Controllers\Dashboard\Shortcut\PublicLinkGeneratorController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -79,6 +80,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('history', [HistoryTransactionController::class, 'index'])->name('history.index');
         Route::get('history/export', [HistoryTransactionController::class, 'export'])->name('history.export');
         Route::get('history/{id}', [HistoryTransactionController::class, 'show'])->name('history.show');
+    });
+
+    Route::prefix('shortcut')->name('shortcut.')->group(function () {
+        Route::get('public-link-generator', [PublicLinkGeneratorController::class, 'index'])->name('public-link-generator.index');
     });
 });
 
