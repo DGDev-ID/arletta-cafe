@@ -11,7 +11,6 @@ interface TransactionDetail {
         name: string;
         price: string;
         category: { id: number; name: string } | null;
-        promo: { id: number; discount_percentage: string; start_date: string; end_date: string } | null;
     } | null;
     amount: number;
     price: string;
@@ -95,7 +94,7 @@ const formatDate = (val: string) => {
                         </div>
                         <div>
                             <span class="text-muted-foreground">Total Price</span>
-                            <p class="font-semibold text-lg">{{ formatCurrency(transaction.total_price) }}</p>
+                            <p class="font-medium">{{ formatCurrency(transaction.total_price) }}</p>
                         </div>
                         <div>
                             <span class="text-muted-foreground">Payment Type</span>
@@ -144,9 +143,6 @@ const formatDate = (val: string) => {
                                 <td class="px-6 py-4">{{ index + 1 }}</td>
                                 <td class="px-6 py-4 font-medium">
                                     {{ detail.menu?.name ?? '-' }}
-                                    <div v-if="detail.menu?.promo" class="text-xs text-orange-600 mt-0.5">
-                                        Promo: {{ detail.menu.promo.discount_percentage }}% off
-                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ detail.menu?.category?.name ?? '-' }}</td>
                                 <td class="px-6 py-4">{{ detail.amount }}</td>
@@ -171,8 +167,8 @@ const formatDate = (val: string) => {
                                 <td colspan="2" class="px-6 py-3 font-semibold">{{ formatCurrency(transaction.fee) }}</td>
                             </tr>
                             <tr class="border-t">
-                                <td colspan="5" class="px-6 py-3 text-right font-semibold">Total</td>
-                                <td colspan="2" class="px-6 py-3 font-bold text-lg">{{ formatCurrency(transaction.total_price) }}</td>
+                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Total</td>
+                                <td colspan="2" class="px-6 py-3 font-bold">{{ formatCurrency(transaction.total_price) }}</td>
                             </tr>
                         </tfoot>
                     </table>

@@ -3,9 +3,9 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
-import { Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-vue-next';
+import { Pencil, Trash2, ToggleLeft, ToggleRight, Search } from 'lucide-vue-next';
 import Pagination from '@/components/Pagination.vue';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -24,16 +24,30 @@ const toggleStatus = (id: number) => {
     router.patch(`/master/menu/${id}/toggle-status`);
 };
 
-defineProps<{
+const props = defineProps<{
     data: any;
     allCafe: any;
+    search: string;
 }>();
 
 const selectedCafe = ref('');
+const searchQuery = ref(props.search);
 
-const filterByCafe = () => {
-    router.get('/master/menu', { cafe_id: selectedCafe.value }, { preserveState: true });
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const applyFilters = () => {
+    const params: Record<string, string> = {};
+    if (selectedCafe.value) params.cafe_id = selectedCafe.value;
+    if (searchQuery.value) params.search = searchQuery.value;
+    router.get('/master/menu', params, { preserveState: true });
 };
+
+const filterByCafe = () => applyFilters();
+
+watch(searchQuery, () => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => applyFilters(), 400);
+});
 
 const formatPrice = (price: string | number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(price));
@@ -60,8 +74,8 @@ const formatPrice = (price: string | number) => {
                         </Link>
                     </div>
 
-                    <!-- Filter Cafe -->
-                    <div class="flex flex-col mt-4 sm:flex-row gap-4 w-full md:flex-1 justify-between">
+                    <!-- Filter Cafe + Search -->
+                    <div class="flex flex-col mt-4 sm:flex-row gap-3 w-full items-center justify-between">
                         <div class="w-full sm:w-48">
                             <select v-model="selectedCafe" @change="filterByCafe"
                                 class="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
@@ -70,6 +84,13 @@ const formatPrice = (price: string | number) => {
                                     {{ cafe.name }}
                                 </option>
                             </select>
+                        </div>
+                        <div class="relative flex-1 max-w-sm">
+                            <Search :size="16"
+                                class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <input v-model="searchQuery" type="text"
+                                placeholder="Cari nama menu..."
+                                class="w-full pl-10 pr-4 h-10 rounded-xl border border-input bg-background text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
                         </div>
                     </div>
                 </div>
@@ -132,10 +153,9 @@ const formatPrice = (price: string | number) => {
                                     <div class="flex justify-end items-center gap-3">
 
                                         <!-- Toggle Status -->
-                                        <button @click="toggleStatus(menu.id)" type="button"
-                                            :class="menu.status === 'available'
-                                                ? 'bg-green-100 text-green-600 hover:bg-green-500 hover:text-white'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-500 hover:text-white'"
+                                        <button @click="toggleStatus(menu.id)" type="button" :class="menu.status === 'available'
+                                            ? 'bg-green-100 text-green-600 hover:bg-green-500 hover:text-white'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-500 hover:text-white'"
                                             class="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md transition"
                                             :title="menu.status === 'available' ? 'Set Unavailable' : 'Set Available'">
                                             <ToggleRight v-if="menu.status === 'available'" :size="16" />

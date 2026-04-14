@@ -21,15 +21,20 @@ class MenuController extends Controller
     {
         $allCafe = MCafe::select('id', 'name')->get();
         $cafeId = $request->query('cafe_id');
+        $search = $request->query('search');
         $query = MMenu::with('cafe');
         if ($cafeId) {
             $query->where('cafe_id', $cafeId);
+        }
+        if ($search) {
+            $query->where('name', 'like', "%{$search}%");
         }
         $data = $query->paginate(10)->withQueryString();
 
         return inertia('master/menu/Index', [
             'data'    => $data,
             'allCafe' => $allCafe,
+            'search'  => $search ?? '',
         ]);
     }
 

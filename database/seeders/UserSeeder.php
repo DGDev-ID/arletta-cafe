@@ -20,22 +20,22 @@ class UserSeeder extends Seeder
         $users = [
             [
                 'name' => 'Super Admin',
-                'email' => 'superadmin@example.com',
+                'email' => 'superadmin@arletta.com',
                 'password' => bcrypt('password'),
             ],
             [
                 'name' => 'Admin',
-                'email' => 'admin@example.com',
+                'email' => 'admin@arletta.com',
                 'password' => bcrypt('password'),
             ],
             [
                 'name' => 'Cashier',
-                'email' => 'cashier@example.com',
+                'email' => 'cashier@arletta.com',
                 'password' => bcrypt('password'),
             ],
             [
                 'name' => 'Backoffice',
-                'email' => 'backoffice@example.com',
+                'email' => 'backoffice@arletta.com',
                 'password' => bcrypt('password'),
             ],
 
