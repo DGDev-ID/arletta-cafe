@@ -18,9 +18,9 @@ use App\Http\Controllers\Dashboard\Shortcut\PublicLinkGeneratorController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return redirect()->route('dashboard');
-})->name('home');
+// Route::get('/', function () {
+//     return redirect()->route('dashboard');
+// })->name('home');
 
 Route::get('dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -96,10 +96,8 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-Route::middleware('guest')->group(function() {
-    Route::get('for-public/{cafeId}', [PublicController::class, 'forPublic']);
-    Route::get('for-kitchen/{cafeId}', [PublicController::class, 'forKitchen']);
-});
+Route::get('for-public/{cafeId}', [PublicController::class, 'forPublic']);
+Route::get('for-kitchen/{cafeId}', [PublicController::class, 'forKitchen']);
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
