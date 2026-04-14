@@ -11,6 +11,7 @@ class Transaction extends Model
     protected $fillable = [
         'cafe_id',
         'table_id',
+        'cust_name',
         'price',
         'fee',
         'total_price',

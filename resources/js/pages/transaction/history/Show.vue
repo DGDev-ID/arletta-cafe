@@ -21,6 +21,7 @@ interface Transaction {
     id: number;
     cafe_id: number;
     table_id: number | null;
+    cust_name: string;
     price: string;
     fee: string;
     total_price: string;
@@ -73,8 +74,8 @@ const formatDate = (val: string) => {
                     <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Informasi Transaksi</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm">
                         <div>
-                            <span class="text-muted-foreground">Transaction ID</span>
-                            <p class="font-medium">#{{ transaction.id }}</p>
+                            <span class="text-muted-foreground">Customer Name</span>
+                            <p class="font-medium">{{ transaction.cust_name ?? '-' }}</p>
                         </div>
                         <div>
                             <span class="text-muted-foreground">Cafe</span>

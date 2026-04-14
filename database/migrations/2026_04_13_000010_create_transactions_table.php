@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('cafe_id')->constrained('m_cafes')->cascadeOnDelete();
             $table->foreignId('table_id')->constrained('m_cafe_tables')->cascadeOnDelete();
+            $table->string('cust_name')->default('Customer');
             $table->decimal('price', 12, 2);
             $table->decimal('fee', 12, 2)->default(0);
             $table->decimal('total_price', 12, 2);

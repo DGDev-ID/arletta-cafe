@@ -16,6 +16,7 @@ interface Transaction {
     id: number;
     cafe_id: number;
     table_id: number | null;
+    cust_name: string;
     price: string;
     fee: string;
     total_price: string;
@@ -206,6 +207,7 @@ const formatDate = (val: string) => {
                             <tr class="text-muted-foreground">
                                 <th class="px-6 py-4 text-left font-medium">No</th>
                                 <th class="px-6 py-4 text-left font-medium">Cafe</th>
+                                <th class="px-6 py-4 text-left font-medium">Customer Name</th>
                                 <th class="px-6 py-4 text-left font-medium">Total Price</th>
                                 <th class="px-6 py-4 text-left font-medium">Payment Type</th>
                                 <th class="px-6 py-4 text-left font-medium">Tanggal</th>
@@ -219,10 +221,11 @@ const formatDate = (val: string) => {
                                     {{ index + 1 + (data.current_page - 1) * data.per_page }}
                                 </td>
                                 <td class="px-6 py-4 font-medium">{{ trx.cafe?.name ?? '-' }}</td>
+                                <td class="px-6 py-4">{{ trx.cust_name ?? '-' }}</td>
                                 <td class="px-6 py-4">{{ formatCurrency(trx.total_price) }}</td>
                                 <td class="px-6 py-4">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
-                                        :class="trx.payment_type === 'cash' ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'">
+                                        :class="trx.payment_type === 'manual' ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'">
                                         {{ trx.payment_type }}
                                     </span>
                                 </td>
@@ -236,7 +239,7 @@ const formatDate = (val: string) => {
                                 </td>
                             </tr>
                             <tr v-if="data.data.length === 0">
-                                <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">
+                                <td colspan="7" class="px-6 py-10 text-center text-muted-foreground">
                                     Belum ada data transaksi.
                                 </td>
                             </tr>
