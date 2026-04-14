@@ -12,6 +12,7 @@ use App\Http\Controllers\Dashboard\UserManagement\ManageBackofficeController;
 use App\Http\Controllers\Dashboard\Management\UnitMaterialConverterController;
 use App\Http\Controllers\Dashboard\Management\InboundOutboundMaterialController;
 use App\Http\Controllers\Dashboard\Transaction\HistoryTransactionController;
+use App\Http\Controllers\Dashboard\Transaction\CashierController;
 use App\Http\Controllers\Dashboard\Shortcut\PublicLinkGeneratorController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -80,6 +81,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('history', [HistoryTransactionController::class, 'index'])->name('history.index');
         Route::get('history/export', [HistoryTransactionController::class, 'export'])->name('history.export');
         Route::get('history/{id}', [HistoryTransactionController::class, 'show'])->name('history.show');
+
+        Route::get('cashier', [CashierController::class, 'index'])->name('cashier.index');
+        Route::get('cashier/{id}', [CashierController::class, 'show'])->name('cashier.show');
+        Route::patch('cashier/{id}/success', [CashierController::class, 'makeSuccess'])->name('cashier.success');
+        Route::patch('cashier/{id}/failed', [CashierController::class, 'makeFailed'])->name('cashier.failed');
+        Route::patch('cashier/{id}/success-in-order', [CashierController::class, 'makeSuccessInOrder'])->name('cashier.success-in-order');
+        Route::get('cashier/{id}/receipt', [CashierController::class, 'printReceipt'])->name('cashier.receipt');
     });
 
     Route::prefix('shortcut')->name('shortcut.')->group(function () {
