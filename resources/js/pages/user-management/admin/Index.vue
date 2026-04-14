@@ -64,27 +64,29 @@ const assignUser = (userId: number) => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
+
         <Head title="Manage Admin" />
 
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6 space-y-8">
 
-                <!-- Header -->
-                <Heading variant="small" title="Manage Admin"
-                    description="Kelola daftar user dengan role Admin." />
+                <div class="flex lex-row items-center justify-between gap-4">
+                    <!-- Header -->
+                    <Heading variant="small" title="Manage Admin" description="Kelola daftar user dengan role Admin." />
 
-                <!-- Search Filter -->
-                <div class="flex items-center gap-3">
-                    <div class="relative flex-1 max-w-md">
-                        <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <input v-model="searchQuery" @keydown.enter="filterSearch" type="text"
-                            placeholder="Cari admin berdasarkan nama atau email..."
-                            class="w-full pl-10 pr-4 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                    <!-- Search Filter -->
+                    <div class="flex items-center gap-3">
+                        <div class="relative flex-1 max-w-md">
+                            <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <input v-model="searchQuery" @keydown.enter="filterSearch" type="text"
+                                placeholder="Cari admin berdasarkan nama atau email..."
+                                class="w-full pl-10 pr-4 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                        </div>
+                        <button @click="filterSearch"
+                            class="cursor-pointer inline-flex items-center px-4 py-2 rounded-xl bg-primary text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition">
+                            Cari
+                        </button>
                     </div>
-                    <button @click="filterSearch"
-                        class="cursor-pointer inline-flex items-center px-4 py-2 rounded-xl bg-primary text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition">
-                        Cari
-                    </button>
                 </div>
 
                 <!-- Table -->
@@ -108,7 +110,8 @@ const assignUser = (userId: number) => {
                                 <td class="px-6 py-4 font-medium">{{ user.name }}</td>
                                 <td class="px-6 py-4">{{ user.email }}</td>
                                 <td class="px-6 py-4">
-                                    <div v-if="user.cafe_admins && user.cafe_admins.length > 0" class="flex flex-wrap gap-1.5">
+                                    <div v-if="user.cafe_admins && user.cafe_admins.length > 0"
+                                        class="flex flex-wrap gap-1.5">
                                         <span v-for="ca in user.cafe_admins" :key="ca.id"
                                             class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                                             {{ ca.cafe?.name ?? '-' }}
@@ -139,12 +142,12 @@ const assignUser = (userId: number) => {
                 <!-- Assign User Section -->
                 <div class="rounded-2xl border bg-background shadow-sm p-6 space-y-4">
                     <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Tambah Admin</h3>
-                    <p class="text-sm text-muted-foreground">Cari user berdasarkan nama atau email untuk memberikan akses Admin.</p>
+                    <p class="text-sm text-muted-foreground">Cari user berdasarkan nama atau email untuk memberikan
+                        akses Admin.</p>
 
                     <div class="relative max-w-md">
                         <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <input v-model="assignSearch" type="text"
-                            placeholder="Ketik nama atau email user..."
+                        <input v-model="assignSearch" type="text" placeholder="Ketik nama atau email user..."
                             class="w-full pl-10 pr-4 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                     </div>
 

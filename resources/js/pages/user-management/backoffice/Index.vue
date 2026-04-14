@@ -64,27 +64,30 @@ const assignUser = (userId: number) => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
+
         <Head title="Manage Backoffice" />
 
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6 space-y-8">
 
-                <!-- Header -->
-                <Heading variant="small" title="Manage Backoffice"
-                    description="Kelola daftar user dengan role Backoffice." />
+                <div class="flex lex-row items-center justify-between gap-4">
+                    <!-- Header -->
+                    <Heading variant="small" title="Manage Backoffice"
+                        description="Kelola daftar user dengan role Backoffice." />
 
-                <!-- Search Filter -->
-                <div class="flex items-center gap-3">
-                    <div class="relative flex-1 max-w-md">
-                        <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <input v-model="searchQuery" @keydown.enter="filterSearch" type="text"
-                            placeholder="Cari backoffice berdasarkan nama atau email..."
-                            class="w-full pl-10 pr-4 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                    <!-- Search Filter -->
+                    <div class="flex items-center gap-3">
+                        <div class="relative flex-1 max-w-md">
+                            <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <input v-model="searchQuery" @keydown.enter="filterSearch" type="text"
+                                placeholder="Cari backoffice berdasarkan nama atau email..."
+                                class="w-full pl-10 pr-4 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                        </div>
+                        <button @click="filterSearch"
+                            class="cursor-pointer inline-flex items-center px-4 py-2 rounded-xl bg-primary text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition">
+                            Cari
+                        </button>
                     </div>
-                    <button @click="filterSearch"
-                        class="cursor-pointer inline-flex items-center px-4 py-2 rounded-xl bg-primary text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition">
-                        Cari
-                    </button>
                 </div>
 
                 <!-- Table -->
@@ -128,13 +131,14 @@ const assignUser = (userId: number) => {
 
                 <!-- Assign User Section -->
                 <div class="rounded-2xl border bg-background shadow-sm p-6 space-y-4">
-                    <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Tambah Backoffice</h3>
-                    <p class="text-sm text-muted-foreground">Cari user berdasarkan nama atau email untuk memberikan akses Backoffice.</p>
+                    <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Tambah Backoffice
+                    </h3>
+                    <p class="text-sm text-muted-foreground">Cari user berdasarkan nama atau email untuk memberikan
+                        akses Backoffice.</p>
 
                     <div class="relative max-w-md">
                         <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <input v-model="assignSearch" type="text"
-                            placeholder="Ketik nama atau email user..."
+                        <input v-model="assignSearch" type="text" placeholder="Ketik nama atau email user..."
                             class="w-full pl-10 pr-4 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                     </div>
 
