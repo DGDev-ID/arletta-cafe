@@ -36,7 +36,7 @@ class MMaterial extends Model
 
     public function converters(): HasMany
     {
-        return $this->hasMany(UnitMaterialConverter::class);
+        return $this->hasMany(UnitMaterialConverter::class, 'material_id');
     }
 
     public function menuMaterials(): HasMany

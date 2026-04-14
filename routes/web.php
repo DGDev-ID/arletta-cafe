@@ -8,6 +8,8 @@ use App\Http\Controllers\Dashboard\Master\UnitController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageAdminController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageCashierController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageBackofficeController;
+use App\Http\Controllers\Dashboard\Management\UnitMaterialConverterController;
+use App\Http\Controllers\Dashboard\Management\InboundOutboundMaterialController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -56,6 +58,19 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/assign', [ManageBackofficeController::class, 'assign'])->name('assign');
             Route::delete('/{id}/revoke', [ManageBackofficeController::class, 'revoke'])->name('revoke');
         });
+    });
+
+    Route::prefix('management')->name('management.')->group(function () {
+        Route::resource('unit-material-converter', UnitMaterialConverterController::class)->only(['index', 'show']);
+        Route::post('unit-material-converter/{materialId}/converter', [UnitMaterialConverterController::class, 'store'])->name('unit-material-converter.store');
+        Route::put('unit-material-converter/{materialId}/converter/{converterId}', [UnitMaterialConverterController::class, 'update'])->name('unit-material-converter.update');
+        Route::delete('unit-material-converter/{materialId}/converter/{converterId}', [UnitMaterialConverterController::class, 'destroy'])->name('unit-material-converter.destroy');
+
+        Route::get('inbound-outbound-material', [InboundOutboundMaterialController::class, 'index'])->name('inbound-outbound-material.index');
+        Route::get('inbound-outbound-material/create', [InboundOutboundMaterialController::class, 'create'])->name('inbound-outbound-material.create');
+        Route::post('inbound-outbound-material', [InboundOutboundMaterialController::class, 'store'])->name('inbound-outbound-material.store');
+        Route::get('inbound-outbound-material/materials-by-cafe', [InboundOutboundMaterialController::class, 'getMaterialsByCafe'])->name('inbound-outbound-material.materials-by-cafe');
+        Route::get('inbound-outbound-material/check-unit-converter', [InboundOutboundMaterialController::class, 'checkUnitConverter'])->name('inbound-outbound-material.check-unit-converter');
     });
 });
 

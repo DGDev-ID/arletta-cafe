@@ -21,9 +21,20 @@ class UnitMaterialConverter extends Model
         ];
     }
 
+    public function getMultiplierAttribute($value)
+    {
+        $value = (float) $value;
+
+        if (fmod($value, 1) == 0.0) {
+            return (int) $value;
+        }
+
+        return $value;
+    }
+
     public function material(): BelongsTo
     {
-        return $this->belongsTo(MMaterial::class);
+        return $this->belongsTo(MMaterial::class, 'material_id');
     }
 
     public function fromUnit(): BelongsTo

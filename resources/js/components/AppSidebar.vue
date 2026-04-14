@@ -65,18 +65,13 @@ const userMamagementNavItems: NavItem[] = [
 const managementNavItems: NavItem[] = [
     {
         title: 'Unit Material Converter',
-        href: '/management/material-converter',
+        href: '/management/unit-material-converter',
         icon: ArrowLeftRight,
     },
     {
-        title: 'Inbound Material',
-        href: '/management/inbound-material',
+        title: 'In-Out Material',
+        href: '/management/inbound-outbound-material',
         icon: Inbox,
-    },
-    {
-        title: 'Outbound Material',
-        href: '/management/outbound-material',
-        icon: Send,
     },
 ];
 
