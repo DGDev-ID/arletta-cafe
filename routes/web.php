@@ -11,6 +11,7 @@ use App\Http\Controllers\Dashboard\UserManagement\ManageCashierController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageBackofficeController;
 use App\Http\Controllers\Dashboard\Management\UnitMaterialConverterController;
 use App\Http\Controllers\Dashboard\Management\InboundOutboundMaterialController;
+use App\Http\Controllers\Dashboard\PublicController;
 use App\Http\Controllers\Dashboard\Transaction\HistoryTransactionController;
 use App\Http\Controllers\Dashboard\Transaction\CashierController;
 use App\Http\Controllers\Dashboard\Shortcut\PublicLinkGeneratorController;
@@ -93,6 +94,11 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('shortcut')->name('shortcut.')->group(function () {
         Route::get('public-link-generator', [PublicLinkGeneratorController::class, 'index'])->name('public-link-generator.index');
     });
+});
+
+Route::middleware('guest')->group(function() {
+    Route::get('for-public/{cafeId}', [PublicController::class, 'forPublic']);
+    Route::get('for-kitchen/{cafeId}', [PublicController::class, 'forKitchen']);
 });
 
 require __DIR__ . '/settings.php';
