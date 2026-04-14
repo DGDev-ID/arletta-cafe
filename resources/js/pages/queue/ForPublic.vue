@@ -88,36 +88,63 @@ const formatTime = (dateStr: string) => {
 <template>
     <Head :title="`Queue - ${cafe.name}`" />
 
-    <div class="min-h-screen bg-gray-900 text-white p-6">
-        <div class="max-w-5xl mx-auto">
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold">📋 Antrian Pesanan</h1>
-                <p class="text-gray-400 mt-1">{{ cafe.name }}</p>
+    <div
+        class="relative min-h-screen overflow-auto"
+        style="background-color: #1c1008; background-image: radial-gradient(circle, rgba(180,100,40,0.12) 1.5px, transparent 1.5px); background-size: 28px 28px;"
+    >
+        <!-- Warm vignette overlay -->
+        <div class="pointer-events-none fixed inset-0 bg-gradient-to-br from-amber-950/60 via-transparent to-amber-950/60" />
+
+        <div class="relative z-10 max-w-4xl mx-auto px-6 py-10">
+            <!-- Header -->
+            <div class="text-center mb-10">
+                <div class="inline-flex items-center gap-3 mb-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-800/90 shadow-lg shadow-amber-900/40">
+                        <span class="text-lg">☕</span>
+                    </div>
+                    <span class="text-xs font-semibold uppercase tracking-widest text-amber-400/80">Order Display</span>
+                </div>
+                <h1 class="text-3xl font-bold text-white tracking-tight">Antrian Pesanan</h1>
+                <p class="text-amber-300/60 mt-1 text-sm">{{ cafe.name }}</p>
             </div>
 
-            <div v-if="transactions.length === 0" class="text-center text-gray-500 text-xl mt-20">
-                Tidak ada pesanan saat ini
+            <!-- Empty state -->
+            <div v-if="transactions.length === 0" class="flex flex-col items-center justify-center mt-24 gap-4">
+                <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-900/30 border border-amber-800/40">
+                    <span class="text-4xl">🍵</span>
+                </div>
+                <p class="text-amber-300/50 text-lg font-medium">Tidak ada pesanan saat ini</p>
             </div>
 
+            <!-- Transaction list -->
             <div class="space-y-4">
                 <div
                     v-for="trx in transactions"
                     :key="trx.id"
-                    class="bg-gray-800 rounded-2xl p-5 border border-gray-700 shadow-lg flex items-center justify-between"
+                    class="rounded-2xl border border-amber-800/40 bg-amber-950/60 p-5 shadow-xl shadow-black/30 backdrop-blur-sm flex items-center justify-between gap-4"
                 >
+                    <!-- Left: order number + info -->
                     <div class="flex items-center gap-5">
-                        <span class="text-2xl font-bold text-yellow-400">#{{ trx.id }}</span>
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-800/50 border border-amber-700/40 shadow-inner">
+                            <span class="text-lg font-bold text-amber-400">#{{ trx.id }}</span>
+                        </div>
                         <div>
-                            <p class="text-lg font-semibold">{{ trx.cust_name ?? 'Tanpa Nama' }}</p>
-                            <p class="text-sm text-gray-400">
-                                <span v-if="trx.table">{{ trx.table.name }}</span>
-                                <span v-else>Tanpa Meja</span>
-                                <span class="ml-3">{{ formatTime(trx.created_at) }}</span>
-                            </p>
+                            <p class="text-base font-semibold text-white">{{ trx.cust_name ?? 'Tanpa Nama' }}</p>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span v-if="trx.table" class="text-xs font-medium text-amber-300/70">
+                                    {{ trx.table.name }}
+                                </span>
+                                <span v-else class="text-xs font-medium text-amber-300/50">Tanpa Meja</span>
+                                <span class="text-amber-800/80">·</span>
+                                <span class="text-xs text-amber-300/50">{{ formatTime(trx.created_at) }}</span>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <span class="bg-orange-500 text-white text-sm font-semibold px-4 py-1.5 rounded-full">
+
+                    <!-- Right: status badge -->
+                    <div class="shrink-0">
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-800/60 border border-amber-700/50 px-4 py-1.5 text-sm font-semibold text-amber-300">
+                            <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
                             Sedang Dibuat
                         </span>
                     </div>

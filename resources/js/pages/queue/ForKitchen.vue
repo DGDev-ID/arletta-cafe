@@ -97,48 +97,80 @@ const formatTime = (dateStr: string) => {
 <template>
     <Head :title="`Kitchen Queue - ${cafe.name}`" />
 
-    <div class="min-h-screen bg-gray-900 text-white p-6">
-        <div class="max-w-7xl mx-auto">
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold">🍳 Kitchen Queue</h1>
-                <p class="text-gray-400 mt-1">{{ cafe.name }}</p>
+    <div
+        class="relative min-h-screen overflow-auto"
+        style="background-color: #1c1008; background-image: radial-gradient(circle, rgba(180,100,40,0.12) 1.5px, transparent 1.5px); background-size: 28px 28px;"
+    >
+        <!-- Warm vignette overlay -->
+        <div class="pointer-events-none fixed inset-0 bg-gradient-to-br from-amber-950/60 via-transparent to-amber-950/60" />
+
+        <div class="relative z-10 max-w-7xl mx-auto px-6 py-8">
+            <!-- Header -->
+            <div class="text-center mb-10">
+                <div class="inline-flex items-center gap-3 mb-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-800/90 shadow-lg shadow-amber-900/40">
+                        <span class="text-lg">🍳</span>
+                    </div>
+                    <span class="text-xs font-semibold uppercase tracking-widest text-amber-400/80">Kitchen Display</span>
+                </div>
+                <h1 class="text-3xl font-bold text-white tracking-tight">Antrian Dapur</h1>
+                <p class="text-amber-300/60 mt-1 text-sm">{{ cafe.name }}</p>
             </div>
 
-            <div v-if="transactions.length === 0" class="text-center text-gray-500 text-xl mt-20">
-                Tidak ada pesanan saat ini
+            <!-- Empty state -->
+            <div v-if="transactions.length === 0" class="flex flex-col items-center justify-center mt-24 gap-4">
+                <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-900/30 border border-amber-800/40">
+                    <span class="text-4xl">☕</span>
+                </div>
+                <p class="text-amber-300/50 text-lg font-medium">Tidak ada pesanan saat ini</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Transaction grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 <div
                     v-for="trx in transactions"
                     :key="trx.id"
-                    class="bg-gray-800 rounded-2xl p-5 border border-gray-700 shadow-lg"
+                    class="rounded-2xl border border-amber-800/40 bg-amber-950/60 p-5 shadow-xl shadow-black/30 backdrop-blur-sm"
                 >
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <span class="text-lg font-bold text-yellow-400">#{{ trx.id }}</span>
-                            <span v-if="trx.table" class="ml-2 text-sm bg-blue-600 px-2 py-0.5 rounded-full">
+                    <!-- Card header -->
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl font-bold text-amber-400">#{{ trx.id }}</span>
+                            <span v-if="trx.table" class="text-xs font-semibold bg-amber-800/60 text-amber-300 border border-amber-700/50 px-2.5 py-0.5 rounded-full">
                                 {{ trx.table.name }}
                             </span>
                         </div>
-                        <span class="text-xs text-gray-400">{{ formatTime(trx.created_at) }}</span>
+                        <span class="text-xs text-amber-400/50 font-medium">{{ formatTime(trx.created_at) }}</span>
                     </div>
 
-                    <p v-if="trx.cust_name" class="text-sm text-gray-300 mb-3">
+                    <!-- Customer name -->
+                    <p v-if="trx.cust_name" class="text-sm font-medium text-amber-100/80 mb-3">
                         {{ trx.cust_name }}
                     </p>
 
+                    <!-- Divider -->
+                    <div class="h-px bg-amber-800/30 mb-3" />
+
+                    <!-- Menu items -->
                     <div class="space-y-2">
                         <div
                             v-for="detail in trx.details"
                             :key="detail.id"
-                            class="flex justify-between items-center bg-gray-700/50 rounded-lg px-3 py-2"
+                            class="flex justify-between items-center rounded-lg bg-amber-900/30 border border-amber-800/20 px-3 py-2"
                         >
-                            <span class="font-medium">{{ detail.menu?.name ?? '-' }}</span>
-                            <span class="text-yellow-300 font-bold">x{{ detail.amount }}</span>
+                            <span class="text-sm font-medium text-white/90">{{ detail.menu?.name ?? '-' }}</span>
+                            <span class="text-amber-400 font-bold text-sm">x{{ detail.amount }}</span>
                         </div>
-                        <div v-for="detail in trx.details.filter(d => d.description)" :key="'note-' + detail.id" class="text-xs text-gray-400 italic px-3">
-                            📝 {{ detail.menu?.name }}: {{ detail.description }}
+                        <div
+                            v-for="detail in trx.details.filter(d => d.description)"
+                            :key="'note-' + detail.id"
+                            class="flex items-start gap-1.5 px-3 pt-1"
+                        >
+                            <span class="text-amber-500 text-xs mt-0.5">📝</span>
+                            <p class="text-xs text-amber-300/60 italic leading-relaxed">
+                                <span class="font-medium not-italic text-amber-300/80">{{ detail.menu?.name }}:</span>
+                                {{ detail.description }}
+                            </p>
                         </div>
                     </div>
                 </div>

@@ -18,9 +18,9 @@ use App\Http\Controllers\Dashboard\Shortcut\PublicLinkGeneratorController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// Route::get('/', function () {
-//     return redirect()->route('dashboard');
-// })->name('home');
+Route::get('/', function () {
+    return redirect()->route('dashboard');
+})->name('home');
 
 Route::get('dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
