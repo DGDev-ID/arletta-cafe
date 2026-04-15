@@ -49,6 +49,7 @@ defineProps<{
                             <tr class="text-muted-foreground">
                                 <th class="px-6 py-4 text-left font-medium">No</th>
                                 <th class="px-6 py-4 text-left font-medium">Nama Unit</th>
+                                <th class="px-6 py-4 text-left font-medium">Stok Kritis</th>
                                 <th class="px-6 py-4 text-right font-medium">Aksi</th>
                             </tr>
                         </thead>
@@ -64,6 +65,11 @@ defineProps<{
                                 <!-- Name -->
                                 <td class="px-6 py-4 font-medium">
                                     {{ unit.name }}
+                                </td>
+
+                                <!-- Critical Stock -->
+                                <td class="px-6 py-4 font-medium">
+                                    {{ unit.critical_stock }}
                                 </td>
 
                                 <!-- Action -->
@@ -90,7 +96,7 @@ defineProps<{
 
                             <!-- Empty -->
                             <tr v-if="data.data.length === 0">
-                                <td colspan="3" class="px-6 py-10 text-center text-muted-foreground">
+                                <td colspan="4" class="px-6 py-10 text-center text-muted-foreground">
                                     Belum ada data unit.
                                 </td>
                             </tr>
