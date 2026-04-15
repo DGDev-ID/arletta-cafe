@@ -35,7 +35,9 @@ interface Cafe {
 const props = defineProps<{ cafe: Cafe }>();
 
 const transactions = ref<Transaction[]>([]);
-const previousIds = ref<Set<number>>(new Set());
+// previousData holds the snapshot from the LAST successful fetch
+// key = transaction id, value = full transaction object
+const previousData = ref<Map<number, Transaction>>(new Map());
 let interval: ReturnType<typeof setInterval> | null = null;
 
 const speak = (text: string) => {
@@ -63,21 +65,26 @@ const playNotification = () => {
 const fetchQueue = async () => {
     try {
         const { data } = await axios.get<Transaction[]>(`/api/queue/kitchen/${props.cafe.unique_id}`);
-        const newIds = new Set(data.map(t => t.id));
 
-        // Detect new orders
-        for (const id of newIds) {
-            if (!previousIds.value.has(id)) {
-                playNotification();
-                speak('Pesanan diterima');
-                break;
+        // Build current snapshot
+        const currentMap = new Map<number, Transaction>(data.map((t: Transaction) => [t.id, t]));
+
+        // Compare: IDs in current that were NOT in previous → new order arrived
+        if (previousData.value.size > 0) {
+            for (const [id] of currentMap) {
+                if (!previousData.value.has(id)) {
+                    playNotification();
+                    speak('Pesanan baru diterima');
+                    break; // one notification is enough per polling cycle
+                }
             }
         }
 
-        previousIds.value = newIds;
+        // Commit new snapshot and render
+        previousData.value = currentMap;
         transactions.value = data;
-    } catch (e) {
-        // silently retry on next interval
+    } catch (_e) {
+        // silently retry on next interval — do NOT update previousData so diff stays intact
     }
 };
 
