@@ -15,7 +15,7 @@ class CashierController extends Controller
         $cafeId = $request->input('cafe_id');
         $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
 
-        $pendingQuery = Transaction::where('status', 'pending_manual')
+        $pendingQuery = Transaction::where('status', 'pending')
             ->with(['cafe', 'table']);
 
         $inOrderQuery = Transaction::where('status', 'in_order')
@@ -38,7 +38,12 @@ class CashierController extends Controller
 
     public function show($id)
     {
-        $transaction = Transaction::where('status', 'pending_manual')
+        $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')
+             ->with([
+                'cafe',
+                'table',
+                'details.menu.category',
+            ])
             ->with([
                 'cafe',
                 'table',
@@ -53,7 +58,7 @@ class CashierController extends Controller
 
     public function makeSuccess($id)
     {
-        $transaction = Transaction::where('status', 'pending_manual')->findOrFail($id);
+        $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')->findOrFail($id);
         $transaction->update(['status' => 'in_order']);
 
         return redirect()
@@ -63,7 +68,7 @@ class CashierController extends Controller
 
     public function makeFailed($id)
     {
-        $transaction = Transaction::where('status', 'pending_manual')->findOrFail($id);
+        $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')->findOrFail($id);
         $transaction->update(['status' => 'failed']);
 
         return redirect()
