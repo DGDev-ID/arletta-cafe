@@ -100,4 +100,13 @@ class CashierController extends Controller
             'transaction' => $transaction,
         ]);
     }
+
+    public function receiptData($id)
+    {
+        $transaction = Transaction::whereIn('status', ['in_order', 'success'])
+            ->with(['cafe:id,name,address', 'table:id,name', 'details.menu:id,name'])
+            ->findOrFail($id);
+
+        return response()->json($transaction);
+    }
 }
