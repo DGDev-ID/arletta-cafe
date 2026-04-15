@@ -9,6 +9,7 @@ const props = defineProps<{
     data: {
         id: number;
         name: string;
+        critical_stock: number | null;
     };
 }>();
 
@@ -19,6 +20,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const form = useForm({
     name: props.data.name,
+    critical_stock: props.data.critical_stock,
 });
 
 const submit = () => form.put(`/master/unit/${props.data.id}`);

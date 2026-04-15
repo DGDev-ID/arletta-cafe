@@ -3,6 +3,7 @@ import InputError from '@/components/InputError.vue';
 
 interface UnitFormData {
     name: string;
+    critical_stock: number | null;
     errors: Record<string, string>;
     processing: boolean;
 }
@@ -32,6 +33,22 @@ const emit = defineEmits<{ submit: [] }>();
                 class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <InputError :message="form.errors.name" />
+        </div>
+
+        <!-- Critical Stock -->
+        <div class="grid gap-2">
+            <label for="unit-critical-stock" class="text-sm font-medium leading-none">
+                Stok Kritis
+            </label>
+            <input
+                id="unit-critical-stock"
+                v-model.number="form.critical_stock"
+                type="number"
+                min="0"
+                placeholder="Contoh: 10"
+                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <InputError :message="form.errors.critical_stock" />
         </div>
 
         <!-- Action Buttons -->

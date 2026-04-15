@@ -12,6 +12,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const form = useForm({
     name: '',
+    critical_stock: null as number | null,
 });
 
 const submit = () => form.post('/master/unit');
