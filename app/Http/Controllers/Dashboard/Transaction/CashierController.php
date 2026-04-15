@@ -16,6 +16,7 @@ class CashierController extends Controller
         $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
 
         $pendingQuery = Transaction::where('status', 'pending')
+            ->where('payment_type', 'manual')
             ->with(['cafe', 'table']);
 
         $inOrderQuery = Transaction::where('status', 'in_order')
