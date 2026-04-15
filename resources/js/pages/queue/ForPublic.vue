@@ -67,11 +67,8 @@ const fetchQueue = async () => {
 
         // Compare: IDs in previous that are gone from current → order completed
         if (previousData.value.size > 0) {
-            console.log('Comparing snapshots...');
             for (const [id, trx] of previousData.value) {
-                console.log(`Checking transaction ${id}...`);
                 if (!currentMap.has(id)) {
-                    console.log(`Transaction ${id} is completed!`);
                     playNotification();
                     const custName = trx.cust_name ?? 'Pelanggan';
                     const tableName = trx.table?.name ?? 'tanpa meja';
