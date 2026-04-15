@@ -15,6 +15,8 @@ const form = useForm({
     address: '',
     address_coordinate: '',
     description: '',
+    image: null as File | null,
+    phone_number: '',
 });
 
 const submit = () => form.post('/master/cafe');

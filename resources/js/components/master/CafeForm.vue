@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { MapPin, Search, X } from 'lucide-vue-next';
+import { MapPin, Phone, Search, Upload, X } from 'lucide-vue-next';
 import { nextTick, onUnmounted, ref } from 'vue';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -20,17 +20,44 @@ interface CafeFormData {
     address: string;
     address_coordinate: string;
     description: string;
+    image: File | null;
+    phone_number: string;
     errors: Record<string, string>;
     processing: boolean;
 }
 
 const props = defineProps<{
     form: CafeFormData;
+    existingImgUrl?: string | null;
     submitLabel?: string;
     backHref?: string;
 }>();
 
 const emit = defineEmits<{ submit: [] }>();
+
+const imagePreview = ref<string | null>(props.existingImgUrl ?? null);
+
+function onFileChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0] ?? null;
+    props.form.image = file;
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imagePreview.value = e.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        imagePreview.value = props.existingImgUrl ?? null;
+    }
+}
+
+function removeImage() {
+    props.form.image = null;
+    imagePreview.value = null;
+    const input = document.getElementById('cafe-img') as HTMLInputElement;
+    if (input) input.value = '';
+}
 
 // ── Map ────────────────────────────────────────────────────────────────────
 const showMap = ref(false);
@@ -274,6 +301,51 @@ onUnmounted(() => {
                 class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             ></textarea>
             <InputError :message="form.errors.description" />
+        </div>
+
+        <!-- Phone Number -->
+        <div class="grid gap-2">
+            <label for="cafe-phone" class="text-sm font-medium leading-none">
+                Nomor Telepon
+                <span class="text-muted-foreground text-xs font-normal ml-1">(opsional)</span>
+            </label>
+            <div class="relative">
+                <Phone :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+                <input
+                    id="cafe-phone"
+                    v-model="form.phone_number"
+                    type="text"
+                    placeholder="Contoh: 081234567890"
+                    class="w-full pl-10 pr-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+            </div>
+            <InputError :message="form.errors.phone_number" />
+        </div>
+
+        <!-- Image Upload -->
+        <div class="grid gap-2">
+            <label for="cafe-img" class="text-sm font-medium leading-none">
+                Gambar Cafe
+                <span class="text-muted-foreground text-xs font-normal ml-1">(opsional)</span>
+            </label>
+            <div class="space-y-3">
+                <div v-if="imagePreview" class="relative inline-block">
+                    <img :src="imagePreview" alt="Preview" class="h-48 w-auto rounded-xl border object-cover shadow-sm" />
+                    <button type="button" @click="removeImage"
+                        class="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-sm hover:bg-red-600 transition">
+                        <X :size="14" />
+                    </button>
+                </div>
+
+                <label for="cafe-img"
+                    class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/30 px-6 py-8 text-center transition hover:border-primary/50 hover:bg-muted/50">
+                    <Upload :size="24" class="text-muted-foreground/60" />
+                    <span class="text-sm text-muted-foreground">Klik untuk upload atau drag & drop</span>
+                    <span class="text-xs text-muted-foreground/60">PNG, JPG, WEBP (max 5MB)</span>
+                    <input id="cafe-img" type="file" accept="image/*" class="hidden" @change="onFileChange" />
+                </label>
+            </div>
+            <InputError :message="form.errors.image" />
         </div>
 
         <!-- Action Buttons -->

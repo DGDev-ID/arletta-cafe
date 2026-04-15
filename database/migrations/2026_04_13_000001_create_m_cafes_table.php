@@ -15,6 +15,8 @@ return new class extends Migration
             $table->text('address');
             $table->string('address_coordinate')->nullable();
             $table->text('description')->nullable();
+            $table->string('img_url')->nullable();
+            $table->string('phone_number')->nullable();
             $table->timestamps();
         });
     }

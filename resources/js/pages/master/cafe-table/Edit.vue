@@ -28,6 +28,8 @@ const props = defineProps<{
         address: string;
         address_coordinate: string;
         description: string;
+        img_url: string | null;
+        phone_number: string | null;
         cafe_admins: { user_id: number }[];
         cafe_cashiers: { user_id: number }[];
         tables: CafeTableItem[];
@@ -42,15 +44,18 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const form = useForm({
+    _method: 'PUT',
     name: props.data.name,
     address: props.data.address,
     address_coordinate: props.data.address_coordinate ?? '',
     description: props.data.description ?? '',
+    image: null as File | null,
+    phone_number: props.data.phone_number ?? '',
     admin_ids: props.data.cafe_admins.map((a) => a.user_id),
     cashier_ids: props.data.cafe_cashiers.map((c) => c.user_id),
 });
 
-const submit = () => form.put(`/master/cafe/${props.data.id}`);
+const submit = () => form.post(`/master/cafe/${props.data.id}`);
 </script>
 
 <template>

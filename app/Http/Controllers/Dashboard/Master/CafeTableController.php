@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Dashboard\Master;
 
+use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use App\Models\CafeAdmin;
 use App\Models\CafeCashier;
@@ -33,11 +34,27 @@ class CafeTableController extends Controller
             'address'            => 'required|string|max:500',
             'address_coordinate' => 'nullable|string|max:100',
             'description'        => 'nullable|string',
+            'image'              => 'nullable|image|max:5120',
+            'phone_number'       => 'nullable|string|max:20',
         ]);
 
-        $validated['unique_id'] = 'cafe_' . strtolower(Str::random(20));
+        $imgUrl = null;
+        if ($request->hasFile('image')) {
+            $tempFileName = S3Helper::storeFileTemp($request->file('image'));
+            S3Helper::storeFileToS3('cafes', $tempFileName);
+            $imgUrl = S3Helper::getUrlFileS3('cafes', $tempFileName);
+            S3Helper::removeFileTemp($tempFileName);
+        }
 
-        MCafe::create($validated);
+        MCafe::create([
+            'unique_id'          => 'cafe_' . strtolower(Str::random(20)),
+            'name'               => $validated['name'],
+            'address'            => $validated['address'],
+            'address_coordinate' => $validated['address_coordinate'],
+            'description'        => $validated['description'],
+            'img_url'            => $imgUrl,
+            'phone_number'       => $validated['phone_number'] ?? null,
+        ]);
 
         return redirect()
             ->route('master.cafe.index')
@@ -67,17 +84,29 @@ class CafeTableController extends Controller
             'address'            => 'required|string|max:500',
             'address_coordinate' => 'nullable|string|max:100',
             'description'        => 'nullable|string',
+            'image'              => 'nullable|image|max:5120',
+            'phone_number'       => 'nullable|string|max:20',
             'admin_ids'          => 'nullable|array',
             'admin_ids.*'        => 'exists:users,id',
             'cashier_ids'        => 'nullable|array',
             'cashier_ids.*'      => 'exists:users,id',
         ]);
 
+        $imgUrl = $cafe->img_url;
+        if ($request->hasFile('image')) {
+            $tempFileName = S3Helper::storeFileTemp($request->file('image'));
+            S3Helper::storeFileToS3('cafes', $tempFileName);
+            $imgUrl = S3Helper::getUrlFileS3('cafes', $tempFileName);
+            S3Helper::removeFileTemp($tempFileName);
+        }
+
         $cafe->update([
             'name'               => $validated['name'],
             'address'            => $validated['address'],
             'address_coordinate' => $validated['address_coordinate'],
             'description'        => $validated['description'],
+            'img_url'            => $imgUrl,
+            'phone_number'       => $validated['phone_number'] ?? null,
         ]);
 
         CafeAdmin::where('cafe_id', $cafe->id)->delete();

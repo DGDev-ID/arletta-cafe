@@ -13,6 +13,8 @@ class MCafe extends Model
         'address',
         'address_coordinate',
         'description',
+        'img_url',
+        'phone_number'
     ];
 
     public function tables(): HasMany
