@@ -78,17 +78,13 @@ const makeFailed = () => {
                         description="Detail transaksi pending manual." />
                     <div class="flex items-center gap-2">
                         <button @click="makeFailed" type="button"
-                            class="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 text-sm font-medium text-white shadow-sm hover:bg-red-700 transition">
+                            class="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition bg-red-100 text-red-600 hover:bg-red-500 hover:text-white">
                             <XCircle :size="16" /> Failed
                         </button>
                         <button @click="makeSuccess" type="button"
-                            class="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 text-sm font-medium text-white shadow-sm hover:bg-green-700 transition">
+                            class="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-100 text-green-600 text-sm font-medium shadow-sm hover:bg-green-500 hover:text-white transition">
                             <CheckCircle :size="16" /> Approve
                         </button>
-                        <Link href="/transaction/cashier"
-                            class="text-sm text-muted-foreground hover:text-foreground transition ml-2">
-                            ← Kembali
-                        </Link>
                     </div>
                 </div>
 
