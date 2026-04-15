@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { ArrowLeftRight, BookOpen, Coffee, DollarSign, Folder, History, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, UserCheck, Utensils } from 'lucide-vue-next';
+import { ArrowLeftRight, BookOpen, Camera, Coffee, DollarSign, Folder, History, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, UserCheck, Utensils } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -42,6 +42,11 @@ const masterDataNavItems: NavItem[] = [
         href: '/master/menu',
         icon: Utensils,
     },
+    {
+        title: 'Gallery',
+        href: '/master/gallery',
+        icon: Camera,
+    }
 ];
 
 const userMamagementNavItems: NavItem[] = [

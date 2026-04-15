@@ -4,6 +4,7 @@ use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\Master\CafeTableController;
 use App\Http\Controllers\Dashboard\Master\MaterialController;
 use App\Http\Controllers\Dashboard\Master\MenuCategoryController;
+use App\Http\Controllers\Dashboard\Master\GalleryController;
 use App\Http\Controllers\Dashboard\Master\MenuController;
 use App\Http\Controllers\Dashboard\Master\UnitController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageAdminController;
@@ -40,6 +41,8 @@ Route::middleware(['auth'])->group(function () {
 
         Route::resource('menu', MenuController::class);
         Route::patch('menu/{menu}/toggle-status', [MenuController::class, 'toggleStatus'])->name('menu.toggle-status');
+
+        Route::resource('gallery', GalleryController::class)->except(['show']);
     });
 
     Route::prefix('user-management')->name('user-management.')->group(function () {
