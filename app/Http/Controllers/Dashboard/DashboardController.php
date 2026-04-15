@@ -41,7 +41,7 @@ class DashboardController extends Controller
         $activeMenus = MMenu::where('status', 'active')->count();
 
         // Low Stock Materials (stok di bawah 10)
-        $lowStockCount = MMaterial::where('stock', '<', 10)->count();
+        $lowStockCount = MMaterial::whereColumn('stock', '<', 'critical_stock')->count();
         $outOfStockCount = MMaterial::where('stock', '<=', 0)->count();
 
         // Revenue last 7 days
