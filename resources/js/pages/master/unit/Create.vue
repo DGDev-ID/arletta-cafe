@@ -12,7 +12,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const form = useForm({
     name: '',
-    critical_stock: null as number | null,
 });
 
 const submit = () => form.post('/master/unit');
@@ -23,7 +22,7 @@ const submit = () => form.post('/master/unit');
         <Head title="Tambah Unit" />
 
         <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-3xl mx-auto px-6 space-y-8">
+            <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <div class="flex items-center justify-between">
                     <Heading variant="small" title="Tambah Unit" description="Isi data unit baru yang akan ditambahkan." />

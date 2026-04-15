@@ -25,12 +25,10 @@ class UnitController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:m_units,name',
-            'critical_stock' => 'nullable|integer|min:0',
         ]);
 
         MUnit::create([
             'name' => $request->name,
-            'critical_stock' => $request->critical_stock,
         ]);
 
         return redirect()
@@ -52,12 +50,10 @@ class UnitController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255|unique:m_units,name,' . $unit->id,
-            'critical_stock' => 'nullable|integer|min:0',
         ]);
 
         $unit->update([
             'name' => $request->name,
-            'critical_stock' => $request->critical_stock,
         ]);
 
         return redirect()

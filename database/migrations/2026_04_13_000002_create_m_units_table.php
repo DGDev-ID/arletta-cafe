@@ -11,7 +11,6 @@ return new class extends Migration
         Schema::create('m_units', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->float('critical_stock')->default(0);
             $table->timestamps();
         });
     }

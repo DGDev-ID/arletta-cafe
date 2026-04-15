@@ -9,7 +9,6 @@ const props = defineProps<{
     data: {
         id: number;
         name: string;
-        critical_stock: number | null;
     };
 }>();
 
@@ -20,7 +19,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const form = useForm({
     name: props.data.name,
-    critical_stock: props.data.critical_stock,
 });
 
 const submit = () => form.put(`/master/unit/${props.data.id}`);
@@ -31,7 +29,7 @@ const submit = () => form.put(`/master/unit/${props.data.id}`);
         <Head title="Edit Unit" />
 
         <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-3xl mx-auto px-6 space-y-8">
+            <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <div class="flex items-center justify-between">
                     <Heading variant="small" title="Edit Unit" description="Ubah data unit yang sudah ada." />
