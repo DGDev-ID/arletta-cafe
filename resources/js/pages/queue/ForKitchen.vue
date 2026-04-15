@@ -2,6 +2,7 @@
 import { Head } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import { ChefHat, Coffee, Clock, NotepadText, User, UtensilsCrossed } from 'lucide-vue-next';
 
 interface Menu {
     id: number;
@@ -97,84 +98,161 @@ const formatTime = (dateStr: string) => {
 <template>
     <Head :title="`Kitchen Queue - ${cafe.name}`" />
 
-    <div
-        class="relative min-h-screen overflow-auto"
-        style="background-color: #1c1008; background-image: radial-gradient(circle, rgba(180,100,40,0.12) 1.5px, transparent 1.5px); background-size: 28px 28px;"
-    >
-        <!-- Warm vignette overlay -->
-        <div class="pointer-events-none fixed inset-0 bg-gradient-to-br from-amber-950/60 via-transparent to-amber-950/60" />
+    <div class="relative min-h-screen overflow-auto bg-[#faf6f0]" style="scrollbar-gutter: stable;">
+        <!-- Dot pattern -->
+        <div
+            class="pointer-events-none fixed inset-0"
+            style="background-image: radial-gradient(circle, rgba(120,80,40,0.09) 1.5px, transparent 1.5px); background-size: 32px 32px;"
+        />
+        <div class="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top_center,rgba(193,154,100,0.14)_0%,transparent_60%)]" />
 
-        <div class="relative z-10 max-w-7xl mx-auto px-6 py-8">
-            <!-- Header -->
-            <div class="text-center mb-10">
-                <div class="inline-flex items-center gap-3 mb-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-800/90 shadow-lg shadow-amber-900/40">
-                        <span class="text-lg">🍳</span>
+        <div class="relative z-10 mx-auto max-w-[1600px] px-8 py-10">
+
+            <!-- ─── Header ─── -->
+            <div class="mb-10 flex items-center justify-between">
+                <!-- Left: branding -->
+                <div class="flex items-center gap-5">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8B5E3C] to-[#5C3A1E] shadow-lg shadow-[#8B5E3C]/30">
+                        <ChefHat class="h-8 w-8 text-[#f5e6d0]" :stroke-width="1.75" />
                     </div>
-                    <span class="text-xs font-semibold uppercase tracking-widest text-amber-400/80">Kitchen Display</span>
+                    <div>
+                        <h1 class="text-4xl font-extrabold leading-none tracking-tight text-[#3B2314]">Antrian Dapur</h1>
+                    </div>
                 </div>
-                <h1 class="text-3xl font-bold text-white tracking-tight">Antrian Dapur</h1>
-                <p class="text-amber-300/60 mt-1 text-sm">{{ cafe.name }}</p>
+                <!-- Right: cafe name + live clock -->
+                <div class="text-right">
+                    <p class="text-xl font-semibold text-[#5C3A1E]">{{ cafe.name }}</p>
+                    <p class="mt-1 text-base text-[#8B5E3C]/50">Diperbarui setiap 3 detik</p>
+                </div>
             </div>
 
-            <!-- Empty state -->
-            <div v-if="transactions.length === 0" class="flex flex-col items-center justify-center mt-24 gap-4">
-                <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-900/30 border border-amber-800/40">
-                    <span class="text-4xl">☕</span>
+            <!-- Divider -->
+            <div class="mb-10 h-px bg-gradient-to-r from-transparent via-[#c19a64]/40 to-transparent" />
+
+            <!-- ─── Empty State ─── -->
+            <div v-if="transactions.length === 0" class="flex flex-col items-center justify-center py-32 gap-6">
+                <div class="flex h-32 w-32 items-center justify-center rounded-3xl border-2 border-[#d4c4a8]/50 bg-white/60 shadow-xl shadow-[#8B5E3C]/5">
+                    <Coffee class="h-16 w-16 text-[#8B5E3C]/25" :stroke-width="1.25" />
                 </div>
-                <p class="text-amber-300/50 text-lg font-medium">Tidak ada pesanan saat ini</p>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-[#3B2314]/30">Tidak Ada Pesanan</p>
+                    <p class="mt-2 text-lg text-[#8B5E3C]/30">Pesanan baru akan muncul otomatis</p>
+                </div>
             </div>
 
-            <!-- Transaction grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <!-- ─── Transaction Grid ─── -->
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
                 <div
                     v-for="trx in transactions"
                     :key="trx.id"
-                    class="rounded-2xl border border-amber-800/40 bg-amber-950/60 p-5 shadow-xl shadow-black/30 backdrop-blur-sm"
+                    :class="[
+                        'relative rounded-3xl shadow-xl transition-all duration-500',
+                        trx.status === 'in_order'
+                            ? 'queue-card-spinning overflow-visible'
+                            : 'overflow-hidden border-2 border-green-400/60 shadow-green-200/40'
+                    ]"
                 >
-                    <!-- Card header -->
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xl font-bold text-amber-400">#{{ trx.id }}</span>
-                            <span v-if="trx.table" class="text-xs font-semibold bg-amber-800/60 text-amber-300 border border-amber-700/50 px-2.5 py-0.5 rounded-full">
-                                {{ trx.table.name }}
-                            </span>
+                    <!-- Inner wrapper: always present to clip content inside rounded corners -->
+                    <div :class="['relative z-10', trx.status === 'in_order' ? 'queue-card-inner' : 'bg-white/80']">
+                    <!-- Top bar: gold (in_order) or green (success) -->
+                    <div
+                        :class="[
+                            'h-1',
+                            trx.status === 'in_order'
+                                ? 'bg-gradient-to-r via-[#c19a64] to-[#c19a64]/30'
+                                : 'bg-gradient-to-r from-green-400/30 via-green-500 to-green-400/30'
+                        ]"
+                    />
+
+                    <div class="p-7">
+                        <!-- Card header: number + table + time -->
+                        <div class="mb-5 flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <!-- Order number -->
+                                <div
+                                    :class="[
+                                        'flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg',
+                                        trx.status === 'in_order'
+                                            ? 'bg-gradient-to-br from-[#8B5E3C] to-[#5C3A1E] shadow-[#8B5E3C]/25'
+                                            : 'bg-gradient-to-br from-green-500 to-green-700 shadow-green-600/25'
+                                    ]"
+                                >
+                                    <span class="text-3xl font-black text-white">{{ trx.id }}</span>
+                                </div>
+                                <!-- Table badge -->
+                                <span
+                                    v-if="trx.table"
+                                    class="rounded-xl border border-[#c19a64]/40 bg-[#c19a64]/10 px-4 py-1.5 text-lg font-bold text-[#5C3A1E]"
+                                >
+                                    {{ trx.table.name }}
+                                </span>
+                            </div>
+                            <!-- Time + status indicator -->
+                            <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 rounded-xl border border-[#d4c4a8]/50 bg-[#faf6f0] px-3 py-1.5">
+                                    <Clock class="h-5 w-5 text-[#8B5E3C]/50" :stroke-width="2" />
+                                    <span class="text-base font-semibold text-[#8B5E3C]/60">{{ formatTime(trx.created_at) }}</span>
+                                </div>
+                                <!-- Status badge -->
+                                <span
+                                    v-if="trx.status === 'success'"
+                                    class="rounded-xl border border-green-400/50 bg-green-50 px-3 py-1.5 text-base font-bold text-green-700"
+                                >
+                                    ✓ Selesai
+                                </span>
+                            </div>
                         </div>
-                        <span class="text-xs text-amber-400/50 font-medium">{{ formatTime(trx.created_at) }}</span>
+
+                        <!-- Customer name -->
+                        <div v-if="trx.cust_name" class="mb-5 flex items-center gap-3">
+                            <User class="h-5 w-5 shrink-0 text-[#8B5E3C]/50" :stroke-width="2" />
+                            <p class="text-xl font-semibold text-[#3B2314]/80">{{ trx.cust_name }}</p>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="mb-5 h-px bg-gradient-to-r from-transparent via-[#d4c4a8]/80 to-transparent" />
+
+                        <!-- Menu items -->
+                        <div class="space-y-3">
+                            <div
+                                v-for="detail in trx.details"
+                                :key="detail.id"
+                                class="flex items-center justify-between rounded-2xl border border-[#d4c4a8]/40 bg-[#faf6f0] px-5 py-3.5"
+                            >
+                                <div class="flex items-center gap-3">
+                                    <UtensilsCrossed class="h-5 w-5 shrink-0 text-[#8B5E3C]/40" :stroke-width="2" />
+                                    <span class="text-xl font-semibold text-[#3B2314]">{{ detail.menu?.name ?? '-' }}</span>
+                                </div>
+                                <span class="rounded-xl bg-[#8B5E3C] px-3.5 py-1 text-lg font-black text-white shadow-sm">
+                                    ×{{ detail.amount }}
+                                </span>
+                            </div>
+
+                            <!-- Notes -->
+                            <div
+                                v-for="detail in trx.details.filter(d => d.description)"
+                                :key="'note-' + detail.id"
+                                class="flex items-start gap-3 rounded-xl bg-amber-50/60 border border-amber-200/40 px-5 py-3"
+                            >
+                                <NotepadText class="mt-0.5 h-5 w-5 shrink-0 text-amber-600/60" :stroke-width="2" />
+                                <p class="text-base leading-relaxed text-[#5C3A1E]/70">
+                                    <span class="font-bold not-italic text-[#5C3A1E]/90">{{ detail.menu?.name }}:</span>
+                                    {{ detail.description }}
+                                </p>
+                            </div>
+                        </div>
                     </div>
-
-                    <!-- Customer name -->
-                    <p v-if="trx.cust_name" class="text-sm font-medium text-amber-100/80 mb-3">
-                        {{ trx.cust_name }}
-                    </p>
-
-                    <!-- Divider -->
-                    <div class="h-px bg-amber-800/30 mb-3" />
-
-                    <!-- Menu items -->
-                    <div class="space-y-2">
-                        <div
-                            v-for="detail in trx.details"
-                            :key="detail.id"
-                            class="flex justify-between items-center rounded-lg bg-amber-900/30 border border-amber-800/20 px-3 py-2"
-                        >
-                            <span class="text-sm font-medium text-white/90">{{ detail.menu?.name ?? '-' }}</span>
-                            <span class="text-amber-400 font-bold text-sm">x{{ detail.amount }}</span>
-                        </div>
-                        <div
-                            v-for="detail in trx.details.filter(d => d.description)"
-                            :key="'note-' + detail.id"
-                            class="flex items-start gap-1.5 px-3 pt-1"
-                        >
-                            <span class="text-amber-500 text-xs mt-0.5">📝</span>
-                            <p class="text-xs text-amber-300/60 italic leading-relaxed">
-                                <span class="font-medium not-italic text-amber-300/80">{{ detail.menu?.name }}:</span>
-                                {{ detail.description }}
-                            </p>
-                        </div>
-                    </div>
+                    </div><!-- end inner clip wrapper -->
                 </div>
             </div>
+
+            <!-- ─── Footer count ─── -->
+            <div v-if="transactions.length > 0" class="mt-10 text-center">
+                <p class="text-lg text-[#8B5E3C]/40">
+                    <span class="font-bold text-[#8B5E3C]/60">{{ transactions.length }}</span> pesanan dalam antrian
+                </p>
+            </div>
+
         </div>
     </div>
 </template>

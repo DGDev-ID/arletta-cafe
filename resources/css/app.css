@@ -87,5 +87,69 @@ html {
 
     body {
         @apply bg-background text-foreground;
+        scrollbar-gutter: stable;
     }
+}
+
+/* ── Spinning border animation for queue cards ── */
+@property --border-angle {
+    syntax: '<angle>';
+    inherits: true;
+    initial-value: 0deg;
+}
+
+@keyframes border-spin {
+    to { --border-angle: 360deg; }
+}
+
+.queue-card-spinning {
+    position: relative;
+}
+
+/* Spinning border layer — sits BEHIND the card content */
+.queue-card-spinning::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 1.5rem;
+    background: conic-gradient(
+        from var(--border-angle),
+        transparent 0%,
+        transparent 15%,
+        #f0c97a 30%,
+        #c19a64 42%,
+        #8B5E3C 50%,
+        #c19a64 58%,
+        #f0c97a 70%,
+        transparent 85%,
+        transparent 100%
+    );
+    animation: border-spin 1.6s linear infinite;
+    z-index: -1;
+}
+
+/* Static glow shadow — no animation, just subtle depth */
+.queue-card-spinning::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 1.5rem;
+    background: radial-gradient(
+        ellipse at center,
+        rgba(193, 154, 100, 0.25) 0%,
+        rgba(193, 154, 100, 0.1) 50%,
+        transparent 100%
+    );
+    z-index: -2;
+}
+
+/* Inner clip wrapper must have solid bg to cover the pseudo-elements */
+.queue-card-spinning .queue-card-inner {
+    position: relative;
+    z-index: 1;
+    background: #ffffff;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    /* Slightly inset to show border frame */
+    margin: 2px;
 }
