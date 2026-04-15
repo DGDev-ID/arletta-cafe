@@ -15,6 +15,7 @@ interface MaterialFormData {
     cafe_id: number | '';
     name: string;
     base_unit_id: number | '';
+    critical_stock: number | '';
     errors: Record<string, string>;
     processing: boolean;
 }
@@ -84,6 +85,25 @@ const emit = defineEmits<{ submit: [] }>();
                 </option>
             </select>
             <InputError :message="form.errors.base_unit_id" />
+        </div>
+
+        <!-- Critical Stock -->
+        <div class="grid gap-2">
+            <label for="material-critical-stock" class="text-sm font-medium leading-none">
+                Stok Kritis
+                <span class="text-muted-foreground text-xs font-normal ml-1">(opsional)</span>
+            </label>
+            <input
+                id="material-critical-stock"
+                v-model="form.critical_stock"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0"
+                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p class="text-xs text-muted-foreground">Jika stok di bawah nilai ini, material akan ditandai sebagai kritis.</p>
+            <InputError :message="form.errors.critical_stock" />
         </div>
 
         <!-- Action Buttons -->

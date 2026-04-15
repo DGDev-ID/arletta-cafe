@@ -15,6 +15,7 @@ return new class extends Migration
             $table->foreignId('base_unit_id')->constrained('m_units')->restrictOnDelete();
             $table->decimal('stock', 12, 2)->default(0);
             $table->decimal('avg_buy_price', 12, 2)->default(0);
+            $table->decimal('critical_stock', 12, 2)->default(0);
             $table->timestamps();
         });
     }

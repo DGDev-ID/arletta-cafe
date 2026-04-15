@@ -71,7 +71,7 @@ class DashboardController extends Controller
 
         // Critical stock materials
         $criticalStocks = MMaterial::with('cafe:id,name', 'baseUnit:id,name')
-            ->where('stock', '<', 10)
+            ->whereColumn('stock', '<', 'critical_stock')
             ->orderBy('stock', 'asc')
             ->limit(5)
             ->get(['id', 'name', 'cafe_id', 'stock', 'base_unit_id', 'avg_buy_price']);

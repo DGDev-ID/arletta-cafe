@@ -37,15 +37,17 @@ class MaterialController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'cafe_id'      => 'required|exists:m_cafes,id',
-            'name'         => 'required|string|max:255',
-            'base_unit_id' => 'required|exists:m_units,id',
+            'cafe_id'        => 'required|exists:m_cafes,id',
+            'name'           => 'required|string|max:255',
+            'base_unit_id'   => 'required|exists:m_units,id',
+            'critical_stock' => 'nullable|numeric|min:0',
         ]);
 
         MMaterial::create([
             ...$validated,
-            'stock'         => 0,
-            'avg_buy_price' => 0,
+            'stock'          => 0,
+            'avg_buy_price'  => 0,
+            'critical_stock' => $validated['critical_stock'] ?? 0,
         ]);
 
         return redirect()
@@ -84,9 +86,10 @@ class MaterialController extends Controller
         $material = MMaterial::findOrFail($id);
 
         $validated = $request->validate([
-            'cafe_id'      => 'required|exists:m_cafes,id',
-            'name'         => 'required|string|max:255',
-            'base_unit_id' => 'required|exists:m_units,id',
+            'cafe_id'        => 'required|exists:m_cafes,id',
+            'name'           => 'required|string|max:255',
+            'base_unit_id'   => 'required|exists:m_units,id',
+            'critical_stock' => 'nullable|numeric|min:0',
         ]);
 
         $material->update($validated);

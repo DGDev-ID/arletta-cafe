@@ -22,6 +22,7 @@ const form = useForm({
     cafe_id: '' as number | '',
     name: '',
     base_unit_id: '' as number | '',
+    critical_stock: '' as number | '',
 });
 
 const submit = () => form.post('/master/material');

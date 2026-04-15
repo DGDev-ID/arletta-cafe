@@ -14,6 +14,7 @@ const props = defineProps<{
         cafe_id: number;
         name: string;
         base_unit_id: number;
+        critical_stock: number | null;
     };
     cafes: CafeOption[];
     units: UnitOption[];
@@ -28,6 +29,7 @@ const form = useForm({
     cafe_id: props.data.cafe_id as number | '',
     name: props.data.name,
     base_unit_id: props.data.base_unit_id as number | '',
+    critical_stock: props.data.critical_stock ?? '' as number | '',
 });
 
 const submit = () => form.put(`/master/material/${props.data.id}`);

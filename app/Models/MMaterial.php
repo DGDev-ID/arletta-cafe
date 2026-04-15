@@ -14,6 +14,7 @@ class MMaterial extends Model
         'base_unit_id',
         'stock',
         'avg_buy_price',
+        'critical_stock'
     ];
 
     protected function casts(): array

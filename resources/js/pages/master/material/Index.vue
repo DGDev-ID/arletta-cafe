@@ -77,6 +77,7 @@ const filterByCafe = () => {
                                 <th class="px-6 py-4 text-left font-medium">Nama Material</th>
                                 <th class="px-6 py-4 text-left font-medium">Base Unit</th>
                                 <th class="px-6 py-4 text-left font-medium">Stok</th>
+                                <th class="px-6 py-4 text-left font-medium">Stok Kritis</th>
                                 <th class="px-6 py-4 text-left font-medium">Rata-Rata Harga Beli</th>
                                 <th class="px-6 py-4 text-right font-medium">Aksi</th>
                             </tr>
@@ -107,7 +108,14 @@ const filterByCafe = () => {
 
                                 <!-- Stock -->
                                 <td class="px-6 py-4 font-medium">
-                                    {{ material.stock }}
+                                    <span :class="Number(material.stock) <= Number(material.critical_stock) && Number(material.critical_stock) > 0 ? 'text-red-600 font-bold' : ''">
+                                        {{ material.stock }}
+                                    </span>
+                                </td>
+
+                                <!-- Critical Stock -->
+                                <td class="px-6 py-4 text-muted-foreground">
+                                    {{ material.critical_stock }}
                                 </td>
 
                                 <!-- Average Purchase Price -->
@@ -146,7 +154,7 @@ const filterByCafe = () => {
 
                             <!-- Empty -->
                             <tr v-if="data.data.length === 0">
-                                <td colspan="7" class="px-6 py-10 text-center text-muted-foreground">
+                                <td colspan="8" class="px-6 py-10 text-center text-muted-foreground">
                                     Belum ada data cafe.
                                 </td>
                             </tr>
