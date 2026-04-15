@@ -34,7 +34,11 @@ class PublicController extends Controller
 
         $transactions = Transaction::where('cafe_id', $cafe->id)
             ->where(function ($q) {
-                $q->where('status', 'in_order');
+                $q->where('status', 'in_order')
+                  ->orWhere(function ($q2) {
+                      $q2->where('status', 'success')
+                         ->where('updated_at', '>=', now()->subMinutes(5));
+                  });
             })
             ->with('table:id,name')
             ->select('id', 'cafe_id', 'table_id', 'cust_name', 'status', 'created_at', 'updated_at')
