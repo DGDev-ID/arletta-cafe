@@ -9,6 +9,7 @@ class MUnit extends Model
 {
     protected $fillable = [
         'name',
+        'critical_stock',
     ];
 
     public function materials(): HasMany
