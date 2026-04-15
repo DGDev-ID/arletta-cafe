@@ -149,18 +149,18 @@ const formatTime = (dateStr: string) => {
                         'relative rounded-3xl shadow-xl transition-all duration-500',
                         trx.status === 'in_order'
                             ? 'queue-card-spinning overflow-visible'
-                            : 'overflow-hidden border-2 border-green-400/60 shadow-green-200/40'
+                            : 'queue-card-static overflow-hidden bg-white/80'
                     ]"
                 >
                     <!-- Inner wrapper: always present to clip content inside rounded corners -->
                     <div :class="['relative z-10', trx.status === 'in_order' ? 'queue-card-inner' : 'bg-white/80']">
-                    <!-- Top bar: gold (in_order) or green (success) -->
+                    <!-- Top bar: gold (in_order) or brown (success) -->
                     <div
                         :class="[
                             'h-1',
                             trx.status === 'in_order'
                                 ? 'bg-gradient-to-r via-[#c19a64] to-[#c19a64]/30'
-                                : 'bg-gradient-to-r from-green-400/30 via-green-500 to-green-400/30'
+                                : 'bg-gradient-to-r from-[#c19a64]/40 via-[#c19a64] to-[#c19a64]/40'
                         ]"
                     />
 
@@ -174,7 +174,7 @@ const formatTime = (dateStr: string) => {
                                         'flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg',
                                         trx.status === 'in_order'
                                             ? 'bg-gradient-to-br from-[#8B5E3C] to-[#5C3A1E] shadow-[#8B5E3C]/25'
-                                            : 'bg-gradient-to-br from-green-500 to-green-700 shadow-green-600/25'
+                                            : 'bg-gradient-to-br from-[#c19a64] to-[#8B5E3C] shadow-[#8B5E3C]/20'
                                     ]"
                                 >
                                     <span class="text-3xl font-black text-white">{{ trx.id }}</span>
@@ -196,7 +196,7 @@ const formatTime = (dateStr: string) => {
                                 <!-- Status badge -->
                                 <span
                                     v-if="trx.status === 'success'"
-                                    class="rounded-xl border border-green-400/50 bg-green-50 px-3 py-1.5 text-base font-bold text-green-700"
+                                    class="rounded-xl border border-[#c19a64]/50 bg-[#c19a64]/10 px-3 py-1.5 text-base font-bold text-[#5C3A1E]"
                                 >
                                     ✓ Selesai
                                 </span>

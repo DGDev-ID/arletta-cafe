@@ -141,7 +141,7 @@ const formatTime = (dateStr: string) => {
                         'relative rounded-3xl shadow-xl transition-all duration-500',
                         trx.status === 'in_order'
                             ? 'queue-card-spinning overflow-visible'
-                            : 'overflow-hidden border-2 border-green-400/60 shadow-green-200/40'
+                            : 'queue-card-static overflow-hidden bg-white/80'
                     ]"
                 >
                     <!-- Inner wrapper: always present to clip content inside rounded corners -->
@@ -152,7 +152,7 @@ const formatTime = (dateStr: string) => {
                             'absolute inset-y-0 left-0 w-1.5',
                             trx.status === 'in_order'
                                 ? 'bg-gradient-to-b via-[#c19a64] to-[#c19a64]/50'
-                                : 'bg-gradient-to-b from-green-400/50 via-green-500 to-green-400/50'
+                                : 'bg-gradient-to-b from-[#c19a64]/40 via-[#c19a64] to-[#c19a64]/40'
                         ]"
                     />
 
@@ -165,7 +165,7 @@ const formatTime = (dateStr: string) => {
                                     'flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl shadow-lg',
                                     trx.status === 'in_order'
                                         ? 'bg-gradient-to-br from-[#8B5E3C] to-[#5C3A1E] shadow-[#8B5E3C]/25'
-                                        : 'bg-gradient-to-br from-green-500 to-green-700 shadow-green-600/25'
+                                        : 'bg-gradient-to-br from-[#c19a64] to-[#8B5E3C] shadow-[#8B5E3C]/20'
                                 ]"
                             >
                                 <span class="text-4xl font-black leading-none text-white">{{ trx.id }}</span>
@@ -207,9 +207,9 @@ const formatTime = (dateStr: string) => {
                             <!-- Success: done badge -->
                             <span
                                 v-else
-                                class="inline-flex items-center gap-3 rounded-2xl border border-green-400/50 bg-green-50 px-6 py-3 text-xl font-bold text-green-700 shadow-sm"
+                                class="inline-flex items-center gap-3 rounded-2xl border border-[#c19a64]/50 bg-[#c19a64]/10 px-6 py-3 text-xl font-bold text-[#5C3A1E] shadow-sm"
                             >
-                                <Armchair class="h-5 w-5 text-green-500" :stroke-width="2.5" />
+                                <Armchair class="h-5 w-5 text-[#c19a64]" :stroke-width="2.5" />
                                 Siap Diambil
                             </span>
                         </div>

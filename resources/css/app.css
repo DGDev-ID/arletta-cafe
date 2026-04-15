@@ -153,3 +153,10 @@ html {
     /* Slightly inset to show border frame */
     margin: 2px;
 }
+
+/* Static brown border for success status (no animation) */
+.queue-card-static {
+    position: relative;
+    border: 2px solid #c19a64;
+    box-shadow: 0 0 12px rgba(193, 154, 100, 0.2);
+}
