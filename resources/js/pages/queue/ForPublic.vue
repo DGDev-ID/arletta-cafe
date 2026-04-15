@@ -22,7 +22,8 @@ interface Cafe {
 const props = defineProps<{ cafe: Cafe }>();
 
 const transactions = ref<Transaction[]>([]);
-const previousIds = ref<Set<number>>(new Set());
+// previousData holds the snapshot from the LAST successful fetch
+// key = transaction id, value = full transaction object
 const previousData = ref<Map<number, Transaction>>(new Map());
 let interval: ReturnType<typeof setInterval> | null = null;
 
@@ -51,24 +52,27 @@ const playNotification = () => {
 const fetchQueue = async () => {
     try {
         const { data } = await axios.get<Transaction[]>(`/api/queue/public/${props.cafe.unique_id}`);
-        const newIds = new Set(data.map(t => t.id));
 
-        // Detect removed orders (completed)
-        for (const [id, trx] of previousData.value) {
-            if (!newIds.has(id)) {
-                playNotification();
-                const custName = trx.cust_name ?? 'Pelanggan';
-                const tableName = trx.table?.name ?? 'tanpa meja';
-                speak(`Pesanan atas nama ${custName} dengan nomor meja ${tableName} selesai dibuat`);
-                break;
+        // Build current snapshot
+        const currentMap = new Map<number, Transaction>(data.map((t: Transaction) => [t.id, t]));
+
+        // Compare: IDs in previous that are gone from current → order completed
+        if (previousData.value.size > 0) {
+            for (const [id, trx] of previousData.value) {
+                if (!currentMap.has(id)) {
+                    playNotification();
+                    const custName = trx.cust_name ?? 'Pelanggan';
+                    const tableName = trx.table?.name ?? 'tanpa meja';
+                    speak(`Pesanan atas nama ${custName}, meja ${tableName}, sudah selesai`);
+                }
             }
         }
 
-        previousIds.value = newIds;
-        previousData.value = new Map(data.map(t => [t.id, t]));
+        // Commit new snapshot and render
+        previousData.value = currentMap;
         transactions.value = data;
-    } catch (e) {
-        // silently retry on next interval
+    } catch (_e) {
+        // silently retry on next interval — do NOT update previousData so diff stays intact
     }
 };
 
