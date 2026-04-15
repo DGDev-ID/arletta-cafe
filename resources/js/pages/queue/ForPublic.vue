@@ -22,12 +22,21 @@ interface Cafe {
 const props = defineProps<{ cafe: Cafe }>();
 
 const transactions = ref<Transaction[]>([]);
-// previousData holds the snapshot from the LAST successful fetch
-// key = transaction id, value = full transaction object
 const previousData = ref<Map<number, Transaction>>(new Map());
 let interval: ReturnType<typeof setInterval> | null = null;
+let audioCtx: AudioContext | null = null;
+const userHasInteracted = ref(false);
+
+const unlockAudio = () => {
+    userHasInteracted.value = true;
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+};
 
 const speak = (text: string) => {
+    if (!userHasInteracted.value) return;
     if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'id-ID';
@@ -37,16 +46,16 @@ const speak = (text: string) => {
 };
 
 const playNotification = () => {
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(audioCtx.destination);
     osc.frequency.value = 660;
     osc.type = 'sine';
     gain.gain.value = 0.3;
     osc.start();
-    osc.stop(ctx.currentTime + 0.3);
+    osc.stop(audioCtx.currentTime + 0.3);
 };
 
 const fetchQueue = async () => {
@@ -58,8 +67,11 @@ const fetchQueue = async () => {
 
         // Compare: IDs in previous that are gone from current → order completed
         if (previousData.value.size > 0) {
+            console.log('Comparing snapshots...');
             for (const [id, trx] of previousData.value) {
+                console.log(`Checking transaction ${id}...`);
                 if (!currentMap.has(id)) {
+                    console.log(`Transaction ${id} is completed!`);
                     playNotification();
                     const custName = trx.cust_name ?? 'Pelanggan';
                     const tableName = trx.table?.name ?? 'tanpa meja';
@@ -77,11 +89,15 @@ const fetchQueue = async () => {
 };
 
 onMounted(() => {
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
     fetchQueue();
     interval = setInterval(fetchQueue, 3000);
 });
 
 onUnmounted(() => {
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
     if (interval) clearInterval(interval);
 });
 
@@ -92,6 +108,23 @@ const formatTime = (dateStr: string) => {
 
 <template>
     <Head :title="`Queue - ${cafe.name}`" />
+
+    <!-- Tap-to-enable overlay (shown until first user gesture) -->
+    <Transition name="fade">
+        <div
+            v-if="!userHasInteracted"
+            class="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-[#1c1008]/80 backdrop-blur-sm"
+            @click="unlockAudio"
+        >
+            <div class="flex h-24 w-24 animate-pulse items-center justify-center rounded-3xl bg-gradient-to-br from-[#8B5E3C] to-[#5C3A1E] shadow-2xl shadow-[#8B5E3C]/40">
+                <Coffee class="h-12 w-12 text-[#f5e6d0]" :stroke-width="1.5" />
+            </div>
+            <div class="text-center">
+                <p class="text-3xl font-extrabold text-[#f5e6d0]">Ketuk untuk Mengaktifkan</p>
+                <p class="mt-2 text-lg text-[#c19a64]/70">Notifikasi suara &amp; pengumuman akan aktif</p>
+            </div>
+        </div>
+    </Transition>
 
     <!-- Main wrapper: warm cream/beige base -->
     <div class="relative min-h-screen overflow-auto bg-[#faf6f0]" style="scrollbar-gutter: stable;">
@@ -232,3 +265,8 @@ const formatTime = (dateStr: string) => {
         </div>
     </div>
 </template>
+
+<style scoped>
+.fade-leave-active { transition: opacity 0.5s ease; }
+.fade-leave-to { opacity: 0; }
+</style>
