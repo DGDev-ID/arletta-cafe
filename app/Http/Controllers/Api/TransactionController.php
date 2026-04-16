@@ -29,11 +29,25 @@ class TransactionController extends ApiBaseController
                 $transaction->save();
             }
 
-            $dataSend = null;
+            $dataSend = [
+                'transaction_id' => $transaction->id,
+                'cafe_name' => $transaction->cafe->name,
+                'table_name' => $transaction->table->name,
+                'price' => $transaction->price,
+                'fee' => $transaction->fee,
+                'total_price' => $transaction->total_price,
+                'payment_type' => $transaction->payment_type,
+                'details' => $transaction->details->map(function ($detail) {
+                    return [
+                        'menu_name' => $detail->menu->name,
+                        'amount' => $detail->amount,
+                        'price' => $detail->price,
+                        'description' => $detail->description,
+                    ];
+                }),
+            ];
             if ($transaction->payment_type === 'qris') {
-                $dataSend = [
-                    'snap_token' => $transaction->snap_token,
-                ];
+                $dataSend['snap_token'] = $transaction->snap_token;
             }
 
             return $this->success($dataSend, 'Transaction created successfully');

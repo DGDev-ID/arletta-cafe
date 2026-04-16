@@ -59,7 +59,7 @@ class TransactionService
                 $transaction->details()->create([
                     'menu_id' => $menu->id,
                     'amount' => $detail['amount'],
-                    'price' => $menu->price,
+                    'price' => $menu->price * $detail['amount'],
                     'description' => $detail['description'] ?? null,
                 ]);
             }
