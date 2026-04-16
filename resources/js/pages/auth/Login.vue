@@ -90,9 +90,7 @@ const submit = () => {
                 <div class="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-2xl shadow-black/10 backdrop-blur-sm dark:shadow-black/40">
                     <!-- Header -->
                     <div class="mb-8 text-center">
-                        <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-amber-800 shadow-md mx-auto">
-                            <Coffee class="h-6 w-6 text-amber-100" :stroke-width="1.75" />
-                        </div>
+                        <img src="/logo.svg" alt="Arletta Cafe" class="w-14 h-14 mx-auto mb-3" />
                         <h2 class="text-2xl font-bold tracking-tight text-foreground">Selamat Datang</h2>
                         <p class="mt-1 text-sm text-muted-foreground">Masukkan kredensial Anda untuk masuk</p>
                     </div>
