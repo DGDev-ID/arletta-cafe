@@ -24,6 +24,7 @@ interface Transaction {
     table: { id: number; name: string } | null;
 }
 
+
 const props = defineProps<{
     pendingTransactions: Transaction[];
     inOrderTransactions: Transaction[];
@@ -32,6 +33,31 @@ const props = defineProps<{
         cafe_id: string;
     };
 }>();
+
+// QR Code Search State
+const qrCode = ref('');
+const qrResult = ref<Transaction | null>(null);
+const qrLoading = ref(false);
+
+const searchByQRCode = async () => {
+    if (!qrCode.value) return;
+    qrLoading.value = true;
+    try {
+        const { data } = await axios.get(`/transaction/cashier/search-qr/${qrCode.value}`);
+        qrResult.value = data;
+        notyf.success('Transaksi ditemukan!');
+    } catch (e: any) {
+        qrResult.value = null;
+        notyf.error(e?.response?.data?.message || 'QR Code tidak valid atau transaksi tidak ditemukan.');
+    } finally {
+        qrLoading.value = false;
+    }
+};
+
+const clearQRCodeSearch = () => {
+    qrCode.value = '';
+    qrResult.value = null;
+};
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Cashier', href: '/transaction/cashier' },
@@ -191,9 +217,26 @@ onUnmounted(() => {
                     </div>
                 </div>
 
+
                 <!-- Pending Manual Transactions -->
                 <div class="space-y-3">
                     <h2 class="text-base font-semibold">Pending Manual Transactions</h2>
+
+                    <!-- QR Code Search -->
+                    <form @submit.prevent="searchByQRCode" class="flex items-center gap-2 mb-2">
+                        <input v-model="qrCode" type="text" placeholder="Cari transaksi dengan QR Code..."
+                            class="px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-ring w-64" :disabled="qrLoading" />
+                        <button type="submit"
+                            class="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition disabled:opacity-60"
+                            :disabled="qrLoading || !qrCode">
+                            {{ qrLoading ? 'Mencari...' : 'Cari QR Code' }}
+                        </button>
+                        <button v-if="qrResult" type="button" @click="clearQRCodeSearch"
+                            class="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-300 transition">
+                            Reset
+                        </button>
+                    </form>
+
                     <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
                         <table class="min-w-full text-sm">
                             <thead class="bg-muted/50">
@@ -206,24 +249,40 @@ onUnmounted(() => {
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="(trx, index) in pendingTransactions" :key="trx.id"
-                                    class="border-t hover:bg-muted/40 transition">
-                                    <td class="px-6 py-4">{{ index + 1 }}</td>
-                                    <td class="px-6 py-4 font-medium">{{ trx.cafe?.name ?? '-' }}</td>
-                                    <td class="px-6 py-4">{{ trx.cust_name ?? '-' }}</td>
-                                    <td class="px-6 py-4 font-medium">{{ formatCurrency(trx.total_price) }}</td>
-                                    <td class="px-6 py-4 text-right">
-                                        <Link :href="`/transaction/cashier/${trx.id}`"
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
-                                            <Eye :size="14" /> Detail
-                                        </Link>
-                                    </td>
-                                </tr>
-                                <tr v-if="pendingTransactions.length === 0">
-                                    <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">
-                                        Tidak ada transaksi pending.
-                                    </td>
-                                </tr>
+                                <template v-if="qrResult">
+                                    <tr :key="qrResult.id" class="border-t hover:bg-muted/40 transition">
+                                        <td class="px-6 py-4">1</td>
+                                        <td class="px-6 py-4 font-medium">{{ qrResult.cafe?.name ?? '-' }}</td>
+                                        <td class="px-6 py-4">{{ qrResult.cust_name ?? '-' }}</td>
+                                        <td class="px-6 py-4 font-medium">{{ formatCurrency(qrResult.total_price) }}</td>
+                                        <td class="px-6 py-4 text-right">
+                                            <Link :href="`/transaction/cashier/${qrResult.id}`"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
+                                                <Eye :size="14" /> Detail
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template v-else>
+                                    <tr v-for="(trx, index) in pendingTransactions" :key="trx.id"
+                                        class="border-t hover:bg-muted/40 transition">
+                                        <td class="px-6 py-4">{{ index + 1 }}</td>
+                                        <td class="px-6 py-4 font-medium">{{ trx.cafe?.name ?? '-' }}</td>
+                                        <td class="px-6 py-4">{{ trx.cust_name ?? '-' }}</td>
+                                        <td class="px-6 py-4 font-medium">{{ formatCurrency(trx.total_price) }}</td>
+                                        <td class="px-6 py-4 text-right">
+                                            <Link :href="`/transaction/cashier/${trx.id}`"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
+                                                <Eye :size="14" /> Detail
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="pendingTransactions.length === 0">
+                                        <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">
+                                            Tidak ada transaksi pending.
+                                        </td>
+                                    </tr>
+                                </template>
                             </tbody>
                         </table>
                     </div>

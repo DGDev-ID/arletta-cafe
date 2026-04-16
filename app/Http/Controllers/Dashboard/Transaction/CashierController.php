@@ -38,6 +38,21 @@ class CashierController extends Controller
         ]);
     }
 
+    public function searchByQRCode($qr_code)
+    {
+        $transaction = Transaction::where('unique_code', $qr_code)
+            ->where('status', 'pending')
+            ->where('payment_type', 'manual')
+            ->with(['cafe', 'table'])
+            ->first();
+
+        if (!$transaction) {
+            return response()->json(['message' => 'QR Code tidak valid atau transaksi tidak ditemukan.'], 404);
+        }
+
+        return response()->json($transaction);
+    }
+
     public function show($id)
     {
         $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')

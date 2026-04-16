@@ -93,6 +93,7 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('cashier/{id}/success-in-order', [CashierController::class, 'makeSuccessInOrder'])->name('cashier.success-in-order');
         Route::get('cashier/{id}/receipt', [CashierController::class, 'printReceipt'])->name('cashier.receipt');
         Route::get('cashier/{id}/receipt-data', [CashierController::class, 'receiptData'])->name('cashier.receipt-data');
+        Route::get('cashier/search-qr/{qr_code}', [CashierController::class, 'searchByQRCode'])->name('search-qr');
     });
 
     Route::prefix('shortcut')->name('shortcut.')->group(function () {
