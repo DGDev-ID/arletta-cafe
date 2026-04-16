@@ -10,6 +10,64 @@ use Illuminate\Support\Facades\DB;
 
 class TransactionService
 {
+    public static function makeTransaction(array $data)
+    {
+        // Validate all menu_id belong to the same cafe_id
+        $menuIds = collect($data['details'])->pluck('menu_id')->all();
+        $menus = \App\Models\MMenu::whereIn('id', $menuIds)->get();
+        $cafeId = $data['cafe_id'];
+        if ($menus->count() !== count($menuIds)) {
+            throw new \Exception('Some menu items not found.');
+        }
+        if ($menus->pluck('cafe_id')->unique()->count() !== 1 || $menus->first()->cafe_id != $cafeId) {
+            throw new \Exception('All menu items must belong to the same cafe.');
+        }
+
+        // Calculate price
+        $price = 0;
+        foreach ($data['details'] as $detail) {
+            $menu = $menus->where('id', $detail['menu_id'])->first();
+            $price += $menu->price * $detail['amount'];
+        }
+
+        // Calculate fee
+        // $ppn = $price * 0.10;
+        // $paymentTypeFee = 0;
+        // if ($data['payment_type'] === 'qr') {
+        //     $paymentTypeFee = $price * 0.007;
+        // }
+        $ppn = 0;
+        $paymentTypeFee = 0;
+
+        $fee = $ppn + $paymentTypeFee;
+        $totalPrice = $price + $fee;
+
+        return DB::transaction(function () use ($data, $price, $fee, $totalPrice, $menus) {
+            $transaction = Transaction::create([
+                'cafe_id' => $data['cafe_id'],
+                'table_id' => $data['table_id'],
+                'cust_name' => $data['cust_name'] ?? null,
+                'price' => $price,
+                'fee' => $fee,
+                'total_price' => $totalPrice,
+                'payment_type' => $data['payment_type'],
+                'status' => 'pending',
+            ]);
+
+            foreach ($data['details'] as $detail) {
+                $menu = $menus->where('id', $detail['menu_id'])->first();
+                $transaction->details()->create([
+                    'menu_id' => $menu->id,
+                    'amount' => $detail['amount'],
+                    'price' => $menu->price,
+                    'description' => $detail['description'] ?? null,
+                ]);
+            }
+
+            return $transaction->fresh('details');
+        });
+    }
+    
     public static function pendingAction(Transaction $transaction)
     {
         if ($transaction->status !== 'pending') {
