@@ -18,6 +18,8 @@ return new class extends Migration
             $table->decimal('total_price', 12, 2);
             $table->enum('payment_type', ['manual', 'qris']);
             $table->enum('status', ['pending', 'failed', 'success', 'in_order']);
+            $table->string('snap_token')->nullable();
+            $table->string('midtrans_transaction_id')->nullable();
             $table->timestamps();
         });
     }

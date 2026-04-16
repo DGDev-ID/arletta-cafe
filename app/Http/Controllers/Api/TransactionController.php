@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\ApiBaseController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TransactionRequest;
+use App\Services\MidtransService;
 use App\Services\TransactionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,13 @@ class TransactionController extends ApiBaseController
             $validated = $request->validated();
             $transaction = TransactionService::makeTransaction($validated);
             TransactionService::pendingAction($transaction);
-            DB::commit();
+            
+            if($transaction->payment_type === 'qris') {
+                $snapToken = MidtransService::getSnapToken($transaction);
+                $transaction->snap_token = $snapToken;
+                $transaction->save();
+            }
+
             return $this->success($transaction);
         } catch (\Throwable $th) {
             DB::rollBack();

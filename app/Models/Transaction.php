@@ -17,6 +17,8 @@ class Transaction extends Model
         'total_price',
         'payment_type',
         'status',
+        'snap_token',
+        'midtrans_transaction_id',
     ];
 
     protected function casts(): array
