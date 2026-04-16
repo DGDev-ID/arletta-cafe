@@ -23,7 +23,7 @@ class TransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'cafe_id' => ['required', 'exists:m_cafes,id'],
+            'cafe_id' => ['required'],
             'table_id' => ['required', 'exists:m_cafe_tables,id'],
             'payment_type' => ['required', 'in:manual,qr'],
             'details' => ['required', 'array', 'min:1'],

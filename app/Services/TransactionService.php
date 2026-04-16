@@ -16,7 +16,8 @@ class TransactionService
         // Validate all menu_id belong to the same cafe_id
         $menuIds = collect($data['details'])->pluck('menu_id')->all();
         $menus = \App\Models\MMenu::whereIn('id', $menuIds)->get();
-        $cafeId = $data['cafe_id'];
+        $cafe = MCafe::where('unique_id', $data['cafe_id'])->first();
+        $cafeId = $cafe->id;
         if ($menus->count() !== count($menuIds)) {
             throw new \Exception('Some menu items not found.');
         }
@@ -37,8 +38,8 @@ class TransactionService
         // if ($data['payment_type'] === 'qr') {
         //     $paymentTypeFee = $price * 0.007;
         // }
-        $ppn = MCafe::find($cafeId)->ppn_fee > 0 ? ($price * (MCafe::find($cafeId)->ppn_fee / 100)) : 0;
-        $paymentTypeFee = MCafe::find($cafeId)->qris_fee > 0 && $data['payment_type'] === 'qr' ? ($price * (MCafe::find($cafeId)->qris_fee / 100)) : 0;
+        $ppn = $cafe->ppn_fee > 0 ? ($price * ($cafe->ppn_fee / 100)) : 0;
+        $paymentTypeFee = $cafe->qris_fee > 0 && $data['payment_type'] === 'qr' ? ($price * ($cafe->qris_fee / 100)) : 0;
 
         $fee = $ppn + $paymentTypeFee;
         $totalPrice = $price + $fee;
