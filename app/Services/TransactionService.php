@@ -103,7 +103,7 @@ class TransactionService
             throw new \Exception('Only pending transactions can be marked as success.');
         }
 
-        $transaction->update(['status' => 'success']);
+        $transaction->update(['status' => 'in_order']);
 
         return true;
     }
