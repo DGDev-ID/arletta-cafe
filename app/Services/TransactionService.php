@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\MaterialInboundOutbound;
+use App\Models\MCafe;
 use App\Models\MMaterial;
 use App\Models\Transaction;
 use App\Models\UnitMaterialConverter;
@@ -36,8 +37,8 @@ class TransactionService
         // if ($data['payment_type'] === 'qr') {
         //     $paymentTypeFee = $price * 0.007;
         // }
-        $ppn = 0;
-        $paymentTypeFee = 0;
+        $ppn = MCafe::find($cafeId)->ppn_fee > 0 ? ($price * (MCafe::find($cafeId)->ppn_fee / 100)) : 0;
+        $paymentTypeFee = MCafe::find($cafeId)->qris_fee > 0 && $data['payment_type'] === 'qr' ? ($price * (MCafe::find($cafeId)->qris_fee / 100)) : 0;
 
         $fee = $ppn + $paymentTypeFee;
         $totalPrice = $price + $fee;
