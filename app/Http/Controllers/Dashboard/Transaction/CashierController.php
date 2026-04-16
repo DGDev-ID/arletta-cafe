@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\MCafe;
 use App\Models\Transaction;
+use App\Services\TransactionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -60,7 +61,7 @@ class CashierController extends Controller
     public function makeSuccess($id)
     {
         $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')->findOrFail($id);
-        $transaction->update(['status' => 'in_order']);
+        TransactionService::makeSuccess($transaction);
 
         return redirect()
             ->route('transaction.cashier.index')
@@ -70,7 +71,7 @@ class CashierController extends Controller
     public function makeFailed($id)
     {
         $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')->findOrFail($id);
-        $transaction->update(['status' => 'failed']);
+        TransactionService::makeFailed($transaction);
 
         return redirect()
             ->route('transaction.cashier.index')
