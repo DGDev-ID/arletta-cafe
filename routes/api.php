@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\CheckMenuAvailableController;
+use App\Http\Controllers\Api\CheckMenusAvailableController;
 use App\Http\Controllers\Api\GetMenuCafeTableController;
 use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Dashboard\PublicController;
@@ -12,4 +14,7 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/queue/public/{cafeId}', [PublicController::class, 'apiPublicQueue']);
     Route::get('/queue/kitchen/{cafeId}', [PublicController::class, 'apiKitchenQueue']);
+
+    Route::post('/check-available-materials', CheckMenuAvailableController::class);
+    Route::post('/check-available-materials/bulk', CheckMenusAvailableController::class);
 });
