@@ -117,7 +117,7 @@ const formatCurrency = (val: string | null) => {
                         <tbody>
                             <tr v-for="(log, index) in logs.data" :key="log.id"
                                 class="border-t hover:bg-muted/40 transition">
-                                <td class="px-6 py-3">
+                                <td class="px-6 py-3 relative overflow-visible">
                                     {{ index + 1 + (logs.current_page - 1) * logs.per_page }}
                                 </td>
                                 <td class="px-6 py-3">
@@ -139,18 +139,25 @@ const formatCurrency = (val: string | null) => {
                                     }) }}
                                 </td>
                                 <td class="px-6 py-3">
-                                    <div v-if="log.type === 'outbound' && log.transaction_detail"
-                                        class="relative group inline-block">
+                                    <div v-if="log.type === 'outbound' && log.transaction_detail" class="relative group inline-block">
                                         <!-- icon bulat -->
-                                        <span
-                                            class="w-5 h-5 flex items-center justify-center rounded-full border border-blue-500 text-blue-500 text-xs cursor-pointer bg-white">
+                                        <span class="w-5 h-5 flex items-center justify-center rounded-full border border-blue-500 text-blue-500 text-xs cursor-pointer bg-white">
                                             ?
                                         </span>
-
                                         <!-- tooltip -->
-                                        <div
-                                            class="absolute z-10 hidden group-hover:block bg-white text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 shadow -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                                        <div class="absolute z-50 hidden group-hover:block bg-white text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 shadow -top-8 left-1/2 -translate-x-1/2 whitespace-normal max-w-xs">
                                             {{ log.transaction_detail.menu.name }} ({{ log.transaction_detail.amount }})
+                                        </div>
+                                    </div>
+
+                                    <div v-if="log.type === 'inbound' && log.transaction_detail" class="relative group inline-block">
+                                        <!-- icon bulat -->
+                                        <span class="w-5 h-5 flex items-center justify-center rounded-full border border-blue-500 text-blue-500 text-xs cursor-pointer bg-white">
+                                            ?
+                                        </span>
+                                        <!-- tooltip -->
+                                        <div class="absolute z-50 hidden group-hover:block bg-white text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 shadow -top-8 left-1/2 -translate-x-1/2 whitespace-normal max-w-xs">
+                                            Pengembalian material dikarenakan transaksi gagal - {{ log.transaction_detail.menu.name }} ({{ log.transaction_detail.amount }})
                                         </div>
                                     </div>
 
