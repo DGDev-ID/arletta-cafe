@@ -29,7 +29,14 @@ class TransactionController extends ApiBaseController
                 $transaction->save();
             }
 
-            return $this->success($transaction);
+            $dataSend = null;
+            if ($transaction->payment_type === 'qris') {
+                $dataSend = [
+                    'snap_token' => $transaction->snap_token,
+                ];
+            }
+
+            return $this->success($dataSend, 'Transaction created successfully');
         } catch (\Throwable $th) {
             DB::rollBack();
             return $this->serverError($th);
