@@ -17,6 +17,8 @@ const form = useForm({
     description: '',
     image: null as File | null,
     phone_number: '',
+    ppn_fee: 0,
+    qris_fee: 0,
 });
 
 const submit = () => form.post('/master/cafe');

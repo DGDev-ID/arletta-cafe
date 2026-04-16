@@ -27,6 +27,8 @@ const props = defineProps<{
         name: string;
         address: string;
         address_coordinate: string;
+        ppn_fee: number;
+        qris_fee: number;
         description: string;
         img_url: string | null;
         phone_number: string | null;
@@ -51,6 +53,8 @@ const form = useForm({
     description: props.data.description ?? '',
     image: null as File | null,
     phone_number: props.data.phone_number ?? '',
+    ppn_fee: props.data.ppn_fee ?? 0,
+    qris_fee: props.data.qris_fee ?? 0,
     admin_ids: props.data.cafe_admins.map((a) => a.user_id),
     cashier_ids: props.data.cafe_cashiers.map((c) => c.user_id),
 });

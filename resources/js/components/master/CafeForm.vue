@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { MapPin, Phone, Search, Upload, X } from 'lucide-vue-next';
+import { Landmark, MapPin, Phone, QrCode, Search, Upload, X } from 'lucide-vue-next';
 import { nextTick, onUnmounted, ref } from 'vue';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -22,6 +22,8 @@ interface CafeFormData {
     description: string;
     image: File | null;
     phone_number: string;
+    ppn_fee: number;
+    qris_fee: number;
     errors: Record<string, string>;
     processing: boolean;
 }
@@ -301,6 +303,63 @@ onUnmounted(() => {
                 class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             ></textarea>
             <InputError :message="form.errors.description" />
+        </div>
+
+        <!-- Phone Number -->
+        <div class="grid gap-2">
+            <label for="cafe-phone" class="text-sm font-medium leading-none">
+                Nomor Telepon
+                <span class="text-muted-foreground text-xs font-normal ml-1">(opsional)</span>
+            </label>
+            <div class="relative">
+                <Phone :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+                <input
+                    id="cafe-phone"
+                    v-model="form.phone_number"
+                    type="text"
+                    placeholder="Contoh: 081234567890"
+                    class="w-full pl-10 pr-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+            </div>
+            <InputError :message="form.errors.phone_number" />
+        </div>
+
+        <!-- PPN Fee -->
+        <div class="grid gap-2">
+            <label for="cafe-ppn-fee" class="text-sm font-medium leading-none">
+                PPN Fee (%)
+                <span class="text-muted-foreground text-xs font-normal ml-1">(opsional)</span>
+            </label>
+            <div class="relative">
+                <Landmark :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+                <input
+                    id="cafe-ppn-fee"
+                    v-model="form.ppn_fee"
+                    type="text"
+                    placeholder="Contoh: 10"
+                    class="w-full pl-10 pr-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+            </div>
+            <InputError :message="form.errors.ppn_fee" />
+        </div>
+
+        <!-- QRIS Fee -->
+        <div class="grid gap-2">
+            <label for="cafe-qris-fee" class="text-sm font-medium leading-none">
+                QRIS Fee (%)
+                <span class="text-muted-foreground text-xs font-normal ml-1">(opsional)</span>
+            </label>
+            <div class="relative">
+                <QrCode :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+                <input
+                    id="cafe-qris-fee"
+                    v-model="form.qris_fee"
+                    type="text"
+                    placeholder="Contoh: 2"
+                    class="w-full pl-10 pr-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+            </div>
+            <InputError :message="form.errors.qris_fee" />
         </div>
 
         <!-- Phone Number -->

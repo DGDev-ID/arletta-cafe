@@ -36,6 +36,8 @@ class CafeTableController extends Controller
             'description'        => 'nullable|string',
             'image'              => 'nullable|image|max:5120',
             'phone_number'       => 'nullable|string|max:20',
+            'ppn_fee'            => 'nullable|numeric|min:0|max:100',
+            'qris_fee'           => 'nullable|numeric|min:0|max:100',
         ]);
 
         $imgUrl = null;
@@ -54,6 +56,8 @@ class CafeTableController extends Controller
             'description'        => $validated['description'],
             'img_url'            => $imgUrl,
             'phone_number'       => $validated['phone_number'] ?? null,
+            'ppn_fee'            => $validated['ppn_fee'] ?? 0,
+            'qris_fee'           => $validated['qris_fee'] ?? 0,
         ]);
 
         return redirect()
@@ -86,6 +90,8 @@ class CafeTableController extends Controller
             'description'        => 'nullable|string',
             'image'              => 'nullable|image|max:5120',
             'phone_number'       => 'nullable|string|max:20',
+            'ppn_fee'            => 'nullable|numeric|min:0|max:100',
+            'qris_fee'           => 'nullable|numeric|min:0|max:100',
             'admin_ids'          => 'nullable|array',
             'admin_ids.*'        => 'exists:users,id',
             'cashier_ids'        => 'nullable|array',
@@ -107,6 +113,8 @@ class CafeTableController extends Controller
             'description'        => $validated['description'],
             'img_url'            => $imgUrl,
             'phone_number'       => $validated['phone_number'] ?? null,
+            'ppn_fee'            => $validated['ppn_fee'] ?? 0,
+            'qris_fee'           => $validated['qris_fee'] ?? 0,
         ]);
 
         CafeAdmin::where('cafe_id', $cafe->id)->delete();

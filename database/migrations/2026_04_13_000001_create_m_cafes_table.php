@@ -17,6 +17,8 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('img_url')->nullable();
             $table->string('phone_number')->nullable();
+            $table->decimal('ppn_fee', 5, 2)->default(0);
+            $table->decimal('qris_fee', 5, 2)->default(0);
             $table->timestamps();
         });
     }

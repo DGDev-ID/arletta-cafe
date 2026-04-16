@@ -14,7 +14,9 @@ class MCafe extends Model
         'address_coordinate',
         'description',
         'img_url',
-        'phone_number'
+        'phone_number',
+        'ppn_fee',
+        'qris_fee'
     ];
 
     public function tables(): HasMany
