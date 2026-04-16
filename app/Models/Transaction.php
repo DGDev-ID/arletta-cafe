@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Transaction extends Model
 {
     protected $fillable = [
+        'unique_code',
         'cafe_id',
         'table_id',
         'cust_name',
@@ -28,6 +30,22 @@ class Transaction extends Model
             'fee' => 'decimal:2',
             'total_price' => 'decimal:2',
         ];
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($transaction) {
+            $transaction->unique_code = self::generateUniqueCode();
+        });
+    }
+
+    public static function generateUniqueCode()
+    {
+        do {
+            $code = 'TRX' . strtoupper(Str::random(10) . time());
+        } while (self::where('unique_code', $code)->exists());
+
+        return $code;
     }
 
     public function cafe(): BelongsTo

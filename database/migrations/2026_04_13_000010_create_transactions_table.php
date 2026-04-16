@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
+            $table->string('unique_code')->unique()->nullable();
             $table->foreignId('cafe_id')->constrained('m_cafes')->cascadeOnDelete();
             $table->foreignId('table_id')->constrained('m_cafe_tables')->cascadeOnDelete();
             $table->string('cust_name')->default('Customer');

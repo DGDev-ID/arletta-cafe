@@ -50,6 +50,10 @@ class TransactionController extends ApiBaseController
                 $dataSend['snap_token'] = $transaction->snap_token;
             }
 
+            if ($transaction->payment_type === 'manual') {
+                $dataSend['qr_code'] = $transaction->unique_code;
+            }
+
             return $this->success($dataSend, 'Transaction created successfully');
         } catch (\Throwable $th) {
             DB::rollBack();
