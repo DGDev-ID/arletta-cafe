@@ -55,6 +55,7 @@ class TransactionController extends ApiBaseController
                 $dataSend['qr_code'] = $transaction->unique_code;
             }
 
+            DB::commit();
             return $this->success($dataSend, 'Transaction created successfully');
         } catch (\Throwable $th) {
             DB::rollBack();
