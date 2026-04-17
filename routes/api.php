@@ -10,7 +10,7 @@ use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Dashboard\PublicController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('guest')->group(function () {
+// Route::middleware('guest')->group(function () {
     Route::get('/queue/public/{cafeId}', [PublicController::class, 'apiPublicQueue']);
     Route::get('/queue/kitchen/{cafeId}', [PublicController::class, 'apiKitchenQueue']);
     
@@ -23,4 +23,4 @@ Route::middleware('guest')->group(function () {
     Route::post('/make-transaction', TransactionController::class);
     Route::post('/payment-webhook', PaymentWebhookController::class);
     Route::get('/transaction/{transaction}/status', CheckTransactionStatusController::class);
-});
+// });
