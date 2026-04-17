@@ -37,6 +37,7 @@ class TransactionController extends ApiBaseController
                 'fee' => $transaction->fee,
                 'total_price' => $transaction->total_price,
                 'payment_type' => $transaction->payment_type,
+                'cust_name' => $transaction->cust_name,
                 'details' => $transaction->details->map(function ($detail) {
                     return [
                         'menu_name' => $detail->menu->name,
