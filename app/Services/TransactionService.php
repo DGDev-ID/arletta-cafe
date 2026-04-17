@@ -44,9 +44,9 @@ class TransactionService
         $fee = $ppn + $paymentTypeFee;
         $totalPrice = $price + $fee;
 
-        return DB::transaction(function () use ($data, $price, $fee, $totalPrice, $menus) {
+        return DB::transaction(function () use ($cafeId, $data, $price, $fee, $totalPrice, $menus) {
             $transaction = Transaction::create([
-                'cafe_id' => $data['cafe_id'],
+                'cafe_id' => $cafeId,
                 'table_id' => $data['table_id'],
                 'cust_name' => $data['cust_name'] ?? null,
                 'price' => $price,
