@@ -26,7 +26,7 @@ class TransactionRequest extends FormRequest
             'cafe_id' => ['required'],
             'table_id' => ['required', 'exists:m_cafe_tables,id'],
             'cust_name' => ['required', 'string'],
-            'payment_type' => ['required', 'in:manual,qr'],
+            'payment_type' => ['required', 'in:manual,qris'],
             'details' => ['required', 'array', 'min:1'],
             'details.*.menu_id' => ['required', 'exists:m_menus,id'],
             'details.*.amount' => ['required', 'integer', 'min:1'],

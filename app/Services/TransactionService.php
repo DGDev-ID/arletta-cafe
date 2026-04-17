@@ -39,7 +39,7 @@ class TransactionService
         //     $paymentTypeFee = $price * 0.007;
         // }
         $ppn = $cafe->ppn_fee > 0 ? ($price * ($cafe->ppn_fee / 100)) : 0;
-        $paymentTypeFee = $cafe->qris_fee > 0 && $data['payment_type'] === 'qr' ? ($price * ($cafe->qris_fee / 100)) : 0;
+        $paymentTypeFee = $cafe->qris_fee > 0 && $data['payment_type'] === 'qris' ? ($price * ($cafe->qris_fee / 100)) : 0;
 
         $fee = $ppn + $paymentTypeFee;
         $totalPrice = $price + $fee;
