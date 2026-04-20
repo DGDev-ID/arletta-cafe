@@ -14,6 +14,7 @@ export interface NavItem {
     href: string;
     icon?: LucideIcon;
     isActive?: boolean;
+    permission?: string;
 }
 
 export interface SharedData {

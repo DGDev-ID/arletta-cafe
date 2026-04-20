@@ -17,7 +17,7 @@ use App\Http\Controllers\Dashboard\Transaction\HistoryTransactionController;
 use App\Http\Controllers\Dashboard\Transaction\CashierController;
 use App\Http\Controllers\Dashboard\Shortcut\PublicLinkGeneratorController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
+use App\Http\Controllers\Dashboard\UserManagement\RolePermissionController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -29,21 +29,65 @@ Route::get('dashboard', [DashboardController::class, 'index'])
 
 Route::middleware(['auth'])->group(function () {
     Route::prefix('master')->name('master.')->group(function () {
-        Route::resource('cafe', CafeTableController::class)->except(['show']);
+        Route::resource('cafe', CafeTableController::class)
+            ->except(['show'])
+            ->middleware([
+                'can:master.cafe.view',
+                'can:master.cafe.create',
+                'can:master.cafe.update',
+                'can:master.cafe.delete',
+            ]);
         Route::post('{cafeId}/table', [CafeTableController::class, 'storeTable'])->name('cafe.table.store');
         Route::delete('{cafeId}/table/{tableId}', [CafeTableController::class, 'destroyTable'])->name('cafe.table.destroy');
 
-        Route::resource('unit', UnitController::class)->except(['show']);
+        Route::resource('unit', UnitController::class)
+            ->except(['show'])
+            ->middleware([
+                'can:master.unit.view',
+                'can:master.unit.create',
+                'can:master.unit.update',
+                'can:master.unit.delete',
+            ]);
 
-        Route::resource('material', MaterialController::class);
-        Route::patch('material/{id}/out-of-stock', [MaterialController::class, 'outOfStock'])->name('material.out-of-stock');
+        Route::resource('material', MaterialController::class)
+            ->middleware([
+                'can:master.material.view',
+                'can:master.material.create',
+                'can:master.material.update',
+                'can:master.material.delete',
+            ]);
+        Route::patch('material/{id}/out-of-stock', [MaterialController::class, 'outOfStock'])
+            ->name('material.out-of-stock')
+            ->middleware('can:master.material.update');
 
-        Route::resource('menu-category', MenuCategoryController::class)->except(['show']);
+        Route::resource('menu-category', MenuCategoryController::class)
+            ->except(['show'])
+            ->middleware([
+                'can:master.menu-category.view',
+                'can:master.menu-category.create',
+                'can:master.menu-category.update',
+                'can:master.menu-category.delete',
+            ]);
 
-        Route::resource('menu', MenuController::class);
-        Route::patch('menu/{menu}/toggle-status', [MenuController::class, 'toggleStatus'])->name('menu.toggle-status');
+        Route::resource('menu', MenuController::class)
+            ->middleware([
+                'can:master.menu.view',
+                'can:master.menu.create',
+                'can:master.menu.update',
+                'can:master.menu.delete',
+            ]);
+        Route::patch('menu/{menu}/toggle-status', [MenuController::class, 'toggleStatus'])
+            ->name('menu.toggle-status')
+            ->middleware('can:master.menu.update');
 
-        Route::resource('gallery', GalleryController::class)->except(['show']);
+        Route::resource('gallery', GalleryController::class)
+            ->except(['show'])
+            ->middleware([
+                'can:master.gallery.view',
+                'can:master.gallery.create',
+                'can:master.gallery.update',
+                'can:master.gallery.delete',
+            ]);
     });
 
     Route::prefix('user-management')->name('user-management.')->group(function () {
@@ -67,38 +111,87 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/assign', [ManageBackofficeController::class, 'assign'])->name('assign');
             Route::delete('/{id}/revoke', [ManageBackofficeController::class, 'revoke'])->name('revoke');
         });
+
+        Route::get('role-permission', [RolePermissionController::class, 'index'])
+            ->name('role-permission.index')
+            ->middleware(['role:Super Admin|Admin', 'can:settings']);
+        Route::post('role-permission/update', [RolePermissionController::class, 'update'])
+            ->name('role-permission.update')
+            ->middleware(['role:Super Admin|Admin', 'can:settings']);
     });
 
     Route::prefix('management')->name('management.')->group(function () {
-        Route::resource('unit-material-converter', UnitMaterialConverterController::class)->only(['index', 'show']);
-        Route::post('unit-material-converter/{materialId}/converter', [UnitMaterialConverterController::class, 'store'])->name('unit-material-converter.store');
-        Route::put('unit-material-converter/{materialId}/converter/{converterId}', [UnitMaterialConverterController::class, 'update'])->name('unit-material-converter.update');
-        Route::delete('unit-material-converter/{materialId}/converter/{converterId}', [UnitMaterialConverterController::class, 'destroy'])->name('unit-material-converter.destroy');
+        Route::resource('unit-material-converter', UnitMaterialConverterController::class)
+            ->only(['index', 'show'])
+            ->middleware('can:management.unit-material-converter');
+        Route::post('unit-material-converter/{materialId}/converter', [UnitMaterialConverterController::class, 'store'])
+            ->name('unit-material-converter.store')
+            ->middleware('can:management.unit-material-converter');
+        Route::put('unit-material-converter/{materialId}/converter/{converterId}', [UnitMaterialConverterController::class, 'update'])
+            ->name('unit-material-converter.update')
+            ->middleware('can:management.unit-material-converter');
+        Route::delete('unit-material-converter/{materialId}/converter/{converterId}', [UnitMaterialConverterController::class, 'destroy'])
+            ->name('unit-material-converter.destroy')
+            ->middleware('can:management.unit-material-converter');
 
-        Route::get('inbound-outbound-material', [InboundOutboundMaterialController::class, 'index'])->name('inbound-outbound-material.index');
-        Route::get('inbound-outbound-material/create', [InboundOutboundMaterialController::class, 'create'])->name('inbound-outbound-material.create');
-        Route::post('inbound-outbound-material', [InboundOutboundMaterialController::class, 'store'])->name('inbound-outbound-material.store');
-        Route::get('inbound-outbound-material/materials-by-cafe', [InboundOutboundMaterialController::class, 'getMaterialsByCafe'])->name('inbound-outbound-material.materials-by-cafe');
-        Route::get('inbound-outbound-material/check-unit-converter', [InboundOutboundMaterialController::class, 'checkUnitConverter'])->name('inbound-outbound-material.check-unit-converter');
+        Route::get('inbound-outbound-material', [InboundOutboundMaterialController::class, 'index'])
+            ->name('inbound-outbound-material.index')
+            ->middleware('can:management.inbound-outbound-material');
+        Route::get('inbound-outbound-material/create', [InboundOutboundMaterialController::class, 'create'])
+            ->name('inbound-outbound-material.create')
+            ->middleware('can:management.inbound-outbound-material');
+        Route::post('inbound-outbound-material', [InboundOutboundMaterialController::class, 'store'])
+            ->name('inbound-outbound-material.store')
+            ->middleware('can:management.inbound-outbound-material');
+        Route::get('inbound-outbound-material/materials-by-cafe', [InboundOutboundMaterialController::class, 'getMaterialsByCafe'])
+            ->name('inbound-outbound-material.materials-by-cafe')
+            ->middleware('can:management.inbound-outbound-material');
+        Route::get('inbound-outbound-material/check-unit-converter', [InboundOutboundMaterialController::class, 'checkUnitConverter'])
+            ->name('inbound-outbound-material.check-unit-converter')
+            ->middleware('can:management.inbound-outbound-material');
     });
 
     Route::prefix('transaction')->name('transaction.')->group(function () {
-        Route::get('history', [HistoryTransactionController::class, 'index'])->name('history.index');
-        Route::get('history/export', [HistoryTransactionController::class, 'export'])->name('history.export');
-        Route::get('history/{id}', [HistoryTransactionController::class, 'show'])->name('history.show');
+        Route::get('history', [HistoryTransactionController::class, 'index'])
+            ->name('history.index')
+            ->middleware('can:transaction.history');
+        Route::get('history/export', [HistoryTransactionController::class, 'export'])
+            ->name('history.export')
+            ->middleware('can:transaction.history');
+        Route::get('history/{id}', [HistoryTransactionController::class, 'show'])
+            ->name('history.show')
+            ->middleware('can:transaction.history');
 
-        Route::get('cashier', [CashierController::class, 'index'])->name('cashier.index');
-        Route::get('cashier/{id}', [CashierController::class, 'show'])->name('cashier.show');
-        Route::patch('cashier/{id}/success', [CashierController::class, 'makeSuccess'])->name('cashier.success');
-        Route::patch('cashier/{id}/failed', [CashierController::class, 'makeFailed'])->name('cashier.failed');
-        Route::patch('cashier/{id}/success-in-order', [CashierController::class, 'makeSuccessInOrder'])->name('cashier.success-in-order');
-        Route::get('cashier/{id}/receipt', [CashierController::class, 'printReceipt'])->name('cashier.receipt');
-        Route::get('cashier/{id}/receipt-data', [CashierController::class, 'receiptData'])->name('cashier.receipt-data');
-        Route::get('cashier/search-qr/{qr_code}', [CashierController::class, 'searchByQRCode'])->name('search-qr');
+        Route::get('cashier', [CashierController::class, 'index'])
+            ->name('cashier.index')
+            ->middleware('can:transaction.cashier');
+        Route::get('cashier/{id}', [CashierController::class, 'show'])
+            ->name('cashier.show')
+            ->middleware('can:transaction.cashier');
+        Route::patch('cashier/{id}/success', [CashierController::class, 'makeSuccess'])
+            ->name('cashier.success')
+            ->middleware('can:transaction.cashier');
+        Route::patch('cashier/{id}/failed', [CashierController::class, 'makeFailed'])
+            ->name('cashier.failed')
+            ->middleware('can:transaction.cashier');
+        Route::patch('cashier/{id}/success-in-order', [CashierController::class, 'makeSuccessInOrder'])
+            ->name('cashier.success-in-order')
+            ->middleware('can:transaction.cashier');
+        Route::get('cashier/{id}/receipt', [CashierController::class, 'printReceipt'])
+            ->name('cashier.receipt')
+            ->middleware('can:transaction.cashier');
+        Route::get('cashier/{id}/receipt-data', [CashierController::class, 'receiptData'])
+            ->name('cashier.receipt-data')
+            ->middleware('can:transaction.cashier');
+        Route::get('cashier/search-qr/{qr_code}', [CashierController::class, 'searchByQRCode'])
+            ->name('search-qr')
+            ->middleware('can:transaction.cashier');
     });
 
     Route::prefix('shortcut')->name('shortcut.')->group(function () {
-        Route::get('public-link-generator', [PublicLinkGeneratorController::class, 'index'])->name('public-link-generator.index');
+        Route::get('public-link-generator', [PublicLinkGeneratorController::class, 'index'])
+            ->name('public-link-generator.index')
+            ->middleware('can:shortcut.public-link-generator');
     });
 });
 
