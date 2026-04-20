@@ -21,9 +21,11 @@ class RolePermissionController extends Controller
             $rolePermissions[$role->id] = $role->permissions->pluck('name')->toArray();
         }
         return Inertia::render('user-management/role-permission/Index', [
-            'roles' => $roles,
-            'permissions' => $permissions,
-            'rolePermissions' => $rolePermissions,
+            'data' => [
+                'roles' => $roles,
+                'permissions' => $permissions,
+                'rolePermissions' => $rolePermissions,
+            ]
         ]);
     }
 

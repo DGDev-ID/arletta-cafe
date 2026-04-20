@@ -6,23 +6,21 @@ import { ref, computed } from 'vue';
 import { router, Head } from '@inertiajs/vue3';
 
 const props = defineProps<{
-    roles: Array<{ id: number; name: string }>;
-    permissions: Array<{ id: number; name: string }>;
-    rolePermissions: Record<number, string[]>;
+    data: any;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Role Permission', href: '/user-management/role-permission' },
 ];
 
-const selectedRoleId = ref<number>(props.roles[0]?.id || null);
-const checkedPermissions = ref<string[]>(props.rolePermissions[selectedRoleId.value] || []);
+const selectedRoleId = ref<number>(props.data.roles[0]?.id || null);
+const checkedPermissions = ref<string[]>(props.data.rolePermissions[selectedRoleId.value] || []);
 
 function onRoleChange() {
-    checkedPermissions.value = props.rolePermissions[selectedRoleId.value] || [];
+    checkedPermissions.value = props.data.rolePermissions[selectedRoleId.value] || [];
 }
 
-const allPermissionNames = computed(() => props.permissions.map(p => p.name));
+const allPermissionNames = computed(() => props.data.permissions.map(p => p.name));
 const isAllChecked = computed(() =>
     allPermissionNames.value.length > 0 && allPermissionNames.value.every(p => checkedPermissions.value.includes(p))
 );
@@ -73,7 +71,7 @@ function savePermissions() {
                         description="Kelola akses permission untuk setiap role." />
                     <div class="mb-4">
                         <select v-model="selectedRoleId" @change="onRoleChange" class="ml-2 border rounded px-2 py-1">
-                            <option v-for="role in props.roles" :key="role.id" :value="role.id">{{ role.name }}
+                            <option v-for="role in props.data.roles" :key="role.id" :value="role.id">{{ role.name }}
                             </option>
                         </select>
                     </div>
@@ -97,7 +95,7 @@ function savePermissions() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="permission in props.permissions" :key="permission.id"
+                                    <tr v-for="permission in props.data.permissions" :key="permission.id"
                                         @click="togglePermissionRow(permission.name)"
                                         class="cursor-pointer hover:bg-blue-50 transition select-none">
                                         <td class="p-2 border-b">{{ permission.name }}</td>
