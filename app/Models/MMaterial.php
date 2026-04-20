@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class MMaterial extends Model
 {
@@ -23,6 +24,31 @@ class MMaterial extends Model
             'stock' => 'decimal:2',
             'avg_buy_price' => 'decimal:2',
         ];
+    }
+
+    public static function setOutOfStock($materialId): void
+    {
+        DB::transaction(function () use ($materialId) {
+
+            $material = self::lockForUpdate()->find($materialId);
+
+            if (! $material) {
+                return;
+            }
+
+            MaterialInboundOutbound::create([
+                'material_id' => $material->id,
+                'type' => 'outbound',
+                'amount' => $material->stock,
+                'base_unit_id' => $material->base_unit_id,
+                'transaction_detail_id' => null,
+                'inbound_buy_price' => null,
+            ]);
+
+            $material->update([
+                'stock' => 0
+            ]);
+        });
     }
 
     public function cafe(): BelongsTo

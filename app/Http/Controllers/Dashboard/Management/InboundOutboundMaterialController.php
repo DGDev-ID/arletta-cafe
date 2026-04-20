@@ -10,6 +10,7 @@ use App\Models\MUnit;
 use App\Models\UnitMaterialConverter;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class InboundOutboundMaterialController extends Controller
@@ -27,7 +28,7 @@ class InboundOutboundMaterialController extends Controller
         ]);
 
         if ($cafeId) {
-            $query->whereHas('material', fn ($q) => $q->where('cafe_id', $cafeId));
+            $query->whereHas('material', fn($q) => $q->where('cafe_id', $cafeId));
         }
 
         if ($materialId) {
@@ -110,29 +111,31 @@ class InboundOutboundMaterialController extends Controller
             'inbound_buy_price' => 'required|numeric|min:0',
         ]);
 
-        $material = MMaterial::findOrFail($request->material_id);
-        $inboundUnitId = (int) $request->base_unit_id;
-        $amount = (float) $request->amount;
+        DB::transaction(function () use ($request) {
 
-        // Convert amount to material's base unit
-        $convertedAmount = $this->convertToBaseUnit($material, $inboundUnitId, $amount);
+            $material = MMaterial::where('id', $request->material_id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        // Create inbound record
-        $inbound = MaterialInboundOutbound::create([
-            'material_id' => $material->id,
-            'type' => 'inbound',
-            'amount' => $request->amount,
-            'base_unit_id' => $inboundUnitId,
-            'inbound_buy_price' => $request->inbound_buy_price,
-        ]);
+            $inboundUnitId = (int) $request->base_unit_id;
+            $amount = (float) $request->amount;
 
-        // Update material stock
-        $material->stock = (float) $material->stock + $convertedAmount;
+            $convertedAmount = $this->convertToBaseUnit($material, $inboundUnitId, $amount);
 
-        // Calculate avg_buy_price from last 7 days inbound records
-        $material->avg_buy_price = $this->calculateAvgBuyPrice($material);
+            MaterialInboundOutbound::create([
+                'material_id' => $material->id,
+                'type' => 'inbound',
+                'amount' => $request->amount,
+                'base_unit_id' => $inboundUnitId,
+                'inbound_buy_price' => $request->inbound_buy_price,
+            ]);
 
-        $material->save();
+            $material->stock = (float) $material->stock + $convertedAmount;
+
+            $material->avg_buy_price = $this->calculateAvgBuyPrice($material);
+
+            $material->save();
+        });
 
         return redirect('/management/inbound-outbound-material')
             ->with('success', 'Data inbound berhasil ditambahkan.');

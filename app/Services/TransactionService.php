@@ -69,7 +69,7 @@ class TransactionService
             return $transaction->fresh('details');
         });
     }
-    
+
     public static function pendingAction(Transaction $transaction)
     {
         if ($transaction->status !== 'pending') {
@@ -82,9 +82,8 @@ class TransactionService
         $detailMaterialMap = [];
 
         foreach ($transaction->details as $detail) {
-            $menu = $detail->menu;
+            foreach ($detail->menu->menuMaterials as $menuMaterial) {
 
-            foreach ($menu->menuMaterials as $menuMaterial) {
                 $material = $menuMaterial->material;
                 $recipeUnitId = $menuMaterial->unit_id;
                 $baseUnitId = $material->base_unit_id;
@@ -93,32 +92,27 @@ class TransactionService
                 if ($recipeUnitId !== $baseUnitId) {
                     $converter = UnitMaterialConverter::where('material_id', $material->id)
                         ->where(function ($query) use ($recipeUnitId, $baseUnitId) {
-                            $query->where(function ($q) use ($recipeUnitId, $baseUnitId) {
-                                $q->where('from_unit_id', $recipeUnitId)
-                                  ->where('to_unit_id', $baseUnitId);
-                            })->orWhere(function ($q) use ($recipeUnitId, $baseUnitId) {
-                                $q->where('from_unit_id', $baseUnitId)
-                                  ->where('to_unit_id', $recipeUnitId);
-                            });
+                            $query->where([
+                                ['from_unit_id', $recipeUnitId],
+                                ['to_unit_id', $baseUnitId]
+                            ])->orWhere([
+                                ['from_unit_id', $baseUnitId],
+                                ['to_unit_id', $recipeUnitId]
+                            ]);
                         })
                         ->first();
 
                     if (!$converter) {
-                        $transaction->update(['status' => 'failed']);
                         throw new \Exception("Unit converter not found for material: {$material->name}");
                     }
 
-                    if ($converter->from_unit_id == $recipeUnitId && $converter->to_unit_id == $baseUnitId) {
-                        $amountNeeded = $amountNeeded * $converter->multiplier;
-                    } else {
-                        $amountNeeded = $amountNeeded / $converter->multiplier;
-                    }
+                    $amountNeeded = ($converter->from_unit_id == $recipeUnitId)
+                        ? $amountNeeded * $converter->multiplier
+                        : $amountNeeded / $converter->multiplier;
                 }
 
-                if (!isset($materialRequirements[$material->id])) {
-                    $materialRequirements[$material->id] = 0;
-                }
-                $materialRequirements[$material->id] += $amountNeeded;
+                $materialRequirements[$material->id] =
+                    ($materialRequirements[$material->id] ?? 0) + $amountNeeded;
 
                 $detailMaterialMap[] = [
                     'transaction_detail_id' => $detail->id,
@@ -129,17 +123,27 @@ class TransactionService
             }
         }
 
-        foreach ($materialRequirements as $materialId => $totalNeeded) {
-            $material = MMaterial::find($materialId);
-            if ($material->stock < $totalNeeded) {
-                $transaction->update(['status' => 'failed']);
-                throw new \Exception("Insufficient stock for material: {$material->name}. Required: {$totalNeeded}, Available: {$material->stock}");
-            }
-        }
+        DB::transaction(function () use ($transaction, $materialRequirements, $detailMaterialMap) {
 
-        DB::transaction(function () use ($materialRequirements, $detailMaterialMap) {
+            $materials = MMaterial::whereIn('id', array_keys($materialRequirements))
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
             foreach ($materialRequirements as $materialId => $totalNeeded) {
-                MMaterial::where('id', $materialId)->decrement('stock', $totalNeeded);
+                $material = $materials[$materialId];
+
+                if ($material->stock < $totalNeeded) {
+                    $transaction->update(['status' => 'failed']);
+
+                    throw new \Exception(
+                        "Insufficient stock for material: {$material->name}. Required: {$totalNeeded}, Available: {$material->stock}"
+                    );
+                }
+            }
+
+            foreach ($materialRequirements as $materialId => $totalNeeded) {
+                $materials[$materialId]->decrement('stock', $totalNeeded);
             }
 
             foreach ($detailMaterialMap as $record) {
@@ -152,6 +156,8 @@ class TransactionService
                     'inbound_buy_price' => null,
                 ]);
             }
+
+            $transaction->update(['status' => 'completed']);
         });
 
         return true;
@@ -174,15 +180,41 @@ class TransactionService
             throw new \Exception('Only pending transactions can be marked as failed.');
         }
 
-        $transaction->load('details');
-
         DB::transaction(function () use ($transaction) {
+
+            // 🔒 lock transaction row
+            $transaction = Transaction::where('id', $transaction->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($transaction->status !== 'pending') {
+                throw new \Exception('Transaction already processed.');
+            }
+
+            $transaction->load('details');
+
             foreach ($transaction->details as $detail) {
+
+                // 🔒 lock outbound rows
                 $outbounds = MaterialInboundOutbound::where('type', 'outbound')
                     ->where('transaction_detail_id', $detail->id)
+                    ->lockForUpdate()
                     ->get();
 
                 foreach ($outbounds as $outbound) {
+
+                    // ❗ prevent double reversal (optional but recommended)
+                    $alreadyReversed = MaterialInboundOutbound::where([
+                        'type' => 'inbound',
+                        'transaction_detail_id' => $outbound->transaction_detail_id,
+                        'material_id' => $outbound->material_id,
+                        'amount' => $outbound->amount,
+                    ])->exists();
+
+                    if ($alreadyReversed) {
+                        continue;
+                    }
+
                     MaterialInboundOutbound::create([
                         'material_id' => $outbound->material_id,
                         'type' => 'inbound',
@@ -192,7 +224,9 @@ class TransactionService
                         'inbound_buy_price' => null,
                     ]);
 
+                    // 🔒 safe increment (atomic)
                     MMaterial::where('id', $outbound->material_id)
+                        ->lockForUpdate()
                         ->increment('stock', $outbound->amount);
                 }
             }
