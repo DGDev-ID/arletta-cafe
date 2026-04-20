@@ -22,6 +22,8 @@ interface InboundOutbound {
     inbound_buy_price: string | null;
     base_unit: { name: string };
     created_at: string;
+    opening_stock: number;
+    closing_stock: number;
     transaction_detail: {
         menu: { name: string };
         amount: string;
@@ -127,8 +129,10 @@ function setOutOfStock(id: number) {
                             <tr class="text-muted-foreground">
                                 <th class="px-6 py-3 text-left font-medium">No</th>
                                 <th class="px-6 py-3 text-left font-medium">Tipe</th>
+                                <th class="px-6 py-3 text-left font-medium">Opening Stock ({{ material.base_unit.name }})</th>
                                 <th class="px-6 py-3 text-left font-medium">Jumlah</th>
                                 <th class="px-6 py-3 text-left font-medium">Satuan</th>
+                                <th class="px-6 py-3 text-left font-medium">Closing Stock ({{ material.base_unit.name }})</th>
                                 <th class="px-6 py-3 text-left font-medium">Harga Beli</th>
                                 <th class="px-6 py-3 text-left font-medium">Tanggal</th>
                                 <th class="px-6 py-3 text-left font-medium">Info</th>
@@ -149,8 +153,10 @@ function setOutOfStock(id: number) {
                                         {{ log.type === 'inbound' ? 'Inbound' : 'Outbound' }}
                                     </span>
                                 </td>
+                                <td class="px-6 py-3">{{ log.opening_stock }}</td>
                                 <td class="px-6 py-3 font-medium">{{ log.amount }}</td>
                                 <td class="px-6 py-3">{{ log.base_unit.name }}</td>
+                                <td class="px-6 py-3">{{ log.closing_stock }}</td>
                                 <td class="px-6 py-3">{{ formatCurrency(log.inbound_buy_price) }}</td>
                                 <td class="px-6 py-3 text-muted-foreground">
                                     {{ new Date(log.created_at).toLocaleDateString('id-ID', {

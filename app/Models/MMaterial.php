@@ -44,10 +44,6 @@ class MMaterial extends Model
                 'transaction_detail_id' => null,
                 'inbound_buy_price' => null,
             ]);
-
-            $material->update([
-                'stock' => 0
-            ]);
         });
     }
 

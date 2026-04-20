@@ -130,7 +130,7 @@ class InboundOutboundMaterialController extends Controller
                 'inbound_buy_price' => $request->inbound_buy_price,
             ]);
 
-            $material->stock = (float) $material->stock + $convertedAmount;
+            // $material->stock = (float) $material->stock + $convertedAmount;
 
             $material->avg_buy_price = $this->calculateAvgBuyPrice($material);
 

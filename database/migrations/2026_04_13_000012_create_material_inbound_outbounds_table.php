@@ -12,7 +12,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('material_id')->constrained('m_materials')->cascadeOnDelete();
             $table->enum('type', ['inbound', 'outbound']);
+            $table->decimal('opening_stock', 12, 2)->default(0);
             $table->decimal('amount', 12, 2);
+            $table->decimal('closing_stock', 12, 2)->default(0);
             $table->foreignId('base_unit_id')->constrained('m_units')->restrictOnDelete();
             $table->foreignId('transaction_detail_id')->nullable()->constrained('transaction_details')->nullOnDelete();
             $table->decimal('inbound_buy_price', 12, 2)->nullable();

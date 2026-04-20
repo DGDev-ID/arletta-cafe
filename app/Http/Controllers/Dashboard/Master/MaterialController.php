@@ -61,7 +61,7 @@ class MaterialController extends Controller
 
         $logs = $material->inboundOutbounds()
             ->with('baseUnit', 'transactionDetail.menu')
-            ->latest()
+            ->orderByDesc('id')
             ->paginate(10);
 
         return inertia('master/material/Show', [

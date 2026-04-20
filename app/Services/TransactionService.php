@@ -142,9 +142,9 @@ class TransactionService
                 }
             }
 
-            foreach ($materialRequirements as $materialId => $totalNeeded) {
-                $materials[$materialId]->decrement('stock', $totalNeeded);
-            }
+            // foreach ($materialRequirements as $materialId => $totalNeeded) {
+            //     $materials[$materialId]->decrement('stock', $totalNeeded);
+            // }
 
             foreach ($detailMaterialMap as $record) {
                 MaterialInboundOutbound::create([
@@ -225,9 +225,9 @@ class TransactionService
                     ]);
 
                     // 🔒 safe increment (atomic)
-                    MMaterial::where('id', $outbound->material_id)
-                        ->lockForUpdate()
-                        ->increment('stock', $outbound->amount);
+                    // MMaterial::where('id', $outbound->material_id)
+                    //     ->lockForUpdate()
+                    //     ->increment('stock', $outbound->amount);
                 }
             }
 
