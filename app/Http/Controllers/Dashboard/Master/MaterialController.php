@@ -108,4 +108,12 @@ class MaterialController extends Controller
             ->route('master.material.index')
             ->with('success', 'Material berhasil dihapus.');
     }
+
+    public function outOfStock($id) {
+        MMaterial::setOutOfStock($id);
+
+        return redirect()
+            ->route('master.material.index')
+            ->with('success', 'Material berhasil diatur sebagai habis.');
+    }
 }

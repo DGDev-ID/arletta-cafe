@@ -36,6 +36,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('unit', UnitController::class)->except(['show']);
 
         Route::resource('material', MaterialController::class);
+        Route::patch('material/{id}/out-of-stock', [MaterialController::class, 'outOfStock'])->name('material.out-of-stock');
 
         Route::resource('menu-category', MenuCategoryController::class)->except(['show']);
 

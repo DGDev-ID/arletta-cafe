@@ -4,6 +4,7 @@ import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 
 interface Material {
     id: number;
@@ -46,6 +47,12 @@ const formatCurrency = (val: string | null) => {
     if (!val) return '-';
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(val));
 };
+
+function setOutOfStock(id: number) {
+    router.patch(`/master/material/${id}/out-of-stock`, {}, {
+        preserveScroll: true,
+    });
+}
 </script>
 
 <template>
@@ -91,6 +98,19 @@ const formatCurrency = (val: string | null) => {
                         <div>
                             <dt class="text-muted-foreground">Rata-Rata Harga Beli</dt>
                             <dd class="font-medium mt-0.5">{{ formatCurrency(material.avg_buy_price) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-muted-foreground">Action</dt>
+                            <dd class="font-medium mt-0.5">
+                                <button
+                                    @click="setOutOfStock(material.id)"
+                                    class="text-red-500 hover:text-red-700"
+                                    :disabled="Number(material.stock) <= 0"
+                                >
+                                    <span v-if="Number(material.stock) <= 0">Out of Stock</span>
+                                    <span v-else>Set Out of Stock</span>
+                                </button>
+                            </dd>
                         </div>
                     </dl>
                 </div>
