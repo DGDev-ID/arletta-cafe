@@ -49,6 +49,17 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn() => $request->session()->get('success'),
                 'error' => fn() => $request->session()->get('error'),
             ],
+            'roles' => fn() => $request->user()
+                ? $request->user()->roles->pluck('id')
+                : [],
+
+            'rolePermissions' => fn() => $request->user()
+                ? \Spatie\Permission\Models\Role::with('permissions')
+                ->get()
+                ->mapWithKeys(fn($role) => [
+                    $role->id => $role->permissions->pluck('name')
+                ])
+                : [],
         ]);
     }
 }
