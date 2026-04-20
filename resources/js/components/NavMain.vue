@@ -26,10 +26,10 @@ const props = defineProps<{
 
 const page = usePage<SharedData>();
 
-const userRole = computed(() => page.props.roles?.[0]);
+const userRoleId = computed(() => page.props.roles?.[0]);
 
 const permissions = computed(() => {
-    const roleId = userRole.value?.id;
+    const roleId = userRoleId.value;
     if (!roleId) return [];
 
     return page.props.rolePermissions?.[roleId] ?? [];
