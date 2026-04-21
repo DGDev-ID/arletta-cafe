@@ -10,6 +10,7 @@ interface CategoryOption {
     id: number;
     cafe_id: number;
     name: string;
+    parent_id?: number | null;
 }
 
 interface MenuCategoryFormData {

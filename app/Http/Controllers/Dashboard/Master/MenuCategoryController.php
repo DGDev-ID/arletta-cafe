@@ -29,7 +29,7 @@ class MenuCategoryController extends Controller
     {
         return inertia('master/menu-category/Create', [
             'cafes'      => MCafe::select('id', 'name')->get(),
-            'categories' => MMenuCategory::select('id', 'cafe_id', 'name')->get(),
+            'categories' => MMenuCategory::select('id', 'cafe_id', 'name', 'parent_id')->get(),
         ]);
     }
 
@@ -56,7 +56,7 @@ class MenuCategoryController extends Controller
         return inertia('master/menu-category/Edit', [
             'data'       => $data,
             'cafes'      => MCafe::select('id', 'name')->get(),
-            'categories' => MMenuCategory::select('id', 'cafe_id', 'name')
+            'categories' => MMenuCategory::select('id', 'cafe_id', 'name', 'parent_id')
                 ->where('id', '!=', $id)
                 ->get(),
         ]);

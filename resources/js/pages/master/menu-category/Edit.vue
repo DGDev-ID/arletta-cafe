@@ -6,7 +6,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 interface CafeOption { id: number; name: string; }
-interface CategoryOption { id: number; cafe_id: number; name: string; }
+interface CategoryOption { id: number; cafe_id: number; name: string; parent_id?: number | null; }
 
 const props = defineProps<{
     data: {

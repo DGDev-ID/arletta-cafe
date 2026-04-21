@@ -4,11 +4,12 @@ import Heading from '@/components/Heading.vue';
 import MenuCategoryForm from '@/components/master/MenuCategoryForm.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 interface CafeOption { id: number; name: string; }
-interface CategoryOption { id: number; cafe_id: number; name: string; }
+interface CategoryOption { id: number; cafe_id: number; name: string; parent_id?: number | null; }
 
-defineProps<{
+const props = defineProps<{
     cafes: CafeOption[];
     categories: CategoryOption[];
 }>();
@@ -23,6 +24,12 @@ const form = useForm({
     name: '',
     parent_id: null as number | null,
     description: '',
+});
+
+const filteredCategories = computed(() => {
+    return props.categories.filter(c => 
+        !c.parent_id || c.parent_id === 0 || c.parent_id === '0' || c.parent_id === ''
+    );
 });
 
 const submit = () => form.post('/master/menu-category');
@@ -43,7 +50,7 @@ const submit = () => form.post('/master/menu-category');
                 </div>
 
                 <div class="rounded-2xl border bg-background shadow-sm p-8">
-                    <MenuCategoryForm :form="form" :cafes="cafes" :categories="categories" submit-label="Simpan Kategori" @submit="submit" />
+                    <MenuCategoryForm :form="form" :cafes="cafes" :categories="filteredCategories" submit-label="Simpan Kategori" @submit="submit" />
                 </div>
 
             </div>
