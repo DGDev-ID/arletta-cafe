@@ -59,7 +59,7 @@ const form = useForm({
     cashier_ids: props.data.cafe_cashiers.map((c) => c.user_id),
 });
 
-const submit = () => form.post(`/master/cafe/${props.data.id}`);
+const submit = () => form.put(`/master/cafe/${props.data.id}`);
 </script>
 
 <template>
