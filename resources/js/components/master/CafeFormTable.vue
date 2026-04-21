@@ -39,7 +39,7 @@ const deleteTable = (tableId: number) => {
 
 const downloadQR = async (table: CafeTable) => {
     try {
-        const url = `https://cafe.arlettaluxury.com?cafe_id=${props.m_cafe.unique_id}&table_id=${table.id}`;
+        const url = `https://cafe.arlettaluxury.com/menu?cafe_id=${props.m_cafe.unique_id}&table_id=${table.id}`;
         const dataUrl = await QRCode.toDataURL(url);
 
         const link = document.createElement('a');
