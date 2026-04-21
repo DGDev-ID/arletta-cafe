@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { ArrowLeftRight, BookOpen, Camera, Coffee, DollarSign, Folder, History, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, UserCheck, UserCog, Utensils } from 'lucide-vue-next';
+import { ArrowLeftRight, BookOpen, Camera, Coffee, DollarSign, Folder, History, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, User, UserCheck, UserCog, Utensils } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -57,6 +57,12 @@ const masterDataNavItems: NavItem[] = [
 ];
 
 const userMamagementNavItems: NavItem[] = [
+    {
+        title: 'User',
+        href: '/user-management/user',
+        icon: User,
+        permission: 'settings',
+    },
     {
         title: 'Admin',
         href: '/user-management/admin',
