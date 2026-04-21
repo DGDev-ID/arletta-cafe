@@ -156,8 +156,6 @@ class TransactionService
                     'inbound_buy_price' => null,
                 ]);
             }
-
-            $transaction->update(['status' => 'completed']);
         });
 
         return true;
