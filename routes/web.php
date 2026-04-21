@@ -29,6 +29,8 @@ Route::get('dashboard', [DashboardController::class, 'index'])
 
 Route::middleware(['auth'])->group(function () {
     Route::prefix('master')->name('master.')->group(function () {
+        Route::post('cafe/{cafeId}/table', [CafeTableController::class, 'storeTable'])->name('cafe.table.store');
+        Route::delete('cafe/{cafeId}/table/{tableId}', [CafeTableController::class, 'destroyTable'])->name('cafe.table.destroy');
         Route::resource('cafe', CafeTableController::class)
             ->except(['show'])
             ->middleware([
@@ -37,8 +39,6 @@ Route::middleware(['auth'])->group(function () {
                 'can:master.cafe.update',
                 'can:master.cafe.delete',
             ]);
-        Route::post('{cafeId}/table', [CafeTableController::class, 'storeTable'])->name('cafe.table.store');
-        Route::delete('{cafeId}/table/{tableId}', [CafeTableController::class, 'destroyTable'])->name('cafe.table.destroy');
 
         Route::resource('unit', UnitController::class)
             ->except(['show'])
