@@ -16,6 +16,7 @@ use App\Http\Controllers\Dashboard\PublicController;
 use App\Http\Controllers\Dashboard\Transaction\HistoryTransactionController;
 use App\Http\Controllers\Dashboard\Transaction\CashierController;
 use App\Http\Controllers\Dashboard\Shortcut\PublicLinkGeneratorController;
+use App\Http\Controllers\Dashboard\UserManagement\ManageUserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Dashboard\UserManagement\RolePermissionController;
 
@@ -91,6 +92,11 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::prefix('user-management')->name('user-management.')->group(function () {
+
+        // User Management - User
+        Route::resource('user', ManageUserController::class)
+            ->only(['index', 'store', 'destroy'])->middleware('can:settings');
+
         Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/', [ManageAdminController::class, 'index'])->name('index');
             Route::get('/search-users', [ManageAdminController::class, 'searchUsers'])->name('search-users');
