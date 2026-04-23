@@ -101,7 +101,7 @@ class HistoryTransactionController extends Controller
         if ($withDetails) {
             $sheet->fromArray([
                 'No', 'Transaction ID', 'Cafe', 'Table', 'Price', 'Fee',
-                'Total Price', 'Payment Type', 'Status', 'Updated At',
+                'Total Price', 'Payment Type', 'Status', 'Transaction Success At', 'Description', 'Profit Margin',
                 'Detail - Menu', 'Detail - Amount', 'Detail - Price', 'Detail - Description',
             ], null, 'A1');
 
@@ -121,6 +121,8 @@ class HistoryTransactionController extends Controller
                         $trx->payment_type,
                         $trx->status,
                         $trx->updated_at->format('Y-m-d H:i:s'),
+                        $trx->description,
+                        $trx->profit_margin,
                         '-', '-', '-', '-',
                     ], null, "A{$row}");
                     $row++;
@@ -150,14 +152,14 @@ class HistoryTransactionController extends Controller
         } else {
             $sheet->fromArray([
                 'No', 'Transaction ID', 'Cafe', 'Table', 'Price', 'Fee',
-                'Total Price', 'Payment Type', 'Status', 'Updated At',
+                'Total Price', 'Payment Type', 'Status', 'Transaction Success At', 'Description', 'Profit Margin'
             ], null, 'A1');
 
             $row = 2;
             foreach ($transactions as $i => $trx) {
                 $sheet->fromArray([
                     $i + 1,
-                    $trx->id,
+                    $trx->unique_code,
                     $trx->cafe->name ?? '-',
                     $trx->table->name ?? '-',
                     $trx->price,
@@ -166,6 +168,8 @@ class HistoryTransactionController extends Controller
                     $trx->payment_type,
                     $trx->status,
                     $trx->updated_at->format('Y-m-d H:i:s'),
+                    $trx->description,
+                    $trx->profit_margin
                 ], null, "A{$row}");
                 $row++;
             }

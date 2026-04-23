@@ -21,6 +21,7 @@ class Transaction extends Model
         'status',
         'snap_token',
         'midtrans_transaction_id',
+        'profit_margin',
     ];
 
     protected function casts(): array
@@ -29,6 +30,7 @@ class Transaction extends Model
             'price' => 'decimal:2',
             'fee' => 'decimal:2',
             'total_price' => 'decimal:2',
+            'profit_margin' => 'decimal:2',
         ];
     }
 

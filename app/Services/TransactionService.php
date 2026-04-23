@@ -146,6 +146,16 @@ class TransactionService
             //     $materials[$materialId]->decrement('stock', $totalNeeded);
             // }
 
+            // Calculate profit margin
+            $totalMaterialCost = 0;
+            foreach ($materialRequirements as $materialId => $totalNeeded) {
+                $material = $materials[$materialId];
+                $totalMaterialCost += $totalNeeded * (float) $material->avg_buy_price;
+            }
+
+            $transaction->profit_margin = (float) $transaction->total_price - $totalMaterialCost;
+            $transaction->save();
+
             foreach ($detailMaterialMap as $record) {
                 MaterialInboundOutbound::create([
                     'material_id' => $record['material_id'],
