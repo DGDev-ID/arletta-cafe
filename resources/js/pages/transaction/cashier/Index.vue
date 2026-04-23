@@ -169,11 +169,11 @@ const printReceiptInline = async (id: number) => {
                     const ctx = canvas.getContext('2d');
 
                     // 🔥 atur ukuran di sini (kecilkan)
-                    const MAX_WIDTH = 100; // coba 100 - 200
+                    const MAX_WIDTH = 32; // coba 100 - 200
                     const scale = MAX_WIDTH / img.width;
 
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scale;
+                    canvas.width = Math.ceil(MAX_WIDTH / 8) * 8;
+                    canvas.height = img.height * (canvas.width / img.width);
 
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
@@ -187,19 +187,12 @@ const printReceiptInline = async (id: number) => {
 
         const logoBase64 = await getLogoBase64();
 
-        // const logo = {
-        //     type: 'raw',
-        //     format: 'image',
-        //     flavor: 'base64',
-        //     data: logoBase64,
-        //     options: { language: 'ESCPOS', dotDensity: 'single' }
-        // };
         const logo = {
             type: 'raw',
             format: 'image',
             flavor: 'base64',
             data: logoBase64,
-            options: { language: 'ESCPOS', width: 100, height: 100 }
+            options: { language: 'ESCPOS', dotDensity: 'double', width: 32, height: 32 }
         };
 
         // ===== BUILD TEXT =====
