@@ -108,11 +108,25 @@ const printReceiptInline = async (id: number) => {
         };
 
         if (!qz.websocket.isActive()) {
+            // Konfigurasi Keamanan QZ Tray (Anonymous / Unsigned Request)
+            // Untuk menghilangkan warning secara permanen di masa depan, Anda perlu 
+            // memberikan public certificate di sini dan menandatangani request di backend.
+            qz.security.setCertificatePromise((resolve, reject) => {
+                resolve(null);
+            });
+            
+            qz.security.setSignaturePromise((toSign) => {
+                return (resolve, reject) => {
+                    resolve(null);
+                };
+            });
+
             await qz.websocket.connect();
         }
 
         const printers = await qz.printers.find();
         let printerName = await qz.printers.getDefault();
+        console.log("Kontol ", printerName);
         const posPrinter = printers.find((p: string) => p.toLowerCase().includes('thermal') || p.toLowerCase().includes('pos') || p.toLowerCase().includes('58'));
         if (posPrinter) printerName = posPrinter;
 
@@ -149,15 +163,15 @@ const printReceiptInline = async (id: number) => {
 
         trx.details.forEach((d: any) => {
             printData.push(`${d.menu?.name ?? '-'}\n`);
-            
+
             const qtyPrice = `${d.amount} x ${fmt(Number(d.price)).replace('Rp', '').trim()}`;
             const subtotal = fmt(Number(d.price) * d.amount).replace('Rp', '').trim();
-            
+
             let spaces = 32 - qtyPrice.length - subtotal.length;
             if (spaces < 1) spaces = 1;
-            
+
             printData.push(`${qtyPrice}${' '.repeat(spaces)}${subtotal}\n`);
-            
+
             if (d.description) {
                 printData.push(`  ${d.description}\n`);
             }
@@ -180,12 +194,12 @@ const printReceiptInline = async (id: number) => {
 
         printData.push(alignCenter);
         printData.push('Terima kasih atas kunjungan Anda!\n');
-        printData.push('\n\n\n\n\n'); 
-        printData.push('\x1D\x56\x41\x00'); 
+        printData.push('\n\n\n\n\n');
+        printData.push('\x1D\x56\x41\x00');
 
         await qz.print(config, printData);
         notyf.success('Struk berhasil dicetak');
-        
+
     } catch (e: any) {
         console.error(e);
         notyf.error('Gagal mencetak struk: ' + (e.message || 'Pastikan QZ Tray aktif'));
