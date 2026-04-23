@@ -47,79 +47,80 @@ onMounted(() => {
     <div class="receipt-container">
         <div class="receipt">
             <!-- Header -->
-            <div class="text-center mb-4">
-                <h1 class="text-lg font-bold">{{ transaction.cafe.name }}</h1>
-                <p v-if="transaction.cafe.address" class="text-xs text-gray-500">{{ transaction.cafe.address }}</p>
-                <p class="text-xs text-gray-500">main@arlettaluxury.com</p>
-                <p class="text-xs text-gray-500">085742089646</p>
+            <div class="text-center mb-1">
+                <h1 class="receipt-title">{{ transaction.cafe.name }}</h1>
+                <p v-if="transaction.cafe.address" class="receipt-sub">{{ transaction.cafe.address }}</p>
+                <p class="receipt-sub">main@arlettaluxury.com</p>
+                <p class="receipt-sub">085742089646</p>
             </div>
 
-            <div class="border-t border-dashed border-gray-400 my-3"></div>
+            <div class="divider"></div>
 
             <!-- Info -->
-            <div class="text-xs space-y-1 mb-3">
-                <div class="flex justify-between">
+            <div class="receipt-info">
+                <div class="receipt-row">
                     <span>No. Transaksi</span>
                     <span class="font-medium">#{{ transaction.id }}</span>
                 </div>
-                <div class="flex justify-between">
+                <div class="receipt-row">
                     <span>Tanggal</span>
                     <span class="font-medium">{{ formatDate(transaction.updated_at) }}</span>
                 </div>
-                <div class="flex justify-between">
+                <div class="receipt-row">
                     <span>Customer</span>
                     <span class="font-medium">{{ transaction.cust_name ?? '-' }}</span>
                 </div>
-                <div v-if="transaction.table" class="flex justify-between">
+                <div v-if="transaction.table" class="receipt-row">
                     <span>Table</span>
                     <span class="font-medium">{{ transaction.table.name }}</span>
                 </div>
-                <div class="flex justify-between">
+                <div class="receipt-row">
                     <span>Pembayaran</span>
-                    <span class="font-medium capitalize">{{ transaction.payment_type }}</span>
+                    <span class="font-medium" style="text-transform:capitalize">{{ transaction.payment_type }}</span>
                 </div>
             </div>
 
-            <div class="border-t border-dashed border-gray-400 my-3"></div>
+            <div class="divider"></div>
 
             <!-- Items -->
-            <div class="text-xs space-y-2 mb-3">
-                <div v-for="detail in transaction.details" :key="detail.id">
-                    <div class="flex justify-between">
+            <div class="receipt-items">
+                <div v-for="detail in transaction.details" :key="detail.id" class="receipt-item">
+                    <div class="receipt-row">
                         <span>{{ detail.menu?.name ?? '-' }}</span>
                         <span>{{ formatCurrency(Number(detail.price) * detail.amount) }}</span>
                     </div>
-                    <div class="text-gray-500 pl-2">
+                    <div class="receipt-detail">
                         {{ detail.amount }} x {{ formatCurrency(detail.price) }}
                     </div>
-                    <div v-if="detail.description" class="text-gray-400 pl-2 italic">
+                    <div v-if="detail.description" class="receipt-note">
                         {{ detail.description }}
                     </div>
                 </div>
             </div>
 
-            <div class="border-t border-dashed border-gray-400 my-3"></div>
+            <div class="divider"></div>
 
             <!-- Totals -->
-            <div class="text-xs space-y-1">
-                <div class="flex justify-between">
+            <div class="receipt-info">
+                <div class="receipt-row">
                     <span>Subtotal</span>
                     <span>{{ formatCurrency(transaction.price) }}</span>
                 </div>
-                <div class="flex justify-between">
+                <div class="receipt-row">
                     <span>Fee</span>
                     <span>{{ formatCurrency(transaction.fee) }}</span>
                 </div>
-                <div class="flex justify-between font-bold text-sm mt-1 pt-1 border-t border-dashed border-gray-400">
+                <div class="divider"></div>
+                <div class="receipt-row receipt-total">
                     <span>Total</span>
                     <span>{{ formatCurrency(transaction.total_price) }}</span>
                 </div>
             </div>
 
-            <div class="border-t border-dashed border-gray-400 my-3"></div>
+            <div class="divider"></div>
 
             <!-- Footer -->
-            <div class="text-center text-xs text-gray-500">
+            <div class="receipt-footer">
                 <p>Terima kasih atas kunjungan Anda!</p>
             </div>
         </div>
@@ -136,10 +137,73 @@ onMounted(() => {
 }
 
 .receipt {
-    width: 48mm;
+    width: 54mm;
     background: white;
-    padding: 5mm;
+    padding: 2mm;
     font-family: 'Courier New', monospace;
+    font-size: 7pt;
+    line-height: 1.3;
+    color: #000;
+}
+
+.receipt-title {
+    font-size: 9pt;
+    font-weight: bold;
+    margin: 0;
+}
+
+.receipt-sub {
+    font-size: 6pt;
+    color: #555;
+    margin: 0;
+}
+
+.divider {
+    border-top: 1px dashed #999;
+    margin: 2mm 0;
+}
+
+.receipt-info {
+    margin-bottom: 1mm;
+}
+
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 2mm;
+    word-break: break-word;
+}
+
+.receipt-items {
+    margin-bottom: 1mm;
+}
+
+.receipt-item {
+    margin-bottom: 1.5mm;
+}
+
+.receipt-detail {
+    color: #555;
+    padding-left: 1mm;
+    font-size: 6pt;
+}
+
+.receipt-note {
+    color: #888;
+    padding-left: 1mm;
+    font-style: italic;
+    font-size: 6pt;
+}
+
+.receipt-total {
+    font-weight: bold;
+    font-size: 8pt;
+}
+
+.receipt-footer {
+    text-align: center;
+    color: #555;
+    font-size: 6pt;
 }
 
 @media print {
@@ -160,9 +224,10 @@ onMounted(() => {
     }
 
     .receipt {
-        width: 48mm;
-        padding: 5mm;
+        width: 54mm;
+        padding: 2mm;
         box-shadow: none;
     }
 }
 </style>
+

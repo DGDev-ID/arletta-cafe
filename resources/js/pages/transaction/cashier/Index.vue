@@ -106,31 +106,33 @@ const printReceiptInline = async (id: number) => {
         };
 
         const itemsHtml = trx.details.map((d: any) => `
-            <div style="margin-bottom:8px">
-                <div style="display:flex;justify-content:space-between">
+            <div style="margin-bottom:1.5mm">
+                <div class="row">
                     <span>${d.menu?.name ?? '-'}</span>
                     <span>${fmt(Number(d.price) * d.amount)}</span>
                 </div>
-                <div style="color:#666;padding-left:8px;font-size:11px">${d.amount} x ${fmt(Number(d.price))}</div>
-                ${d.description ? `<div style="color:#999;padding-left:8px;font-style:italic;font-size:11px">${d.description}</div>` : ''}
+                <div style="color:#555;padding-left:1mm;font-size:6pt">${d.amount} x ${fmt(Number(d.price))}</div>
+                ${d.description ? `<div style="color:#888;padding-left:1mm;font-style:italic;font-size:6pt">${d.description}</div>` : ''}
             </div>`).join('');
 
         const html = `<!DOCTYPE html><html><head><title>Struk #${trx.id}</title>
 <style>
-  body{font-family:'Courier New',monospace;font-size:12px;margin:0;padding:20px}
-  .r{width:280px;margin:0 auto}.tc{text-align:center}
-  .row{display:flex;justify-content:space-between;margin-bottom:4px}
-  hr{border:none;border-top:1px dashed #999;margin:10px 0}
-  @media print{body{padding:0}}
+  @page{size:58mm 210mm;margin:0}
+  body{font-family:'Courier New',monospace;font-size:7pt;line-height:1.3;margin:0;padding:0;color:#000}
+  .r{width:54mm;padding:2mm}
+  .tc{text-align:center}
+  .row{display:flex;justify-content:space-between;gap:2mm;word-break:break-word}
+  hr{border:none;border-top:1px dashed #999;margin:2mm 0}
+  @media print{body{padding:0}.r{width:54mm;padding:2mm}}
 </style></head><body><div class="r">
-  <div class="tc" style="margin-bottom:12px">
-    <h2 style="margin:0;font-size:14px">${trx.cafe.name}</h2>
-    ${trx.cafe.address ? `<p style="margin:2px 0;font-size:11px;color:#666">${trx.cafe.address}</p>` : ''}
-    <p style="margin:2px 0;font-size:11px;color:#666">main@arlettaluxury.com</p>
-    <p style="margin:2px 0;font-size:11px;color:#666">085742089646</p>
+  <div class="tc" style="margin-bottom:1mm">
+    <h2 style="margin:0;font-size:9pt">${trx.cafe.name}</h2>
+    ${trx.cafe.address ? `<p style="margin:0;font-size:6pt;color:#555">${trx.cafe.address}</p>` : ''}
+    <p style="margin:0;font-size:6pt;color:#555">main@arlettaluxury.com</p>
+    <p style="margin:0;font-size:6pt;color:#555">085742089646</p>
   </div>
   <hr>
-  <div style="margin-bottom:10px">
+  <div style="margin-bottom:1mm">
     <div class="row"><span>No. Transaksi</span><span><b>#${trx.id}</b></span></div>
     <div class="row"><span>Tanggal</span><span>${fmtDate(trx.updated_at)}</span></div>
     <div class="row"><span>Customer</span><span>${trx.cust_name ?? '-'}</span></div>
@@ -138,22 +140,23 @@ const printReceiptInline = async (id: number) => {
     <div class="row"><span>Pembayaran</span><span>${trx.payment_type}</span></div>
   </div>
   <hr>
-  <div style="margin-bottom:10px">${itemsHtml}</div>
+  <div style="margin-bottom:1mm">${itemsHtml}</div>
   <hr>
   <div>
     <div class="row"><span>Subtotal</span><span>${fmt(Number(trx.price))}</span></div>
     <div class="row"><span>Fee</span><span>${fmt(Number(trx.fee))}</span></div>
-    <div class="row" style="font-weight:bold;font-size:13px;border-top:1px dashed #999;padding-top:4px;margin-top:4px">
+    <hr>
+    <div class="row" style="font-weight:bold;font-size:8pt">
       <span>Total</span><span>${fmt(Number(trx.total_price))}</span>
     </div>
   </div>
   <hr>
-  <div class="tc" style="color:#666;font-size:11px"><p>Terima kasih atas kunjungan Anda!</p></div>
+  <div class="tc" style="color:#555;font-size:6pt"><p>Terima kasih atas kunjungan Anda!</p></div>
 </div>
 <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}<\/script>
 </body></html>`;
 
-        const popup = window.open('', '_blank', 'width=420,height=650,scrollbars=yes');
+        const popup = window.open('', '_blank', 'width=300,height=500,scrollbars=yes');
         if (popup) {
             popup.document.write(html);
             popup.document.close();
@@ -225,7 +228,8 @@ onUnmounted(() => {
                     <!-- QR Code Search -->
                     <form @submit.prevent="searchByQRCode" class="flex items-center gap-2 mb-2">
                         <input v-model="qrCode" type="text" placeholder="Cari transaksi dengan QR Code..."
-                            class="px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-ring w-64" :disabled="qrLoading" />
+                            class="px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-ring w-64"
+                            :disabled="qrLoading" />
                         <button type="submit"
                             class="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition disabled:opacity-60"
                             :disabled="qrLoading || !qrCode">
@@ -254,7 +258,8 @@ onUnmounted(() => {
                                         <td class="px-6 py-4">1</td>
                                         <td class="px-6 py-4 font-medium">{{ qrResult.cafe?.name ?? '-' }}</td>
                                         <td class="px-6 py-4">{{ qrResult.cust_name ?? '-' }}</td>
-                                        <td class="px-6 py-4 font-medium">{{ formatCurrency(qrResult.total_price) }}</td>
+                                        <td class="px-6 py-4 font-medium">{{ formatCurrency(qrResult.total_price) }}
+                                        </td>
                                         <td class="px-6 py-4 text-right">
                                             <Link :href="`/transaction/cashier/${qrResult.id}`"
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
