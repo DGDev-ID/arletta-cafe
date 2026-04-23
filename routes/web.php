@@ -155,6 +155,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('inbound-outbound-material/check-unit-converter', [InboundOutboundMaterialController::class, 'checkUnitConverter'])
             ->name('inbound-outbound-material.check-unit-converter')
             ->middleware('can:management.inbound-outbound-material');
+        Route::get('inbound-outbound-material/create-outbound', [InboundOutboundMaterialController::class, 'createOutbound'])
+            ->name('inbound-outbound-material.create-outbound')
+            ->middleware('can:management.inbound-outbound-material');
+        Route::post('inbound-outbound-material/store-outbound', [InboundOutboundMaterialController::class, 'storeOutbound'])
+            ->name('inbound-outbound-material.store-outbound')
+            ->middleware('can:management.inbound-outbound-material');
     });
 
     Route::prefix('transaction')->name('transaction.')->group(function () {

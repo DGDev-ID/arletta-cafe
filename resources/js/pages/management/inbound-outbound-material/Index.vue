@@ -90,6 +90,7 @@ const formatCurrency = (val: string | number) => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
+
         <Head title="Inbound / Outbound Material" />
 
         <div class="min-h-screen bg-muted/40 py-10">
@@ -141,6 +142,12 @@ const formatCurrency = (val: string | number) => {
                         class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition">
                         <Plus :size="16" /> Tambah Inbound
                     </Link>
+
+                    <!-- Add Outbound Button -->
+                    <Link href="/management/inbound-outbound-material/create-outbound"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 text-sm font-medium text-white shadow-sm hover:opacity-90 transition">
+                        <Plus :size="16" /> Tambah Spoil Stock (Outbound)
+                    </Link>
                 </div>
 
                 <!-- Table -->
@@ -178,25 +185,37 @@ const formatCurrency = (val: string | number) => {
                                 <td class="px-6 py-4">{{ row.base_unit.name }}</td>
                                 <td class="px-6 py-4">
                                     <!-- Outbound: show transaction detail on hover -->
-                                    <div v-if="row.type === 'outbound' && row.transaction_detail" class="relative group inline-block">
-                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 cursor-help">
+                                    <div v-if="row.type === 'outbound' && row.transaction_detail"
+                                        class="relative group inline-block">
+                                        <span
+                                            class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 cursor-help">
                                             <HelpCircle :size="14" />
                                         </span>
-                                        <div class="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-56 bg-popover text-popover-foreground text-xs rounded-lg shadow-lg border p-3 space-y-1">
-                                            <p><span class="font-semibold">Menu:</span> {{ row.transaction_detail.menu?.name ?? '-' }}</p>
-                                            <p><span class="font-semibold">Qty:</span> {{ row.transaction_detail.amount }}</p>
-                                            <p><span class="font-semibold">Harga:</span> {{ formatCurrency(row.transaction_detail.price) }}</p>
-                                            <p v-if="row.transaction_detail.description"><span class="font-semibold">Desc:</span> {{ row.transaction_detail.description }}</p>
+                                        <div
+                                            class="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-56 bg-popover text-popover-foreground text-xs rounded-lg shadow-lg border p-3 space-y-1">
+                                            <p><span class="font-semibold">Menu:</span> {{
+                                                row.transaction_detail.menu?.name ?? '-' }}</p>
+                                            <p><span class="font-semibold">Qty:</span> {{ row.transaction_detail.amount
+                                            }}</p>
+                                            <p><span class="font-semibold">Harga:</span> {{
+                                                formatCurrency(row.transaction_detail.price) }}</p>
+                                            <p v-if="row.transaction_detail.description"><span
+                                                    class="font-semibold">Desc:</span> {{
+                                                        row.transaction_detail.description }}</p>
                                         </div>
                                     </div>
 
                                     <!-- Inbound: show buy price on hover -->
-                                    <div v-else-if="row.type === 'inbound' && row.inbound_buy_price" class="relative group inline-block">
-                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 cursor-help">
+                                    <div v-else-if="row.type === 'inbound' && row.inbound_buy_price"
+                                        class="relative group inline-block">
+                                        <span
+                                            class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 cursor-help">
                                             <HelpCircle :size="14" />
                                         </span>
-                                        <div class="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-popover text-popover-foreground text-xs rounded-lg shadow-lg border p-3">
-                                            <p><span class="font-semibold">Harga Beli:</span> {{ formatCurrency(row.inbound_buy_price) }}</p>
+                                        <div
+                                            class="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-popover text-popover-foreground text-xs rounded-lg shadow-lg border p-3">
+                                            <p><span class="font-semibold">Harga Beli:</span> {{
+                                                formatCurrency(row.inbound_buy_price) }}</p>
                                         </div>
                                     </div>
 

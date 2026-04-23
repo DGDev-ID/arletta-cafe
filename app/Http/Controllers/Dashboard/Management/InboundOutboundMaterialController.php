@@ -141,6 +141,48 @@ class InboundOutboundMaterialController extends Controller
             ->with('success', 'Data inbound berhasil ditambahkan.');
     }
 
+    public function createOutbound()
+    {
+        $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
+        $units = MUnit::select('id', 'name')->orderBy('name')->get();
+
+        return Inertia::render('management/inbound-outbound-material/CreateOutbound', [
+            'cafes' => $cafes,
+            'units' => $units,
+        ]);
+    }
+
+    public function storeOutbound(Request $request)
+    {
+        $request->validate([
+            'material_id' => 'required|exists:m_materials,id',
+            'amount' => 'required|numeric|min:0.01',
+            'base_unit_id' => 'required|exists:m_units,id',
+            'description' => 'required|string',
+        ]);
+
+        DB::transaction(function () use ($request) {
+
+            $material = MMaterial::where('id', $request->material_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $outboundUnitId = (int) $request->base_unit_id;
+            $amount = (float) $request->amount;
+
+            MaterialInboundOutbound::create([
+                'material_id' => $material->id,
+                'type' => 'outbound',
+                'amount' => $request->amount,
+                'base_unit_id' => $outboundUnitId,
+                'description' => $request->description,
+            ]);
+        });
+
+        return redirect('/management/inbound-outbound-material')
+            ->with('success', 'Data outbound berhasil ditambahkan.');
+    }
+
     private function convertToBaseUnit(MMaterial $material, int $inboundUnitId, float $amount): float
     {
         if ($inboundUnitId === (int) $material->base_unit_id) {
