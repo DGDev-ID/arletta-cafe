@@ -23,14 +23,20 @@ class CashierController extends Controller
         $inOrderQuery = Transaction::where('status', 'in_order')
             ->with(['cafe', 'table']);
 
+        $successQuery = Transaction::where('status', 'success')
+            ->where('updated_at', '>=', now()->subHours(26))
+            ->with(['cafe', 'table']);
+
         if ($cafeId) {
             $pendingQuery->where('cafe_id', $cafeId);
             $inOrderQuery->where('cafe_id', $cafeId);
+            $successQuery->where('cafe_id', $cafeId);
         }
 
         return Inertia::render('transaction/cashier/Index', [
             'pendingTransactions' => $pendingQuery->latest()->get(),
             'inOrderTransactions' => $inOrderQuery->latest()->get(),
+            'successTransactions' => $successQuery->latest()->get(),
             'cafes' => $cafes,
             'filters' => [
                 'cafe_id' => $cafeId ?? '',
@@ -55,12 +61,11 @@ class CashierController extends Controller
 
     public function show($id)
     {
-        $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')
-             ->with([
-                'cafe',
-                'table',
-                'details.menu.category',
-            ])
+        $transaction = Transaction::where(function ($q) {
+            $q->where(function ($q2) {
+                $q2->where('status', 'pending')->where('payment_type', 'manual');
+            })->orWhereIn('status', ['in_order', 'success']);
+        })
             ->with([
                 'cafe',
                 'table',

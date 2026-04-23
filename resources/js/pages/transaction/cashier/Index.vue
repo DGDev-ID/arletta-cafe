@@ -28,6 +28,7 @@ interface Transaction {
 const props = defineProps<{
     pendingTransactions: Transaction[];
     inOrderTransactions: Transaction[];
+    successTransactions: Transaction[];
     cafes: Cafe[];
     filters: {
         cafe_id: string;
@@ -329,6 +330,48 @@ onUnmounted(() => {
                                 <tr v-if="inOrderTransactions.length === 0">
                                     <td colspan="4" class="px-6 py-10 text-center text-muted-foreground">
                                         Tidak ada transaksi in order.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pesanan Hari Ini (Success Transactions) -->
+                <div class="space-y-3">
+                    <h2 class="text-base font-semibold">Pesanan Hari Ini</h2>
+                    <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-muted/50">
+                                <tr class="text-muted-foreground">
+                                    <th class="px-6 py-4 text-left font-medium">No</th>
+                                    <th class="px-6 py-4 text-left font-medium">Customer Name</th>
+                                    <th class="px-6 py-4 text-left font-medium">Table</th>
+                                    <th class="px-6 py-4 text-right font-medium">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(trx, index) in successTransactions" :key="trx.id"
+                                    class="border-t hover:bg-muted/40 transition">
+                                    <td class="px-6 py-4">{{ index + 1 }}</td>
+                                    <td class="px-6 py-4 font-medium">{{ trx.cust_name ?? '-' }}</td>
+                                    <td class="px-6 py-4">{{ trx.table?.name ?? '-' }}</td>
+                                    <td class="px-6 py-4 text-right">
+                                        <div class="flex justify-end items-center gap-2">
+                                            <button @click="printReceiptInline(trx.id)" type="button"
+                                                class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition">
+                                                <Printer :size="14" /> Cetak Struk
+                                            </button>
+                                            <Link :href="`/transaction/cashier/${trx.id}`"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
+                                                <Eye :size="14" /> Detail
+                                            </Link>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="successTransactions.length === 0">
+                                    <td colspan="4" class="px-6 py-10 text-center text-muted-foreground">
+                                        Tidak ada pesanan hari ini.
                                     </td>
                                 </tr>
                             </tbody>
