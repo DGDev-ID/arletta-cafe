@@ -173,13 +173,20 @@ const printReceiptInline = async (id: number) => {
 
         const logoBase64 = await getLogoBase64();
 
+        // const logo = {
+        //     type: 'raw',
+        //     format: 'image',
+        //     flavor: 'base64',
+        //     data: logoBase64,
+        //     options: { language: 'ESCPOS', dotDensity: 'single' }
+        // };
         const logo = {
-            type: 'raw',
+            type: 'pixel',
             format: 'image',
             flavor: 'base64',
             data: logoBase64,
-            options: { language: 'ESCPOS', dotDensity: 'single' }
-        };
+            options: { language: 'ESCPOS' }
+        }
 
         // ===== BUILD TEXT =====
         let str = '';
