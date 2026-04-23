@@ -137,45 +137,46 @@ onMounted(() => {
 }
 
 .receipt {
-    width: 54mm;
+    width: 44mm;
     background: white;
     padding: 2mm;
-    font-family: 'Courier New', monospace;
-    font-size: 7pt;
-    line-height: 1.3;
+    margin: 0 auto;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.2;
     color: #000;
+    -webkit-font-smoothing: none;
 }
 
 .receipt-title {
-    font-size: 9pt;
+    font-size: 14px;
     font-weight: bold;
     margin: 0;
 }
 
 .receipt-sub {
-    font-size: 6pt;
-    color: #555;
+    font-size: 11px;
     margin: 0;
 }
 
 .divider {
-    border-top: 1px dashed #999;
+    border-top: 1px dashed #000;
     margin: 2mm 0;
 }
 
 .receipt-info {
-    margin-bottom: 1mm;
+    margin-bottom: 1.5mm;
 }
 
 .receipt-row {
     display: flex;
     justify-content: space-between;
-    gap: 2mm;
+    gap: 1mm;
     word-break: break-word;
 }
 
 .receipt-items {
-    margin-bottom: 1mm;
+    margin-bottom: 1.5mm;
 }
 
 .receipt-item {
@@ -183,27 +184,24 @@ onMounted(() => {
 }
 
 .receipt-detail {
-    color: #555;
     padding-left: 1mm;
-    font-size: 6pt;
+    font-size: 11px;
 }
 
 .receipt-note {
-    color: #888;
     padding-left: 1mm;
     font-style: italic;
-    font-size: 6pt;
+    font-size: 11px;
 }
 
 .receipt-total {
     font-weight: bold;
-    font-size: 8pt;
+    font-size: 13px;
 }
 
 .receipt-footer {
     text-align: center;
-    color: #555;
-    font-size: 6pt;
+    font-size: 11px;
 }
 
 @media print {
@@ -224,7 +222,7 @@ onMounted(() => {
     }
 
     .receipt {
-        width: 54mm;
+        width: 44mm;
         padding: 2mm;
         box-shadow: none;
     }

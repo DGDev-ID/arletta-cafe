@@ -92,7 +92,7 @@ Route::middleware(['auth'])->group(function () {
             ]);
 
         Route::resource('semi-finished-material', SemiFinishedMaterialController::class)
-            ->except(['show']);
+            ->except(['show'])->middleware('can:master.material.view');
     });
 
     Route::prefix('user-management')->name('user-management.')->group(function () {

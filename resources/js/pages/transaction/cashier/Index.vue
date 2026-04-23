@@ -108,32 +108,32 @@ const printReceiptInline = async (id: number) => {
         const itemsHtml = trx.details.map((d: any) => `
             <div style="margin-bottom:1.5mm">
                 <div class="row">
-                    <span><b>${d.menu?.name ?? '-'}</b></span>
-                    <span><b>${fmt(Number(d.price) * d.amount)}</b></span>
+                    <span>${d.menu?.name ?? '-'}</span>
+                    <span>${fmt(Number(d.price) * d.amount)}</span>
                 </div>
-                <div style="padding-left:1mm;font-size:6pt">${d.amount} x ${fmt(Number(d.price))}</div>
-                ${d.description ? `<div style="padding-left:1mm;font-style:italic;font-size:6pt">${d.description}</div>` : ''}
+                <div style="padding-left:1mm;font-size:11px">${d.amount} x ${fmt(Number(d.price))}</div>
+                ${d.description ? `<div style="padding-left:1mm;font-style:italic;font-size:11px">${d.description}</div>` : ''}
             </div>`).join('');
 
         const html = `<!DOCTYPE html><html><head><title>Struk #${trx.id}</title>
 <style>
   @page{size:58mm 210mm;margin:0}
-  body{font-family:'Courier New',monospace;font-size:7pt;line-height:1.3;margin:0;padding:0;color:#000;font-weight:bold}
-  .r{width:54mm;padding:2mm}
+  body{font-family:'Consolas','Courier New',monospace;font-size:12px;line-height:1.2;margin:0;padding:0;color:#000;-webkit-font-smoothing:none}
+  .r{width:44mm;padding:2mm;margin:0 auto}
   .tc{text-align:center}
-  .row{display:flex;justify-content:space-between;gap:2mm;word-break:break-word}
+  .row{display:flex;justify-content:space-between;gap:1mm;word-break:break-word}
   hr{border:none;border-top:1px dashed #000;margin:2mm 0}
-  .sub{font-weight:normal;font-size:6pt}
-  @media print{body{padding:0}.r{width:54mm;padding:2mm}}
+  .sub{font-size:11px}
+  @media print{body{padding:0}.r{width:44mm;padding:2mm}}
 </style></head><body><div class="r">
-  <div class="tc" style="margin-bottom:1mm">
-    <h2 style="margin:0;font-size:9pt">${trx.cafe.name}</h2>
+  <div class="tc" style="margin-bottom:2mm">
+    <h2 style="margin:0;font-size:14px">${trx.cafe.name}</h2>
     ${trx.cafe.address ? `<p class="sub" style="margin:0">${trx.cafe.address}</p>` : ''}
     <p class="sub" style="margin:0">main@arlettaluxury.com</p>
     <p class="sub" style="margin:0">085742089646</p>
   </div>
   <hr>
-  <div style="margin-bottom:1mm">
+  <div style="margin-bottom:1.5mm">
     <div class="row"><span>No. Transaksi</span><span>#${trx.id}</span></div>
     <div class="row"><span>Tanggal</span><span>${fmtDate(trx.updated_at)}</span></div>
     <div class="row"><span>Customer</span><span>${trx.cust_name ?? '-'}</span></div>
@@ -141,13 +141,13 @@ const printReceiptInline = async (id: number) => {
     <div class="row"><span>Pembayaran</span><span>${trx.payment_type}</span></div>
   </div>
   <hr>
-  <div style="margin-bottom:1mm">${itemsHtml}</div>
+  <div style="margin-bottom:1.5mm">${itemsHtml}</div>
   <hr>
   <div>
     <div class="row"><span>Subtotal</span><span>${fmt(Number(trx.price))}</span></div>
     <div class="row"><span>Fee</span><span>${fmt(Number(trx.fee))}</span></div>
     <hr>
-    <div class="row" style="font-size:8pt">
+    <div class="row" style="font-weight:bold;font-size:13px">
       <span>Total</span><span>${fmt(Number(trx.total_price))}</span>
     </div>
   </div>

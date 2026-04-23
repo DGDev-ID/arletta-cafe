@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { ArrowLeftRight, BookOpen, Camera, Coffee, DollarSign, Folder, History, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, User, UserCheck, UserCog, Utensils } from 'lucide-vue-next';
+import { ArrowLeftRight, BookA, BookOpen, Camera, Coffee, DollarSign, Folder, History, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, User, UserCheck, UserCog, Utensils } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -33,6 +33,12 @@ const masterDataNavItems: NavItem[] = [
         title: 'Material (Recipe)',
         href: '/master/material',
         icon: BookOpen,
+        permission: 'master.material.view',
+    },
+    {
+        title: 'Semi-Finished Material',
+        href: '/master/semi-finished-material',
+        icon: BookA,
         permission: 'master.material.view',
     },
     {
