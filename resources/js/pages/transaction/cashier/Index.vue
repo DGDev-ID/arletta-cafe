@@ -148,7 +148,7 @@ const printReceiptInline = async (id: number) => {
         const cut = '\x1D\x56\x41\x00';
         const codepage = '\x1B\x74\x00';
 
-        const WIDTH = 42;
+        const WIDTH = 32;
         const line = '-'.repeat(WIDTH) + '\n';
 
         const padRight = (left: string, right: string) => {
