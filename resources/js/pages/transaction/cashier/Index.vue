@@ -156,6 +156,7 @@ const printReceiptInline = async (id: number) => {
             return left + ' '.repeat(space > 0 ? space : 1) + right + '\n';
         };
 
+        // ===== GET LOGO =====
         const getLogoBase64 = async () => {
             const res = await fetch('/logo-resize.png');
             const blob = await res.blob();
@@ -164,10 +165,7 @@ const printReceiptInline = async (id: number) => {
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     const result = reader.result as string;
-
-                    const base64 = result.split(',')[1];
-
-                    resolve(base64);
+                    resolve(result.split(',')[1]); // buang prefix
                 };
                 reader.readAsDataURL(blob);
             });
@@ -175,16 +173,15 @@ const printReceiptInline = async (id: number) => {
 
         const logoBase64 = await getLogoBase64();
 
-        // ===== LOGO (GANTI DENGAN PUNYAMU) =====
         const logo = {
             type: 'raw',
             format: 'image',
             flavor: 'base64',
             data: logoBase64,
-            options: { language: 'ESCPOS', dotDensity: 'double' }
+            options: { language: 'ESCPOS', dotDensity: 'single' }
         };
 
-        // ===== BUILD STRING =====
+        // ===== BUILD TEXT =====
         let str = '';
         str += init;
         str += codepage;
@@ -241,13 +238,21 @@ const printReceiptInline = async (id: number) => {
         str += '\n\n\n\n';
         str += cut;
 
-        // ===== PRINT =====
+        // ===== PRINT (URUTAN DIPERBAIKI) =====
         await qz.print(config, [
-            logo, // 🔥 logo dulu
+            // 🔥 INIT + CENTER dulu (penting biar logo ikut center)
             {
                 type: 'raw',
                 format: 'command',
-                data: str
+                data: init + alignCenter
+            },
+
+            logo, // logo setelah init
+
+            {
+                type: 'raw',
+                format: 'command',
+                data: '\n' + str
             }
         ]);
 
