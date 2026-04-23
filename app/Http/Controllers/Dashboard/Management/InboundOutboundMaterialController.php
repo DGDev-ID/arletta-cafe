@@ -175,7 +175,7 @@ class InboundOutboundMaterialController extends Controller
                 'type' => 'outbound',
                 'amount' => $request->amount,
                 'base_unit_id' => $outboundUnitId,
-                'description' => $request->description,
+                'description' => "spoil - " . $request->description,
             ]);
         });
 

@@ -18,6 +18,7 @@ class MaterialInboundOutbound extends Model
         'base_unit_id',
         'transaction_detail_id',
         'inbound_buy_price',
+        'description'
     ];
 
     protected function casts(): array

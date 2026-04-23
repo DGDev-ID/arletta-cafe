@@ -28,6 +28,7 @@ interface InboundOutbound {
         menu: { name: string };
         amount: string;
     } | null;
+    description: string | null;
 }
 
 const props = defineProps<{
@@ -129,10 +130,12 @@ function setOutOfStock(id: number) {
                             <tr class="text-muted-foreground">
                                 <th class="px-6 py-3 text-left font-medium">No</th>
                                 <th class="px-6 py-3 text-left font-medium">Tipe</th>
-                                <th class="px-6 py-3 text-left font-medium">Opening Stock ({{ material.base_unit.name }})</th>
+                                <th class="px-6 py-3 text-left font-medium">Opening Stock ({{ material.base_unit.name
+                                    }})</th>
                                 <th class="px-6 py-3 text-left font-medium">Jumlah</th>
                                 <th class="px-6 py-3 text-left font-medium">Satuan</th>
-                                <th class="px-6 py-3 text-left font-medium">Closing Stock ({{ material.base_unit.name }})</th>
+                                <th class="px-6 py-3 text-left font-medium">Closing Stock ({{ material.base_unit.name
+                                    }})</th>
                                 <th class="px-6 py-3 text-left font-medium">Harga Beli</th>
                                 <th class="px-6 py-3 text-left font-medium">Tanggal</th>
                                 <th class="px-6 py-3 text-left font-medium">Info</th>
@@ -190,11 +193,11 @@ function setOutOfStock(id: number) {
                                         <div
                                             class="absolute z-50 hidden group-hover:block bg-white text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 shadow -top-8 left-1/2 -translate-x-1/2 whitespace-normal max-w-xs">
                                             Pengembalian material dikarenakan transaksi gagal - {{
-                                            log.transaction_detail.menu.name }} ({{ log.transaction_detail.amount }})
+                                                log.transaction_detail.menu.name }} ({{ log.transaction_detail.amount }})
                                         </div>
                                     </div>
 
-                                    <div v-if="log.type === 'outbound' && !log.transaction_detail"
+                                    <div v-if="log.type === 'outbound' && !log.transaction_detail && !log.description"
                                         class="relative group inline-block">
                                         <!-- icon bulat -->
                                         <span
@@ -208,7 +211,19 @@ function setOutOfStock(id: number) {
                                         </div>
                                     </div>
 
-                                    <span v-else>-</span>
+                                    <div v-if="log.description" class="relative group inline-block">
+                                        <!-- icon bulat -->
+                                        <span
+                                            class="w-5 h-5 flex items-center justify-center rounded-full border border-blue-500 text-blue-500 text-xs cursor-pointer bg-white">
+                                            ?
+                                        </span>
+                                        <!-- tooltip -->
+                                        <div
+                                            class="absolute z-50 hidden group-hover:block bg-white text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 shadow -top-8 left-1/2 -translate-x-1/2 whitespace-normal max-w-xs">
+                                            {{ log.description }}
+                                        </div>
+                                    </div>
+
                                 </td>
                             </tr>
 
