@@ -181,7 +181,7 @@ const printReceiptInline = async (id: number) => {
             format: 'image',
             flavor: 'base64',
             data: logoBase64,
-            options: { language: 'ESCPOS', dotDensity: 'double' }
+            options: { language: 'ESCPOS' }
         };
 
         // ===== BUILD STRING =====
