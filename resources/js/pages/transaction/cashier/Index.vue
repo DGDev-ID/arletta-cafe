@@ -169,10 +169,7 @@ const printReceiptInline = async (id: number) => {
             const qtyPrice = `${d.amount} x ${fmt(Number(d.price)).replace('Rp', '').trim()}`;
             const subtotal = fmt(Number(d.price) * d.amount).replace('Rp', '').trim();
 
-            let spaces = 32 - qtyPrice.length - subtotal.length;
-            if (spaces < 1) spaces = 1;
-
-            printData.push(`${qtyPrice}${' '.repeat(spaces)}${subtotal}\n`);
+            printData.push(`${qtyPrice} = ${subtotal}\n`);
 
             if (d.description) {
                 printData.push(`  ${d.description}\n`);
@@ -181,17 +178,10 @@ const printReceiptInline = async (id: number) => {
 
         printData.push(line);
 
-        const padRight = (label: string, value: string) => {
-            const cleanValue = value.replace('Rp', '').trim();
-            let spaces = 32 - label.length - cleanValue.length;
-            if (spaces < 1) spaces = 1;
-            return label + ' '.repeat(spaces) + cleanValue + '\n';
-        };
-
-        printData.push(padRight('Subtotal', fmt(Number(trx.price))));
-        printData.push(padRight('Fee', fmt(Number(trx.fee))));
+        printData.push(`Subtotal : ${fmt(Number(trx.price)).replace('Rp', '').trim()}\n`);
+        printData.push(`Fee      : ${fmt(Number(trx.fee)).replace('Rp', '').trim()}\n`);
         printData.push(line);
-        printData.push(boldOn, padRight('Total', fmt(Number(trx.total_price))), boldOff);
+        printData.push(boldOn, `Total    : ${fmt(Number(trx.total_price)).replace('Rp', '').trim()}\n`, boldOff);
         printData.push(line);
 
         printData.push(alignCenter);
