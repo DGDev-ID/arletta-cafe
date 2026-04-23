@@ -110,7 +110,7 @@ class CashierController extends Controller
 
     public function printReceipt($id)
     {
-        $transaction = Transaction::where('status', 'in_order')
+        $transaction = Transaction::whereIn('status', ['in_order', 'success'])
             ->with([
                 'cafe',
                 'table',
