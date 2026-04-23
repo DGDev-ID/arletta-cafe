@@ -99,7 +99,7 @@ const printReceiptInline = async (id: number) => {
     try {
         const { data: trx } = await axios.get(`/transaction/cashier/${id}/receipt-data`);
 
-        // ===== FORMAT AMAN (NO UTF-8 ANEH) =====
+        // ===== FORMAT =====
         const cleanNumber = (val: number) =>
             new Intl.NumberFormat('id-ID')
                 .format(val)
@@ -107,13 +107,7 @@ const printReceiptInline = async (id: number) => {
 
         const fmtDate = (val: string) => {
             const d = new Date(val);
-            return d.toLocaleDateString('id-ID', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            return d.toLocaleString('id-ID');
         };
 
         // ===== CONNECT QZ =====
@@ -139,12 +133,12 @@ const printReceiptInline = async (id: number) => {
             return;
         }
 
-        // ===== CONFIG RAW + ENCODING =====
+        // ===== CONFIG =====
         const config = qz.configs.create(printerName, {
             encoding: 'ISO-8859-1'
         });
 
-        // ===== ESC/POS COMMAND =====
+        // ===== ESC/POS =====
         const init = '\x1B\x40';
         const normal = '\x1B\x21\x00';
         const alignLeft = '\x1B\x61\x00';
@@ -152,21 +146,26 @@ const printReceiptInline = async (id: number) => {
         const boldOn = '\x1B\x45\x01';
         const boldOff = '\x1B\x45\x00';
         const cut = '\x1D\x56\x41\x00';
-        const codepage = '\x1B\x74\x00'; // CP437
+        const codepage = '\x1B\x74\x00';
 
         const WIDTH = 42;
         const line = '-'.repeat(WIDTH) + '\n';
 
-        const padRight = (label: string, value: string) => {
-            const total = label.length + value.length;
-            let space = WIDTH - total;
-            if (space < 1) space = 1;
-            return label + ' '.repeat(space) + value + '\n';
+        const padRight = (left: string, right: string) => {
+            const space = WIDTH - (left.length + right.length);
+            return left + ' '.repeat(space > 0 ? space : 1) + right + '\n';
         };
 
-        // ===== BUILD DATA =====
-        let str = '';
+        // ===== LOGO (GANTI DENGAN PUNYAMU) =====
+        const logo = {
+            type: 'raw',
+            format: 'image',
+            flavor: 'file',
+            data: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...' // <-- GANTI
+        };
 
+        // ===== BUILD STRING =====
+        let str = '';
         str += init;
         str += codepage;
         str += normal;
@@ -182,11 +181,11 @@ const printReceiptInline = async (id: number) => {
 
         // INFO
         str += alignLeft;
-        str += `No   : #${trx.id}\n`;
-        str += `Tgl  : ${fmtDate(trx.updated_at)}\n`;
-        str += `Cust : ${trx.cust_name || '-'}\n`;
-        if (trx.table) str += `Table: ${trx.table.name}\n`;
-        str += `Pay  : ${trx.payment_type}\n`;
+        str += padRight('No', `#${trx.id}`);
+        str += padRight('Tgl', fmtDate(trx.updated_at));
+        str += padRight('Cust', trx.cust_name || '-');
+        if (trx.table) str += padRight('Table', trx.table.name);
+        str += padRight('Pay', trx.payment_type);
         str += line;
 
         // ITEMS
@@ -222,18 +221,21 @@ const printReceiptInline = async (id: number) => {
         str += '\n\n\n\n';
         str += cut;
 
-        // ===== PRINT RAW =====
-        await qz.print(config, [{
-            type: 'raw',
-            format: 'command',
-            data: str
-        }]);
+        // ===== PRINT =====
+        await qz.print(config, [
+            logo, // 🔥 logo dulu
+            {
+                type: 'raw',
+                format: 'command',
+                data: str
+            }
+        ]);
 
         notyf.success('Struk berhasil dicetak');
 
     } catch (e: any) {
         console.error(e);
-        notyf.error('Print gagal: ' + (e.message || 'QZ Tray error'));
+        notyf.error('Print gagal: ' + (e.message || 'QZ error'));
     }
 };
 
