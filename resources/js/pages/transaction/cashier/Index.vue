@@ -157,45 +157,6 @@ const printReceiptInline = async (id: number) => {
             return left + ' '.repeat(space > 0 ? space : 1) + right + '\n';
         };
 
-        // ===== GET LOGO =====
-        const getLogoBase64 = async () => {
-            const res = await fetch('/logo-resize.png');
-            const blob = await res.blob();
-
-            return new Promise<string>((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-
-                    // 🔥 atur ukuran di sini (kecilkan)
-                    const MAX_WIDTH = 128; // coba 100 - 200
-                    const scale = MAX_WIDTH / img.width;
-
-                    canvas.width = Math.ceil(MAX_WIDTH / 8) * 8;
-                    const rawHeight = img.height * (canvas.width / img.width);
-                    canvas.height = Math.ceil(rawHeight / 8) * 8;
-
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    const resized = canvas.toDataURL('image/png');
-                    resolve(resized.split(',')[1]); // buang prefix
-                };
-
-                img.src = URL.createObjectURL(blob);
-            });
-        };
-
-        const logoBase64 = await getLogoBase64();
-
-        const logo = {
-            type: 'raw',
-            format: 'image',
-            flavor: 'base64',
-            data: logoBase64,
-            options: { language: 'ESCPOS', dotDensity: 'double' }
-        };
-
         // ===== BUILD TEXT =====
         let str = '';
         str += init;
@@ -208,7 +169,7 @@ const printReceiptInline = async (id: number) => {
         str += (trx.cafe.name || 'CAFE') + '\n';
         str += boldOff;
         if (trx.cafe.address) str += trx.cafe.address + '\n';
-        str += '08123456789\n';
+        if (trx.cafe.phone_number) str += trx.cafe.phone_number + '\n';
         str += line;
 
         // INFO
@@ -261,8 +222,6 @@ const printReceiptInline = async (id: number) => {
                 format: 'command',
                 data: init + alignCenter
             },
-
-            logo, // logo setelah init
 
             {
                 type: 'raw',
