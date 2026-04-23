@@ -165,6 +165,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('inbound-outbound-material/store-outbound', [InboundOutboundMaterialController::class, 'storeOutbound'])
             ->name('inbound-outbound-material.store-outbound')
             ->middleware('can:management.inbound-outbound-material');
+        Route::get('inbound-outbound-material/{id}/edit', [InboundOutboundMaterialController::class, 'edit'])
+            ->name('inbound-outbound-material.edit')
+            ->middleware('can:management.inbound-outbound-material');
+        Route::put('inbound-outbound-material/{id}', [InboundOutboundMaterialController::class, 'update'])
+            ->name('inbound-outbound-material.update')
+            ->middleware('can:management.inbound-outbound-material');
     });
 
     Route::prefix('transaction')->name('transaction.')->group(function () {

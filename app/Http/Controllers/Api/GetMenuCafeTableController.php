@@ -6,6 +6,7 @@ use App\Http\Controllers\ApiBaseController;
 use App\Models\MCafe;
 use App\Models\MCafeTable;
 use App\Models\MMenuCategory;
+use App\Services\MenuAvailabilityService;
 use Illuminate\Http\Request;
 
 class GetMenuCafeTableController extends ApiBaseController
@@ -33,20 +34,74 @@ class GetMenuCafeTableController extends ApiBaseController
                 return $this->clientError('Table not found');
             }
 
-            $menuCategory = MMenuCategory::with([
-                'menus', 'children.menus'
+            $availabilityService = new MenuAvailabilityService();
+
+            $menuCategories = MMenuCategory::with([
+                'menus.menuMaterials',
+                'menus.menuSemiFinishedMaterials.semiFinishedMaterial.details',
+                'children.menus.menuMaterials',
+                'children.menus.menuSemiFinishedMaterials.semiFinishedMaterial.details',
             ])
                 ->where('cafe_id', $cafe->id)
                 ->whereNull('parent_id')
                 ->get();
 
+            // Filter menus berdasarkan ketersediaan material
+            $menuCategories->each(function ($category) use ($availabilityService) {
+                $this->filterAvailableMenus($category, $availabilityService);
+
+                if ($category->relationLoaded('children')) {
+                    $category->children->each(function ($child) use ($availabilityService) {
+                        $this->filterAvailableMenus($child, $availabilityService);
+                    });
+
+                    // Hapus child categories yang tidak punya menu tersedia
+                    $category->setRelation(
+                        'children',
+                        $category->children->filter(fn($child) => $child->menus->isNotEmpty())
+                    );
+                }
+            });
+
+            // Hapus parent categories yang tidak punya menu & children tersedia
+            $menuCategories = $menuCategories->filter(function ($category) {
+                $hasMenus = $category->menus->isNotEmpty();
+                $hasChildren = $category->relationLoaded('children') && $category->children->isNotEmpty();
+                return $hasMenus || $hasChildren;
+            })->values();
+
             return $this->success([
                 'cafe' => $cafe,
                 'table' => $table,
-                'menu_categories' => $menuCategory,
+                'menu_categories' => $menuCategories,
             ]);
         } catch (\Throwable $th) {
             return $this->serverError($th);
         }
+    }
+
+    /**
+     * Filter menus pada category: hanya simpan menu yang materialnya tersedia.
+     * Menu tanpa material/SFM (tidak terikat stok) tetap ditampilkan.
+     */
+    private function filterAvailableMenus($category, MenuAvailabilityService $service): void
+    {
+        if (!$category->relationLoaded('menus')) {
+            return;
+        }
+
+        $available = $category->menus->filter(function ($menu) use ($service) {
+            $hasMaterials = $menu->menuMaterials->isNotEmpty();
+            $hasSfm = $menu->menuSemiFinishedMaterials->isNotEmpty();
+
+            // Menu tanpa resep material → selalu tampil
+            if (!$hasMaterials && !$hasSfm) {
+                return true;
+            }
+
+            return $service->checkAvailableMenu($menu, 1);
+        });
+
+        $category->setRelation('menus', $available->values());
     }
 }

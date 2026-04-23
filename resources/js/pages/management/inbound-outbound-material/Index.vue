@@ -4,7 +4,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
-import { HelpCircle, Plus, Search } from 'lucide-vue-next';
+import { HelpCircle, Plus, Search, Pencil } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
 
 interface Cafe {
@@ -161,6 +161,7 @@ const formatCurrency = (val: string | number) => {
                                 <th class="px-6 py-4 text-left font-medium">Amount</th>
                                 <th class="px-6 py-4 text-left font-medium">Unit</th>
                                 <th class="px-6 py-4 text-left font-medium">Detail</th>
+                                <th class="px-6 py-4 text-left font-medium">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -221,9 +222,19 @@ const formatCurrency = (val: string | number) => {
 
                                     <span v-else class="text-muted-foreground">-</span>
                                 </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <Link v-if="row.transaction_detail_id === null"
+                                            :href="`/management/inbound-outbound-material/${row.id}/edit`"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100 text-orange-600 hover:bg-orange-200 transition"
+                                            title="Edit">
+                                            <Pencil :size="16" />
+                                        </Link>
+                                    </div>
+                                </td>
                             </tr>
                             <tr v-if="data.data.length === 0">
-                                <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">
+                                <td colspan="7" class="px-6 py-10 text-center text-muted-foreground">
                                     Belum ada data inbound / outbound.
                                 </td>
                             </tr>

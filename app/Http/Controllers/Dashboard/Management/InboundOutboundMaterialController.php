@@ -183,6 +183,89 @@ class InboundOutboundMaterialController extends Controller
             ->with('success', 'Data outbound berhasil ditambahkan.');
     }
 
+    public function edit($id)
+    {
+        $inboundOutbound = MaterialInboundOutbound::with('material.cafe')->findOrFail($id);
+
+        if ($inboundOutbound->transaction_detail_id !== null) {
+            return redirect('/management/inbound-outbound-material')
+                ->with('error', 'Data yang dihasilkan secara otomatis tidak dapat diedit.');
+        }
+
+        $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
+        $units = MUnit::select('id', 'name')->orderBy('name')->get();
+
+        return Inertia::render('management/inbound-outbound-material/Edit', [
+            'cafes' => $cafes,
+            'units' => $units,
+            'inboundOutbound' => $inboundOutbound,
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $inboundOutbound = MaterialInboundOutbound::findOrFail($id);
+
+        if ($inboundOutbound->transaction_detail_id !== null) {
+            return redirect('/management/inbound-outbound-material')
+                ->with('error', 'Data yang dihasilkan secara otomatis tidak dapat diedit.');
+        }
+
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'base_unit_id' => 'required|exists:m_units,id',
+            'inbound_buy_price' => $inboundOutbound->type === 'inbound' ? 'required|numeric|min:0' : 'nullable',
+            'description' => $inboundOutbound->type === 'outbound' ? 'required|string' : 'nullable',
+        ]);
+
+        DB::transaction(function () use ($request, $inboundOutbound) {
+            $material = MMaterial::where('id', $inboundOutbound->material_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $oldAmountConverted = $this->convertToBaseUnit($material, $inboundOutbound->base_unit_id, $inboundOutbound->amount);
+            if ($inboundOutbound->type === 'inbound') {
+                $material->stock = (float)$material->stock - $oldAmountConverted;
+            } else {
+                $material->stock = (float)$material->stock + $oldAmountConverted;
+            }
+
+            $newAmountConverted = $this->convertToBaseUnit($material, $request->base_unit_id, $request->amount);
+
+            if ($inboundOutbound->type === 'inbound') {
+                $inboundOutbound->closing_stock = $inboundOutbound->opening_stock + $newAmountConverted;
+            } else {
+                $inboundOutbound->closing_stock = $inboundOutbound->opening_stock - $newAmountConverted;
+            }
+
+            $inboundOutbound->amount = $request->amount;
+            $inboundOutbound->base_unit_id = $request->base_unit_id;
+
+            if ($inboundOutbound->type === 'inbound') {
+                $inboundOutbound->inbound_buy_price = $request->inbound_buy_price;
+            } else {
+                $inboundOutbound->description = str_starts_with($request->description, 'spoil - ') ? $request->description : "spoil - " . $request->description;
+            }
+
+            $inboundOutbound->save();
+
+            if ($inboundOutbound->type === 'inbound') {
+                $material->stock = (float)$material->stock + $newAmountConverted;
+            } else {
+                $material->stock = (float)$material->stock - $newAmountConverted;
+            }
+
+            if ($inboundOutbound->type === 'inbound') {
+                $material->avg_buy_price = $this->calculateAvgBuyPrice($material);
+            }
+
+            $material->save();
+        });
+
+        return redirect('/management/inbound-outbound-material')
+            ->with('success', 'Data berhasil diperbarui.');
+    }
+
     private function convertToBaseUnit(MMaterial $material, int $inboundUnitId, float $amount): float
     {
         if ($inboundUnitId === (int) $material->base_unit_id) {
