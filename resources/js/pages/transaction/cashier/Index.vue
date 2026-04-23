@@ -169,7 +169,7 @@ const printReceiptInline = async (id: number) => {
                     const ctx = canvas.getContext('2d');
 
                     // 🔥 atur ukuran di sini (kecilkan)
-                    const MAX_WIDTH = 32; // coba 100 - 200
+                    const MAX_WIDTH = 128; // coba 100 - 200
                     const scale = MAX_WIDTH / img.width;
 
                     canvas.width = Math.ceil(MAX_WIDTH / 8) * 8;
@@ -192,7 +192,7 @@ const printReceiptInline = async (id: number) => {
             format: 'image',
             flavor: 'base64',
             data: logoBase64,
-            options: { language: 'ESCPOS', dotDensity: 'double', width: 32, height: 32 }
+            options: { language: 'ESCPOS', dotDensity: 'double', width: 128, height: 128 }
         };
 
         // ===== BUILD TEXT =====
