@@ -157,7 +157,7 @@ const printReceiptInline = async (id: number) => {
         };
 
         const getLogoBase64 = async () => {
-            const res = await fetch('/logo.png');
+            const res = await fetch('/logo-resize.png');
             const blob = await res.blob();
 
             return new Promise<string>((resolve) => {
@@ -180,7 +180,8 @@ const printReceiptInline = async (id: number) => {
             type: 'raw',
             format: 'image',
             flavor: 'base64',
-            data: logoBase64
+            data: logoBase64,
+            options: { language: 'ESCPOS', dotDensity: 'double' }
         };
 
         // ===== BUILD STRING =====
