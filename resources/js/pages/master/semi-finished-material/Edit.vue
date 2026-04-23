@@ -1,72 +1,72 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import Heading from '@/components/Heading.vue';
-import MenuForm from '@/components/master/MenuForm.vue';
+import SemiFinishedMaterialForm from '@/components/master/SemiFinishedMaterialForm.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 interface CafeOption { id: number; name: string; }
-interface CategoryOption { id: number; cafe_id: number; name: string; }
 interface MaterialOption { id: number; cafe_id: number; name: string; base_unit_id: number; base_unit: { id: number; name: string }; }
 interface UnitOption { id: number; name: string; }
 interface ConverterOption { material_id: number; from_unit_id: number; to_unit_id: number; }
-interface SfmOption { id: number; cafe_id: number; name: string; }
 
-defineProps<{
+const props = defineProps<{
+    data: {
+        id: number;
+        cafe_id: number;
+        name: string;
+        details: {
+            material_id: number;
+            amount: number;
+            unit_id: number;
+        }[];
+    };
     cafes: CafeOption[];
-    categories: CategoryOption[];
     materials: MaterialOption[];
     units: UnitOption[];
     converters: ConverterOption[];
-    semiFinishedMaterials: SfmOption[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Menu', href: '/master/menu' },
-    { title: 'Tambah Menu', href: '/master/menu/create' },
+    { title: 'Semi-Finished Material', href: '/master/semi-finished-material' },
+    { title: 'Edit', href: `/master/semi-finished-material/${props.data.id}/edit` },
 ];
 
 const form = useForm({
-    cafe_id: '' as number | '',
-    menu_category_id: null as number | null,
-    name: '',
-    description: '',
-    image: null as File | null,
-    price: '' as number | '',
-    has_promo: false,
-    promo_type: '',
-    promo_discount_amount: '' as number | '',
-    materials: [] as { material_id: number | ''; amount: number | ''; unit_id: number | '' }[],
-    semi_finished_materials: [] as { semi_finished_material_id: number | ''; multiplier: number | '' }[],
+    cafe_id: props.data.cafe_id as number | '',
+    name: props.data.name,
+    details: props.data.details.map(d => ({
+        material_id: d.material_id as number | '',
+        amount: d.amount as number | '',
+        unit_id: d.unit_id as number | '',
+    })),
 });
 
-const submit = () => form.post('/master/menu');
+const submit = () => form.put(`/master/semi-finished-material/${props.data.id}`);
 </script>
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Tambah Menu" />
+        <Head title="Edit Semi-Finished Material" />
 
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <div class="flex items-center justify-between">
-                    <Heading variant="small" title="Tambah Menu" description="Isi data menu baru yang akan ditambahkan." />
-                    <Link href="/master/menu" class="text-sm text-muted-foreground hover:text-foreground transition">
+                    <Heading variant="small" title="Edit Semi-Finished Material" description="Ubah data bahan setengah jadi." />
+                    <Link href="/master/semi-finished-material" class="text-sm text-muted-foreground hover:text-foreground transition">
                         ← Kembali
                     </Link>
                 </div>
 
                 <div class="rounded-2xl border bg-background shadow-sm p-8">
-                    <MenuForm
+                    <SemiFinishedMaterialForm
                         :form="form"
                         :cafes="cafes"
-                        :categories="categories"
-                        :all-materials="materials"
+                        :materials="materials"
                         :units="units"
                         :converters="converters"
-                        :semi-finished-materials="semiFinishedMaterials"
-                        submit-label="Simpan Menu"
+                        submit-label="Simpan Perubahan"
                         @submit="submit"
                     />
                 </div>

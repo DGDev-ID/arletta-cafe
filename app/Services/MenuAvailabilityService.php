@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Models\MMaterial;
 use App\Models\MMenu;
 use App\Models\MenuMaterial;
+use App\Models\MenuSemiFinishedMaterial;
 use App\Models\UnitMaterialConverter;
 
 class MenuAvailabilityService
 {
     public function checkAvailableMenu(MMenu $menu, int $quantity): bool
     {
+        // --- Cek MenuMaterial (raw material langsung) ---
         $menuMaterials = MenuMaterial::where('menu_id', $menu->id)->get();
 
         foreach ($menuMaterials as $menuMaterial) {
@@ -44,6 +46,44 @@ class MenuAvailabilityService
             }
         }
 
+        // --- Cek MenuSemiFinishedMaterial (expand SFM ke raw material) ---
+        $menuSfms = MenuSemiFinishedMaterial::where('menu_id', $menu->id)
+            ->with('semiFinishedMaterial.details')
+            ->get();
+
+        foreach ($menuSfms as $menuSfm) {
+            $multiplier = (float) $menuSfm->multiplier;
+
+            foreach ($menuSfm->semiFinishedMaterial->details as $detail) {
+                $material = MMaterial::find($detail->material_id);
+
+                if (!$material) {
+                    return false;
+                }
+
+                if ($material->base_unit_id !== $detail->unit_id) {
+                    $converter = UnitMaterialConverter::where('material_id', $material->id)
+                        ->where('from_unit_id', $detail->unit_id)
+                        ->where('to_unit_id', $material->base_unit_id)
+                        ->first();
+
+                    if (!$converter) {
+                        return false;
+                    }
+
+                    $convertedAmount = (float) $detail->amount * (float) $converter->multiplier;
+                } else {
+                    $convertedAmount = (float) $detail->amount;
+                }
+
+                $totalNeeded = $convertedAmount * $multiplier * $quantity;
+
+                if ((float) $material->stock < $totalNeeded) {
+                    return false;
+                }
+            }
+        }
+
         return true;
     }
 
@@ -69,6 +109,7 @@ class MenuAvailabilityService
             $menu     = $item['menu'];
             $quantity = $item['quantity'];
 
+            // --- Aggregate dari MenuMaterial ---
             $menuMaterials = MenuMaterial::where('menu_id', $menu->id)->get();
 
             foreach ($menuMaterials as $menuMaterial) {
@@ -97,6 +138,43 @@ class MenuAvailabilityService
 
                 $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed;
                 $materialToMenuNames[$material->id][] = $menu->name;
+            }
+
+            // --- Aggregate dari MenuSemiFinishedMaterial ---
+            $menuSfms = MenuSemiFinishedMaterial::where('menu_id', $menu->id)
+                ->with('semiFinishedMaterial.details')
+                ->get();
+
+            foreach ($menuSfms as $menuSfm) {
+                $multiplier = (float) $menuSfm->multiplier;
+
+                foreach ($menuSfm->semiFinishedMaterial->details as $detail) {
+                    $material = MMaterial::find($detail->material_id);
+
+                    if (!$material) {
+                        return [$menu->name];
+                    }
+
+                    if ($material->base_unit_id !== $detail->unit_id) {
+                        $converter = UnitMaterialConverter::where('material_id', $material->id)
+                            ->where('from_unit_id', $detail->unit_id)
+                            ->where('to_unit_id', $material->base_unit_id)
+                            ->first();
+
+                        if (!$converter) {
+                            return [$menu->name];
+                        }
+
+                        $convertedAmount = (float) $detail->amount * (float) $converter->multiplier;
+                    } else {
+                        $convertedAmount = (float) $detail->amount;
+                    }
+
+                    $needed = $convertedAmount * $multiplier * $quantity;
+
+                    $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed;
+                    $materialToMenuNames[$material->id][] = $menu->name;
+                }
             }
         }
 

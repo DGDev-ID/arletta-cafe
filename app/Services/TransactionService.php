@@ -76,12 +76,16 @@ class TransactionService
             throw new \Exception('Only pending transactions can be processed.');
         }
 
-        $transaction->load('details.menu.menuMaterials.material');
+        $transaction->load([
+            'details.menu.menuMaterials.material',
+            'details.menu.menuSemiFinishedMaterials.semiFinishedMaterial.details.material',
+        ]);
 
         $materialRequirements = [];
         $detailMaterialMap = [];
 
         foreach ($transaction->details as $detail) {
+            // --- Direct MenuMaterial ---
             foreach ($detail->menu->menuMaterials as $menuMaterial) {
 
                 $material = $menuMaterial->material;
@@ -120,6 +124,50 @@ class TransactionService
                     'amount' => $amountNeeded,
                     'base_unit_id' => $baseUnitId,
                 ];
+            }
+
+            // --- SemiFinishedMaterial (expand ke raw material) ---
+            foreach ($detail->menu->menuSemiFinishedMaterials as $menuSfm) {
+                $multiplier = (float) $menuSfm->multiplier;
+
+                foreach ($menuSfm->semiFinishedMaterial->details as $sfmDetail) {
+                    $material = $sfmDetail->material;
+                    $recipeUnitId = $sfmDetail->unit_id;
+                    $baseUnitId = $material->base_unit_id;
+                    $amountNeeded = $sfmDetail->amount * $multiplier * $detail->amount;
+
+                    if ($recipeUnitId !== $baseUnitId) {
+                        $converter = UnitMaterialConverter::where('material_id', $material->id)
+                            ->where(function ($query) use ($recipeUnitId, $baseUnitId) {
+                                $query->where([
+                                    ['from_unit_id', $recipeUnitId],
+                                    ['to_unit_id', $baseUnitId]
+                                ])->orWhere([
+                                    ['from_unit_id', $baseUnitId],
+                                    ['to_unit_id', $recipeUnitId]
+                                ]);
+                            })
+                            ->first();
+
+                        if (!$converter) {
+                            throw new \Exception("Unit converter not found for material: {$material->name}");
+                        }
+
+                        $amountNeeded = ($converter->from_unit_id == $recipeUnitId)
+                            ? $amountNeeded * $converter->multiplier
+                            : $amountNeeded / $converter->multiplier;
+                    }
+
+                    $materialRequirements[$material->id] =
+                        ($materialRequirements[$material->id] ?? 0) + $amountNeeded;
+
+                    $detailMaterialMap[] = [
+                        'transaction_detail_id' => $detail->id,
+                        'material_id' => $material->id,
+                        'amount' => $amountNeeded,
+                        'base_unit_id' => $baseUnitId,
+                    ];
+                }
             }
         }
 

@@ -10,6 +10,7 @@ interface CategoryOption { id: number; cafe_id: number; name: string; }
 interface MaterialOption { id: number; cafe_id: number; name: string; base_unit_id: number; base_unit: { id: number; name: string }; }
 interface UnitOption { id: number; name: string; }
 interface ConverterOption { material_id: number; from_unit_id: number; to_unit_id: number; }
+interface SfmOption { id: number; cafe_id: number; name: string; }
 
 const props = defineProps<{
     data: {
@@ -30,12 +31,17 @@ const props = defineProps<{
             amount: number;
             unit_id: number;
         }[];
+        menu_semi_finished_materials: {
+            semi_finished_material_id: number;
+            multiplier: number;
+        }[];
     };
     cafes: CafeOption[];
     categories: CategoryOption[];
     materials: MaterialOption[];
     units: UnitOption[];
     converters: ConverterOption[];
+    semiFinishedMaterials: SfmOption[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -57,6 +63,10 @@ const form = useForm({
         material_id: mm.material_id as number | '',
         amount: mm.amount as number | '',
         unit_id: mm.unit_id as number | '',
+    })),
+    semi_finished_materials: (props.data.menu_semi_finished_materials ?? []).map(sfm => ({
+        semi_finished_material_id: sfm.semi_finished_material_id as number | '',
+        multiplier: sfm.multiplier as number | '',
     })),
 });
 
@@ -85,6 +95,7 @@ const submit = () => form.put(`/master/menu/${props.data.id}`);
                         :all-materials="materials"
                         :units="units"
                         :converters="converters"
+                        :semi-finished-materials="semiFinishedMaterials"
                         :existing-img-url="data.img_url"
                         submit-label="Simpan Perubahan"
                         @submit="submit"

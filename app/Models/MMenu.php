@@ -50,4 +50,9 @@ class MMenu extends Model
     {
         return $this->belongsTo(MMenuCategory::class, 'menu_category_id');
     }
+
+    public function menuSemiFinishedMaterials(): HasMany
+    {
+        return $this->hasMany(MenuSemiFinishedMaterial::class, 'menu_id');
+    }
 }

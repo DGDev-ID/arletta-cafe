@@ -136,13 +136,23 @@ onMounted(() => {
 }
 
 .receipt {
-    width: 300px;
+    width: 48mm;
     background: white;
-    padding: 20px;
+    padding: 5mm;
     font-family: 'Courier New', monospace;
 }
 
 @media print {
+    @page {
+        size: 58mm 210mm;
+        margin: 0;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
     .receipt-container {
         padding: 0;
         background: white;
@@ -150,7 +160,7 @@ onMounted(() => {
     }
 
     .receipt {
-        width: 80mm;
+        width: 48mm;
         padding: 5mm;
         box-shadow: none;
     }

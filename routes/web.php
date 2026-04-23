@@ -6,6 +6,7 @@ use App\Http\Controllers\Dashboard\Master\MaterialController;
 use App\Http\Controllers\Dashboard\Master\MenuCategoryController;
 use App\Http\Controllers\Dashboard\Master\GalleryController;
 use App\Http\Controllers\Dashboard\Master\MenuController;
+use App\Http\Controllers\Dashboard\Master\SemiFinishedMaterialController;
 use App\Http\Controllers\Dashboard\Master\UnitController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageAdminController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageCashierController;
@@ -89,6 +90,9 @@ Route::middleware(['auth'])->group(function () {
                 'can:master.gallery.update',
                 'can:master.gallery.delete',
             ]);
+
+        Route::resource('semi-finished-material', SemiFinishedMaterialController::class)
+            ->except(['show']);
     });
 
     Route::prefix('user-management')->name('user-management.')->group(function () {

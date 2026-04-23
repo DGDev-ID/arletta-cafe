@@ -11,6 +11,8 @@ use App\Models\MMaterial;
 use App\Models\MUnit;
 use App\Models\MenuMaterial;
 use App\Models\MenuPromo;
+use App\Models\MenuSemiFinishedMaterial;
+use App\Models\SemiFinishedMaterial;
 use App\Models\UnitMaterialConverter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,28 +43,32 @@ class MenuController extends Controller
     public function create()
     {
         return inertia('master/menu/Create', [
-            'cafes'      => MCafe::select('id', 'name')->get(),
-            'categories' => MMenuCategory::select('id', 'cafe_id', 'name')->get(),
-            'materials'  => MMaterial::select('id', 'cafe_id', 'name', 'base_unit_id')->with('baseUnit:id,name')->get(),
-            'units'      => MUnit::select('id', 'name')->get(),
-            'converters' => UnitMaterialConverter::select('material_id', 'from_unit_id', 'to_unit_id')->get(),
+            'cafes'                 => MCafe::select('id', 'name')->get(),
+            'categories'            => MMenuCategory::select('id', 'cafe_id', 'name')->get(),
+            'materials'             => MMaterial::select('id', 'cafe_id', 'name', 'base_unit_id')->with('baseUnit:id,name')->get(),
+            'units'                 => MUnit::select('id', 'name')->get(),
+            'converters'            => UnitMaterialConverter::select('material_id', 'from_unit_id', 'to_unit_id')->get(),
+            'semiFinishedMaterials' => SemiFinishedMaterial::select('id', 'cafe_id', 'name')->get(),
         ]);
     }
 
     public function store(Request $request)
     {
         $rules = [
-            'cafe_id'                 => 'required|exists:m_cafes,id',
-            'menu_category_id'       => 'nullable|exists:m_menu_categories,id',
-            'name'                    => 'required|string|max:255',
-            'description'             => 'nullable|string|max:1000',
-            'image'                   => 'nullable|image|max:5120',
-            'price'                   => 'required|numeric|min:0',
-            'has_promo'               => 'boolean',
-            'materials'               => 'nullable|array',
-            'materials.*.material_id' => 'required|exists:m_materials,id',
-            'materials.*.amount'      => 'required|numeric|min:0.01',
-            'materials.*.unit_id'     => 'required|exists:m_units,id',
+            'cafe_id'                                       => 'required|exists:m_cafes,id',
+            'menu_category_id'                              => 'nullable|exists:m_menu_categories,id',
+            'name'                                          => 'required|string|max:255',
+            'description'                                   => 'nullable|string|max:1000',
+            'image'                                         => 'nullable|image|max:5120',
+            'price'                                         => 'required|numeric|min:0',
+            'has_promo'                                     => 'boolean',
+            'materials'                                     => 'nullable|array',
+            'materials.*.material_id'                       => 'required|exists:m_materials,id',
+            'materials.*.amount'                            => 'required|numeric|min:0.01',
+            'materials.*.unit_id'                            => 'required|exists:m_units,id',
+            'semi_finished_materials'                        => 'nullable|array',
+            'semi_finished_materials.*.semi_finished_material_id' => 'required|exists:semi_finished_materials,id',
+            'semi_finished_materials.*.multiplier'           => 'required|numeric|min:0.01',
         ];
 
         if ($request->boolean('has_promo')) {
@@ -108,6 +114,16 @@ class MenuController extends Controller
                     ]);
                 }
             }
+
+            if (!empty($validated['semi_finished_materials'])) {
+                foreach ($validated['semi_finished_materials'] as $sfm) {
+                    MenuSemiFinishedMaterial::create([
+                        'menu_id'                    => $menu->id,
+                        'semi_finished_material_id'  => $sfm['semi_finished_material_id'],
+                        'multiplier'                 => $sfm['multiplier'],
+                    ]);
+                }
+            }
         });
 
         return redirect()
@@ -117,15 +133,16 @@ class MenuController extends Controller
 
     public function edit($id)
     {
-        $data = MMenu::with(['promo', 'menuMaterials'])->findOrFail($id);
+        $data = MMenu::with(['promo', 'menuMaterials', 'menuSemiFinishedMaterials'])->findOrFail($id);
 
         return inertia('master/menu/Edit', [
-            'data'       => $data,
-            'cafes'      => MCafe::select('id', 'name')->get(),
-            'categories' => MMenuCategory::select('id', 'cafe_id', 'name')->get(),
-            'materials'  => MMaterial::select('id', 'cafe_id', 'name', 'base_unit_id')->with('baseUnit:id,name')->get(),
-            'units'      => MUnit::select('id', 'name')->get(),
-            'converters' => UnitMaterialConverter::select('material_id', 'from_unit_id', 'to_unit_id')->get(),
+            'data'                  => $data,
+            'cafes'                 => MCafe::select('id', 'name')->get(),
+            'categories'            => MMenuCategory::select('id', 'cafe_id', 'name')->get(),
+            'materials'             => MMaterial::select('id', 'cafe_id', 'name', 'base_unit_id')->with('baseUnit:id,name')->get(),
+            'units'                 => MUnit::select('id', 'name')->get(),
+            'converters'            => UnitMaterialConverter::select('material_id', 'from_unit_id', 'to_unit_id')->get(),
+            'semiFinishedMaterials' => SemiFinishedMaterial::select('id', 'cafe_id', 'name')->get(),
         ]);
     }
 
@@ -134,17 +151,20 @@ class MenuController extends Controller
         $menu = MMenu::findOrFail($id);
 
         $rules = [
-            'cafe_id'                 => 'required|exists:m_cafes,id',
-            'menu_category_id'       => 'nullable|exists:m_menu_categories,id',
-            'name'                    => 'required|string|max:255',
-            'description'             => 'nullable|string|max:1000',
-            'image'                   => 'nullable|image|max:5120',
-            'price'                   => 'required|numeric|min:0',
-            'has_promo'               => 'boolean',
-            'materials'               => 'nullable|array',
-            'materials.*.material_id' => 'required|exists:m_materials,id',
-            'materials.*.amount'      => 'required|numeric|min:0.01',
-            'materials.*.unit_id'     => 'required|exists:m_units,id',
+            'cafe_id'                                       => 'required|exists:m_cafes,id',
+            'menu_category_id'                              => 'nullable|exists:m_menu_categories,id',
+            'name'                                          => 'required|string|max:255',
+            'description'                                   => 'nullable|string|max:1000',
+            'image'                                         => 'nullable|image|max:5120',
+            'price'                                         => 'required|numeric|min:0',
+            'has_promo'                                     => 'boolean',
+            'materials'                                     => 'nullable|array',
+            'materials.*.material_id'                       => 'required|exists:m_materials,id',
+            'materials.*.amount'                            => 'required|numeric|min:0.01',
+            'materials.*.unit_id'                            => 'required|exists:m_units,id',
+            'semi_finished_materials'                        => 'nullable|array',
+            'semi_finished_materials.*.semi_finished_material_id' => 'required|exists:semi_finished_materials,id',
+            'semi_finished_materials.*.multiplier'           => 'required|numeric|min:0.01',
         ];
 
         if ($request->boolean('has_promo')) {
@@ -189,6 +209,17 @@ class MenuController extends Controller
                         'material_id' => $mat['material_id'],
                         'amount'      => $mat['amount'],
                         'unit_id'     => $mat['unit_id'],
+                    ]);
+                }
+            }
+
+            $menu->menuSemiFinishedMaterials()->delete();
+            if (!empty($validated['semi_finished_materials'])) {
+                foreach ($validated['semi_finished_materials'] as $sfm) {
+                    MenuSemiFinishedMaterial::create([
+                        'menu_id'                    => $menu->id,
+                        'semi_finished_material_id'  => $sfm['semi_finished_material_id'],
+                        'multiplier'                 => $sfm['multiplier'],
                     ]);
                 }
             }

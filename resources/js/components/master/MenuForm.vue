@@ -39,6 +39,17 @@ interface MenuMaterialRow {
     unit_id: number | '';
 }
 
+interface SfmOption {
+    id: number;
+    cafe_id: number;
+    name: string;
+}
+
+interface MenuSfmRow {
+    semi_finished_material_id: number | '';
+    multiplier: number | '';
+}
+
 interface MenuFormData {
     cafe_id: number | '';
     menu_category_id: number | null;
@@ -50,6 +61,7 @@ interface MenuFormData {
     promo_type: string;
     promo_discount_amount: number | '';
     materials: MenuMaterialRow[];
+    semi_finished_materials: MenuSfmRow[];
     errors: Record<string, string>;
     processing: boolean;
 }
@@ -61,6 +73,7 @@ const props = defineProps<{
     allMaterials: MaterialOption[];
     units: UnitOption[];
     converters: ConverterOption[];
+    semiFinishedMaterials: SfmOption[];
     existingImgUrl?: string | null;
     submitLabel?: string;
     backHref?: string;
@@ -80,8 +93,14 @@ const filteredMaterials = computed(() => {
     return props.allMaterials.filter(m => m.cafe_id === props.form.cafe_id);
 });
 
+const filteredSfms = computed(() => {
+    if (!props.form.cafe_id) return [];
+    return props.semiFinishedMaterials.filter(s => s.cafe_id === props.form.cafe_id);
+});
+
 watch(() => props.form.cafe_id, () => {
     props.form.materials = [];
+    props.form.semi_finished_materials = [];
     props.form.menu_category_id = null;
 });
 
@@ -117,6 +136,17 @@ function addMaterial() {
 
 function removeMaterial(index: number) {
     props.form.materials.splice(index, 1);
+}
+
+function addSfm() {
+    props.form.semi_finished_materials.push({
+        semi_finished_material_id: '',
+        multiplier: 1,
+    });
+}
+
+function removeSfm(index: number) {
+    props.form.semi_finished_materials.splice(index, 1);
 }
 
 function onMaterialChange(index: number) {
@@ -327,6 +357,55 @@ function getConversionError(row: MenuMaterialRow): string | null {
                     <div v-if="getConversionError(row)" class="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
                         <AlertTriangle :size="16" class="text-amber-600 mt-0.5 shrink-0" />
                         <p class="text-sm text-amber-800">{{ getConversionError(row) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Semi-Finished Material Section -->
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Semi-Finished Material</h3>
+                <button type="button" @click="addSfm" :disabled="!form.cafe_id"
+                    class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium text-muted-foreground hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Plus :size="14" /> Tambah SFM
+                </button>
+            </div>
+
+            <p v-if="!form.cafe_id" class="text-sm text-muted-foreground italic">
+                Pilih cafe terlebih dahulu untuk menambahkan semi-finished material.
+            </p>
+
+            <div v-if="form.semi_finished_materials.length > 0" class="space-y-4">
+                <div v-for="(row, index) in form.semi_finished_materials" :key="index" class="rounded-xl border p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-muted-foreground">SFM #{{ index + 1 }}</span>
+                        <button type="button" @click="removeSfm(index)"
+                            class="cursor-pointer inline-flex items-center justify-center w-7 h-7 rounded-md bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition">
+                            <Trash2 :size="14" />
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- SFM select -->
+                        <div class="grid gap-2">
+                            <label class="text-sm font-medium leading-none">Semi-Finished Material</label>
+                            <select v-model="row.semi_finished_material_id" required
+                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                <option value="" disabled>Pilih SFM</option>
+                                <option v-for="sfm in filteredSfms" :key="sfm.id" :value="sfm.id">{{ sfm.name }}</option>
+                            </select>
+                            <InputError :message="form.errors[`semi_finished_materials.${index}.semi_finished_material_id`]" />
+                        </div>
+
+                        <!-- Multiplier -->
+                        <div class="grid gap-2">
+                            <label class="text-sm font-medium leading-none">Multiplier (Porsi)</label>
+                            <input v-model="row.multiplier" type="number" min="0.01" step="0.01" required placeholder="1"
+                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                            <p class="text-xs text-muted-foreground">1 = satu porsi resep, 2 = dua porsi, dst.</p>
+                            <InputError :message="form.errors[`semi_finished_materials.${index}.multiplier`]" />
+                        </div>
                     </div>
                 </div>
             </div>
