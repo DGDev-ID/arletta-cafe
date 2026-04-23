@@ -162,7 +162,13 @@ const printReceiptInline = async (id: number) => {
 
             return new Promise<string>((resolve) => {
                 const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
+                reader.onloadend = () => {
+                    const result = reader.result as string;
+
+                    const base64 = result.split(',')[1];
+
+                    resolve(base64);
+                };
                 reader.readAsDataURL(blob);
             });
         };
@@ -173,7 +179,7 @@ const printReceiptInline = async (id: number) => {
         const logo = {
             type: 'raw',
             format: 'image',
-            flavor: 'file',
+            flavor: 'base64',
             data: logoBase64
         };
 
