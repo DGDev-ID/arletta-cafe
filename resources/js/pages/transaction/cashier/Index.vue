@@ -156,12 +156,25 @@ const printReceiptInline = async (id: number) => {
             return left + ' '.repeat(space > 0 ? space : 1) + right + '\n';
         };
 
+        const getLogoBase64 = async () => {
+            const res = await fetch('/logo.png');
+            const blob = await res.blob();
+
+            return new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+            });
+        };
+
+        const logoBase64 = await getLogoBase64();
+
         // ===== LOGO (GANTI DENGAN PUNYAMU) =====
         const logo = {
             type: 'raw',
             format: 'image',
             flavor: 'file',
-            data: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...' // <-- GANTI
+            data: logoBase64
         };
 
         // ===== BUILD STRING =====
