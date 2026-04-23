@@ -7,6 +7,7 @@ import { Eye, CheckCircle, Printer } from 'lucide-vue-next';
 import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { Notyf } from 'notyf';
 import axios from 'axios';
+import qz from 'qz-tray';
 
 interface Cafe {
     id: number;
@@ -106,68 +107,88 @@ const printReceiptInline = async (id: number) => {
             return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         };
 
-        const itemsHtml = trx.details.map((d: any) => `
-            <div style="margin-bottom:1.5mm">
-                <div class="row">
-                    <span>${d.menu?.name ?? '-'}</span>
-                    <span>${fmt(Number(d.price) * d.amount)}</span>
-                </div>
-                <div style="padding-left:1mm;font-size:11px">${d.amount} x ${fmt(Number(d.price))}</div>
-                ${d.description ? `<div style="padding-left:1mm;font-style:italic;font-size:11px">${d.description}</div>` : ''}
-            </div>`).join('');
-
-        const html = `<!DOCTYPE html><html><head><title>Struk #${trx.id}</title>
-<style>
-  @page{size:58mm 210mm;margin:0}
-  body{font-family:'Consolas','Courier New',monospace;font-size:12px;line-height:1.2;margin:0;padding:0;color:#000;-webkit-font-smoothing:none}
-  .r{width:44mm;padding:2mm;margin:0 auto}
-  .tc{text-align:center}
-  .row{display:flex;justify-content:space-between;gap:1mm;word-break:break-word}
-  hr{border:none;border-top:1px dashed #000;margin:2mm 0}
-  .sub{font-size:11px}
-  @media print{body{padding:0}.r{width:44mm;padding:2mm}}
-</style></head><body><div class="r">
-  <div class="tc" style="margin-bottom:2mm">
-    <h2 style="margin:0;font-size:14px">${trx.cafe.name}</h2>
-    ${trx.cafe.address ? `<p class="sub" style="margin:0">${trx.cafe.address}</p>` : ''}
-    <p class="sub" style="margin:0">main@arlettaluxury.com</p>
-    <p class="sub" style="margin:0">085742089646</p>
-  </div>
-  <hr>
-  <div style="margin-bottom:1.5mm">
-    <div class="row"><span>No. Transaksi</span><span>#${trx.id}</span></div>
-    <div class="row"><span>Tanggal</span><span>${fmtDate(trx.updated_at)}</span></div>
-    <div class="row"><span>Customer</span><span>${trx.cust_name ?? '-'}</span></div>
-    ${trx.table ? `<div class="row"><span>Table</span><span>${trx.table.name}</span></div>` : ''}
-    <div class="row"><span>Pembayaran</span><span>${trx.payment_type}</span></div>
-  </div>
-  <hr>
-  <div style="margin-bottom:1.5mm">${itemsHtml}</div>
-  <hr>
-  <div>
-    <div class="row"><span>Subtotal</span><span>${fmt(Number(trx.price))}</span></div>
-    <div class="row"><span>Fee</span><span>${fmt(Number(trx.fee))}</span></div>
-    <hr>
-    <div class="row" style="font-weight:bold;font-size:13px">
-      <span>Total</span><span>${fmt(Number(trx.total_price))}</span>
-    </div>
-  </div>
-  <hr>
-  <div class="tc sub"><p>Terima kasih atas kunjungan Anda!</p></div>
-</div>
-<script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}<\/script>
-</body></html>`;
-
-        const popup = window.open('', '_blank', 'width=300,height=500,scrollbars=yes');
-        if (popup) {
-            popup.document.write(html);
-            popup.document.close();
-            notyf.success('Struk berhasil dicetak');
-        } else {
-            notyf.error('Popup diblokir browser. Izinkan popup untuk mencetak struk.');
+        if (!qz.websocket.isActive()) {
+            await qz.websocket.connect();
         }
-    } catch {
-        notyf.error('Gagal memuat data struk');
+
+        const printers = await qz.printers.find();
+        let printerName = await qz.printers.getDefault();
+        const posPrinter = printers.find((p: string) => p.toLowerCase().includes('thermal') || p.toLowerCase().includes('pos') || p.toLowerCase().includes('58'));
+        if (posPrinter) printerName = posPrinter;
+
+        if (!printerName) {
+            notyf.error('Tidak ada printer yang ditemukan');
+            return;
+        }
+
+        const config = qz.configs.create(printerName);
+
+        const alignCenter = '\x1B\x61\x01';
+        const alignLeft = '\x1B\x61\x00';
+        const boldOn = '\x1B\x45\x01';
+        const boldOff = '\x1B\x45\x00';
+        const line = '--------------------------------\n'; // 32 chars for 58mm
+
+        let printData = [
+            alignCenter,
+            boldOn,
+            trx.cafe.name + '\n',
+            boldOff,
+            (trx.cafe.address ? trx.cafe.address + '\n' : ''),
+            'main@arlettaluxury.com\n',
+            '085742089646\n',
+            line,
+            alignLeft,
+            `No. Trx    : #${trx.id}\n`,
+            `Tanggal    : ${fmtDate(trx.updated_at)}\n`,
+            `Customer   : ${trx.cust_name ?? '-'}\n`,
+            (trx.table ? `Table      : ${trx.table.name}\n` : ''),
+            `Pembayaran : ${trx.payment_type}\n`,
+            line
+        ];
+
+        trx.details.forEach((d: any) => {
+            printData.push(`${d.menu?.name ?? '-'}\n`);
+            
+            const qtyPrice = `${d.amount} x ${fmt(Number(d.price)).replace('Rp', '').trim()}`;
+            const subtotal = fmt(Number(d.price) * d.amount).replace('Rp', '').trim();
+            
+            let spaces = 32 - qtyPrice.length - subtotal.length;
+            if (spaces < 1) spaces = 1;
+            
+            printData.push(`${qtyPrice}${' '.repeat(spaces)}${subtotal}\n`);
+            
+            if (d.description) {
+                printData.push(`  ${d.description}\n`);
+            }
+        });
+
+        printData.push(line);
+
+        const padRight = (label: string, value: string) => {
+            const cleanValue = value.replace('Rp', '').trim();
+            let spaces = 32 - label.length - cleanValue.length;
+            if (spaces < 1) spaces = 1;
+            return label + ' '.repeat(spaces) + cleanValue + '\n';
+        };
+
+        printData.push(padRight('Subtotal', fmt(Number(trx.price))));
+        printData.push(padRight('Fee', fmt(Number(trx.fee))));
+        printData.push(line);
+        printData.push(boldOn, padRight('Total', fmt(Number(trx.total_price))), boldOff);
+        printData.push(line);
+
+        printData.push(alignCenter);
+        printData.push('Terima kasih atas kunjungan Anda!\n');
+        printData.push('\n\n\n\n\n'); 
+        printData.push('\x1D\x56\x41\x00'); 
+
+        await qz.print(config, printData);
+        notyf.success('Struk berhasil dicetak');
+        
+    } catch (e: any) {
+        console.error(e);
+        notyf.error('Gagal mencetak struk: ' + (e.message || 'Pastikan QZ Tray aktif'));
     }
 };
 
