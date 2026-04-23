@@ -99,102 +99,141 @@ const printReceiptInline = async (id: number) => {
     try {
         const { data: trx } = await axios.get(`/transaction/cashier/${id}/receipt-data`);
 
-        const fmt = (val: number) =>
-            new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+        // ===== FORMAT AMAN (NO UTF-8 ANEH) =====
+        const cleanNumber = (val: number) =>
+            new Intl.NumberFormat('id-ID')
+                .format(val)
+                .replace(/[^\d]/g, '');
 
         const fmtDate = (val: string) => {
             const d = new Date(val);
-            return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return d.toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         };
 
+        // ===== CONNECT QZ =====
         if (!qz.websocket.isActive()) {
-            // Konfigurasi Keamanan QZ Tray (Anonymous / Unsigned Request)
-            // Untuk menghilangkan warning secara permanen di masa depan, Anda perlu 
-            // memberikan public certificate di sini dan menandatangani request di backend.
-            qz.security.setCertificatePromise((resolve, reject) => {
-                resolve(null);
-            });
-
-            qz.security.setSignaturePromise((toSign) => {
-                return (resolve, reject) => {
-                    resolve(null);
-                };
-            });
-
+            qz.security.setCertificatePromise(resolve => resolve(null));
+            qz.security.setSignaturePromise(() => resolve => resolve(null));
             await qz.websocket.connect();
         }
 
         const printers = await qz.printers.find();
         let printerName = await qz.printers.getDefault();
-        console.log("Kontol ", printerName);
-        console.log("Kontol Printers");
-        console.log(printers);
-        const posPrinter = printers.find((p: string) => p.toLowerCase().includes('thermal') || p.toLowerCase().includes('pos') || p.toLowerCase().includes('58'));
+
+        const posPrinter = printers.find((p: string) =>
+            p.toLowerCase().includes('thermal') ||
+            p.toLowerCase().includes('pos') ||
+            p.toLowerCase().includes('58')
+        );
+
         if (posPrinter) printerName = posPrinter;
 
         if (!printerName) {
-            notyf.error('Tidak ada printer yang ditemukan');
+            notyf.error('Printer tidak ditemukan');
             return;
         }
 
-        const config = qz.configs.create(printerName);
+        // ===== CONFIG RAW + ENCODING =====
+        const config = qz.configs.create(printerName, {
+            encoding: 'ISO-8859-1'
+        });
 
-        const alignCenter = '\x1B\x61\x01';
+        // ===== ESC/POS COMMAND =====
+        const init = '\x1B\x40';
+        const normal = '\x1B\x21\x00';
         const alignLeft = '\x1B\x61\x00';
+        const alignCenter = '\x1B\x61\x01';
         const boldOn = '\x1B\x45\x01';
         const boldOff = '\x1B\x45\x00';
-        const line = '--------------------------------\n'; // 32 chars for 58mm
+        const cut = '\x1D\x56\x41\x00';
+        const codepage = '\x1B\x74\x00'; // CP437
 
-        let printData = [
-            alignCenter,
-            boldOn,
-            trx.cafe.name + '\n',
-            boldOff,
-            (trx.cafe.address ? trx.cafe.address + '\n' : ''),
-            'main@arlettaluxury.com\n',
-            '085742089646\n',
-            line,
-            alignLeft,
-            `No. Trx    : #${trx.id}\n`,
-            `Tanggal    : ${fmtDate(trx.updated_at)}\n`,
-            `Customer   : ${trx.cust_name ?? '-'}\n`,
-            (trx.table ? `Table      : ${trx.table.name}\n` : ''),
-            `Pembayaran : ${trx.payment_type}\n`,
-            line
-        ];
+        const WIDTH = 42;
+        const line = '-'.repeat(WIDTH) + '\n';
 
+        const padRight = (label: string, value: string) => {
+            const total = label.length + value.length;
+            let space = WIDTH - total;
+            if (space < 1) space = 1;
+            return label + ' '.repeat(space) + value + '\n';
+        };
+
+        // ===== BUILD DATA =====
+        let str = '';
+
+        str += init;
+        str += codepage;
+        str += normal;
+
+        // HEADER
+        str += alignCenter;
+        str += boldOn;
+        str += (trx.cafe.name || 'CAFE') + '\n';
+        str += boldOff;
+        if (trx.cafe.address) str += trx.cafe.address + '\n';
+        str += '08123456789\n';
+        str += line;
+
+        // INFO
+        str += alignLeft;
+        str += `No   : #${trx.id}\n`;
+        str += `Tgl  : ${fmtDate(trx.updated_at)}\n`;
+        str += `Cust : ${trx.cust_name || '-'}\n`;
+        if (trx.table) str += `Table: ${trx.table.name}\n`;
+        str += `Pay  : ${trx.payment_type}\n`;
+        str += line;
+
+        // ITEMS
         trx.details.forEach((d: any) => {
-            printData.push(`${d.menu?.name ?? '-'}\n`);
+            const name = (d.menu?.name || '-').substring(0, WIDTH);
+            str += name + '\n';
 
-            const qtyPrice = `${d.amount} x ${fmt(Number(d.price)).replace('Rp', '').trim()}`;
-            const subtotal = fmt(Number(d.price) * d.amount).replace('Rp', '').trim();
+            const qtyPrice = `${d.amount}x${cleanNumber(Number(d.price))}`;
+            const subtotal = cleanNumber(Number(d.price) * d.amount);
 
-            printData.push(`${qtyPrice} = ${subtotal}\n`);
+            str += padRight(qtyPrice, subtotal);
 
             if (d.description) {
-                printData.push(`  ${d.description}\n`);
+                str += ' ' + d.description + '\n';
             }
         });
 
-        printData.push(line);
+        str += line;
 
-        printData.push(`Subtotal : ${fmt(Number(trx.price)).replace('Rp', '').trim()}\n`);
-        printData.push(`Fee      : ${fmt(Number(trx.fee)).replace('Rp', '').trim()}\n`);
-        printData.push(line);
-        printData.push(boldOn, `Total    : ${fmt(Number(trx.total_price)).replace('Rp', '').trim()}\n`, boldOff);
-        printData.push(line);
+        // TOTAL
+        str += padRight('Subtotal', cleanNumber(Number(trx.price)));
+        str += padRight('Fee', cleanNumber(Number(trx.fee)));
 
-        printData.push(alignCenter);
-        printData.push('Terima kasih atas kunjungan Anda!\n');
-        printData.push('\n\n\n\n\n');
-        printData.push('\x1D\x56\x41\x00');
+        str += line;
+        str += boldOn;
+        str += padRight('TOTAL', cleanNumber(Number(trx.total_price)));
+        str += boldOff;
+        str += line;
 
-        await qz.print(config, printData);
+        // FOOTER
+        str += alignCenter;
+        str += 'Terima kasih\n';
+        str += '\n\n\n\n';
+        str += cut;
+
+        // ===== PRINT RAW =====
+        await qz.print(config, [{
+            type: 'raw',
+            format: 'command',
+            data: str
+        }]);
+
         notyf.success('Struk berhasil dicetak');
 
     } catch (e: any) {
         console.error(e);
-        notyf.error('Gagal mencetak struk: ' + (e.message || 'Pastikan QZ Tray aktif'));
+        notyf.error('Print gagal: ' + (e.message || 'QZ Tray error'));
     }
 };
 
