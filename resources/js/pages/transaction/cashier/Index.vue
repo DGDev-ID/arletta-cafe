@@ -108,32 +108,33 @@ const printReceiptInline = async (id: number) => {
         const itemsHtml = trx.details.map((d: any) => `
             <div style="margin-bottom:1.5mm">
                 <div class="row">
-                    <span>${d.menu?.name ?? '-'}</span>
-                    <span>${fmt(Number(d.price) * d.amount)}</span>
+                    <span><b>${d.menu?.name ?? '-'}</b></span>
+                    <span><b>${fmt(Number(d.price) * d.amount)}</b></span>
                 </div>
-                <div style="color:#555;padding-left:1mm;font-size:6pt">${d.amount} x ${fmt(Number(d.price))}</div>
-                ${d.description ? `<div style="color:#888;padding-left:1mm;font-style:italic;font-size:6pt">${d.description}</div>` : ''}
+                <div style="padding-left:1mm;font-size:6pt">${d.amount} x ${fmt(Number(d.price))}</div>
+                ${d.description ? `<div style="padding-left:1mm;font-style:italic;font-size:6pt">${d.description}</div>` : ''}
             </div>`).join('');
 
         const html = `<!DOCTYPE html><html><head><title>Struk #${trx.id}</title>
 <style>
   @page{size:58mm 210mm;margin:0}
-  body{font-family:'Courier New',monospace;font-size:7pt;line-height:1.3;margin:0;padding:0;color:#000}
+  body{font-family:'Courier New',monospace;font-size:7pt;line-height:1.3;margin:0;padding:0;color:#000;font-weight:bold}
   .r{width:54mm;padding:2mm}
   .tc{text-align:center}
   .row{display:flex;justify-content:space-between;gap:2mm;word-break:break-word}
-  hr{border:none;border-top:1px dashed #999;margin:2mm 0}
+  hr{border:none;border-top:1px dashed #000;margin:2mm 0}
+  .sub{font-weight:normal;font-size:6pt}
   @media print{body{padding:0}.r{width:54mm;padding:2mm}}
 </style></head><body><div class="r">
   <div class="tc" style="margin-bottom:1mm">
     <h2 style="margin:0;font-size:9pt">${trx.cafe.name}</h2>
-    ${trx.cafe.address ? `<p style="margin:0;font-size:6pt;color:#555">${trx.cafe.address}</p>` : ''}
-    <p style="margin:0;font-size:6pt;color:#555">main@arlettaluxury.com</p>
-    <p style="margin:0;font-size:6pt;color:#555">085742089646</p>
+    ${trx.cafe.address ? `<p class="sub" style="margin:0">${trx.cafe.address}</p>` : ''}
+    <p class="sub" style="margin:0">main@arlettaluxury.com</p>
+    <p class="sub" style="margin:0">085742089646</p>
   </div>
   <hr>
   <div style="margin-bottom:1mm">
-    <div class="row"><span>No. Transaksi</span><span><b>#${trx.id}</b></span></div>
+    <div class="row"><span>No. Transaksi</span><span>#${trx.id}</span></div>
     <div class="row"><span>Tanggal</span><span>${fmtDate(trx.updated_at)}</span></div>
     <div class="row"><span>Customer</span><span>${trx.cust_name ?? '-'}</span></div>
     ${trx.table ? `<div class="row"><span>Table</span><span>${trx.table.name}</span></div>` : ''}
@@ -146,12 +147,12 @@ const printReceiptInline = async (id: number) => {
     <div class="row"><span>Subtotal</span><span>${fmt(Number(trx.price))}</span></div>
     <div class="row"><span>Fee</span><span>${fmt(Number(trx.fee))}</span></div>
     <hr>
-    <div class="row" style="font-weight:bold;font-size:8pt">
+    <div class="row" style="font-size:8pt">
       <span>Total</span><span>${fmt(Number(trx.total_price))}</span>
     </div>
   </div>
   <hr>
-  <div class="tc" style="color:#555;font-size:6pt"><p>Terima kasih atas kunjungan Anda!</p></div>
+  <div class="tc sub"><p>Terima kasih atas kunjungan Anda!</p></div>
 </div>
 <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}<\/script>
 </body></html>`;
