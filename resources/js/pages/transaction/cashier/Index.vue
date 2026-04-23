@@ -173,7 +173,8 @@ const printReceiptInline = async (id: number) => {
                     const scale = MAX_WIDTH / img.width;
 
                     canvas.width = Math.ceil(MAX_WIDTH / 8) * 8;
-                    canvas.height = img.height * (canvas.width / img.width);
+                    const rawHeight = img.height * (canvas.width / img.width);
+                    canvas.height = Math.ceil(rawHeight / 8) * 8;
 
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
@@ -192,7 +193,7 @@ const printReceiptInline = async (id: number) => {
             format: 'image',
             flavor: 'base64',
             data: logoBase64,
-            options: { language: 'ESCPOS', dotDensity: 'double', width: 128, height: 128 }
+            options: { language: 'ESCPOS', dotDensity: 'double' }
         };
 
         // ===== BUILD TEXT =====
