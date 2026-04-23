@@ -114,7 +114,7 @@ const printReceiptInline = async (id: number) => {
             qz.security.setCertificatePromise((resolve, reject) => {
                 resolve(null);
             });
-            
+
             qz.security.setSignaturePromise((toSign) => {
                 return (resolve, reject) => {
                     resolve(null);
@@ -127,6 +127,8 @@ const printReceiptInline = async (id: number) => {
         const printers = await qz.printers.find();
         let printerName = await qz.printers.getDefault();
         console.log("Kontol ", printerName);
+        console.log("Kontol Printers");
+        console.log(printers);
         const posPrinter = printers.find((p: string) => p.toLowerCase().includes('thermal') || p.toLowerCase().includes('pos') || p.toLowerCase().includes('58'));
         if (posPrinter) printerName = posPrinter;
 
