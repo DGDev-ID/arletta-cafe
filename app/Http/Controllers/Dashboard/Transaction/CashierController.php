@@ -241,6 +241,13 @@ class CashierController extends Controller
         // Replace \n with <br /> for Bluetooth Print app
         $str = str_replace("\n", '<br />', $str);
 
+        // sending image entry
+        $imageObj = new \stdClass();
+        $imageObj->type = 1; // image
+        $imageObj->path = asset('logo-resize.png'); // complete filepath
+        $imageObj->align = 1; // center align
+        array_push($a, $imageObj);
+
         // sending multi lines text
         $obj = new \stdClass();
         $obj->type = 0;
