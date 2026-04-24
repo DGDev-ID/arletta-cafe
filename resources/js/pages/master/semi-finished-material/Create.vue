@@ -25,6 +25,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 const form = useForm({
     cafe_id: '' as number | '',
     name: '',
+    base_unit_id: '' as number | '',
     details: [] as { material_id: number | ''; amount: number | ''; unit_id: number | '' }[],
 });
 

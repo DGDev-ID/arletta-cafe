@@ -86,6 +86,7 @@ const searchSfm = () => {
                                 <th class="px-6 py-4 text-left font-medium">Nama Cafe</th>
                                 <th class="px-6 py-4 text-left font-medium">Nama</th>
                                 <th class="px-6 py-4 text-left font-medium">Jumlah Material</th>
+                                <th class="px-6 py-4 text-left font-medium">Satuan</th>
                                 <th class="px-6 py-4 text-right font-medium">Aksi</th>
                             </tr>
                         </thead>
@@ -113,6 +114,11 @@ const searchSfm = () => {
                                     {{ sfm.details_count ?? 0 }} material
                                 </td>
 
+                                <!-- Satuan -->
+                                <td class="px-6 py-4 font-medium">
+                                    {{ sfm.unit?.name ?? '-' }}
+                                </td>
+
                                 <!-- Action -->
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex justify-end items-center gap-3">
@@ -137,7 +143,7 @@ const searchSfm = () => {
 
                             <!-- Empty -->
                             <tr v-if="data.data.length === 0">
-                                <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">
+                                <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">
                                     Belum ada data semi-finished material.
                                 </td>
                             </tr>

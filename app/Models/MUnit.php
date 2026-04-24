@@ -15,4 +15,9 @@ class MUnit extends Model
     {
         return $this->hasMany(MMaterial::class, 'base_unit_id');
     }
+
+    public function semiFinishedMaterials(): HasMany
+    {
+        return $this->hasMany(SemiFinishedMaterial::class, 'base_unit_id');
+    }
 }

@@ -15,6 +15,7 @@ const props = defineProps<{
         id: number;
         cafe_id: number;
         name: string;
+        base_unit_id: number;
         details: {
             material_id: number;
             amount: number;
@@ -35,6 +36,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 const form = useForm({
     cafe_id: props.data.cafe_id as number | '',
     name: props.data.name,
+    base_unit_id: props.data.base_unit_id as number | '',
     details: props.data.details.map(d => ({
         material_id: d.material_id as number | '',
         amount: d.amount as number | '',

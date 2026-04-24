@@ -43,6 +43,7 @@ interface SfmOption {
     id: number;
     cafe_id: number;
     name: string;
+    unit: { id: number; name: string };
 }
 
 interface MenuSfmRow {
@@ -230,7 +231,8 @@ function getConversionError(row: MenuMaterialRow): string | null {
             <!-- Deskripsi -->
             <div class="grid gap-2">
                 <label for="menu-description" class="text-sm font-medium leading-none">Deskripsi</label>
-                <textarea id="menu-description" v-model="form.description" rows="3" placeholder="Deskripsi menu (opsional)"
+                <textarea id="menu-description" v-model="form.description" rows="3"
+                    placeholder="Deskripsi menu (opsional)"
                     class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                 <InputError :message="form.errors.description" />
             </div>
@@ -273,7 +275,9 @@ function getConversionError(row: MenuMaterialRow): string | null {
                 <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Promo</h3>
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" v-model="form.has_promo" class="sr-only peer" />
-                    <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                    <div
+                        class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary">
+                    </div>
                 </label>
             </div>
 
@@ -290,7 +294,8 @@ function getConversionError(row: MenuMaterialRow): string | null {
                 </div>
                 <div class="grid gap-2">
                     <label for="promo-amount" class="text-sm font-medium leading-none">Nilai Diskon</label>
-                    <input id="promo-amount" v-model="form.promo_discount_amount" type="number" min="0" step="0.01" placeholder="0"
+                    <input id="promo-amount" v-model="form.promo_discount_amount" type="number" min="0" step="0.01"
+                        placeholder="0"
                         class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                     <InputError :message="form.errors.promo_discount_amount" />
                 </div>
@@ -300,7 +305,8 @@ function getConversionError(row: MenuMaterialRow): string | null {
         <!-- Menu Materials (Resep) Section -->
         <div class="space-y-4">
             <div class="flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Resep (Material Menu)</h3>
+                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Resep (Material Menu)
+                </h3>
                 <button type="button" @click="addMaterial" :disabled="!form.cafe_id"
                     class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium text-muted-foreground hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed">
                     <Plus :size="14" /> Tambah Material
@@ -328,7 +334,8 @@ function getConversionError(row: MenuMaterialRow): string | null {
                             <select v-model="row.material_id" @change="onMaterialChange(index)" required
                                 class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
                                 <option value="" disabled>Pilih Material</option>
-                                <option v-for="mat in filteredMaterials" :key="mat.id" :value="mat.id">{{ mat.name }}</option>
+                                <option v-for="mat in filteredMaterials" :key="mat.id" :value="mat.id">{{ mat.name }}
+                                </option>
                             </select>
                             <InputError :message="form.errors[`materials.${index}.material_id`]" />
                         </div>
@@ -354,7 +361,8 @@ function getConversionError(row: MenuMaterialRow): string | null {
                     </div>
 
                     <!-- Conversion warning -->
-                    <div v-if="getConversionError(row)" class="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                    <div v-if="getConversionError(row)"
+                        class="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
                         <AlertTriangle :size="16" class="text-amber-600 mt-0.5 shrink-0" />
                         <p class="text-sm text-amber-800">{{ getConversionError(row) }}</p>
                     </div>
@@ -365,7 +373,8 @@ function getConversionError(row: MenuMaterialRow): string | null {
         <!-- Semi-Finished Material Section -->
         <div class="space-y-4">
             <div class="flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Semi-Finished Material</h3>
+                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Semi-Finished Material
+                </h3>
                 <button type="button" @click="addSfm" :disabled="!form.cafe_id"
                     class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium text-muted-foreground hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed">
                     <Plus :size="14" /> Tambah SFM
@@ -377,7 +386,8 @@ function getConversionError(row: MenuMaterialRow): string | null {
             </p>
 
             <div v-if="form.semi_finished_materials.length > 0" class="space-y-4">
-                <div v-for="(row, index) in form.semi_finished_materials" :key="index" class="rounded-xl border p-4 space-y-3">
+                <div v-for="(row, index) in form.semi_finished_materials" :key="index"
+                    class="rounded-xl border p-4 space-y-3">
                     <div class="flex items-center justify-between">
                         <span class="text-sm font-medium text-muted-foreground">SFM #{{ index + 1 }}</span>
                         <button type="button" @click="removeSfm(index)"
@@ -393,15 +403,18 @@ function getConversionError(row: MenuMaterialRow): string | null {
                             <select v-model="row.semi_finished_material_id" required
                                 class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
                                 <option value="" disabled>Pilih SFM</option>
-                                <option v-for="sfm in filteredSfms" :key="sfm.id" :value="sfm.id">{{ sfm.name }}</option>
+                                <option v-for="sfm in filteredSfms" :key="sfm.id" :value="sfm.id">{{ sfm.name }} ({{
+                                    sfm.unit.name }})</option>
                             </select>
-                            <InputError :message="form.errors[`semi_finished_materials.${index}.semi_finished_material_id`]" />
+                            <InputError
+                                :message="form.errors[`semi_finished_materials.${index}.semi_finished_material_id`]" />
                         </div>
 
                         <!-- Multiplier -->
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Multiplier (Porsi)</label>
-                            <input v-model="row.multiplier" type="number" min="0.01" step="0.01" required placeholder="1"
+                            <input v-model="row.multiplier" type="number" min="0.01" step="0.01" required
+                                placeholder="1"
                                 class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                             <p class="text-xs text-muted-foreground">1 = satu porsi resep, 2 = dua porsi, dst.</p>
                             <InputError :message="form.errors[`semi_finished_materials.${index}.multiplier`]" />

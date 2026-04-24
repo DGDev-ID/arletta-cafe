@@ -20,7 +20,7 @@ class SemiFinishedMaterialController extends Controller
         $cafeId = $request->query('cafe_id');
         $search = $request->query('search');
 
-        $query = SemiFinishedMaterial::with('cafe')
+        $query = SemiFinishedMaterial::with(['cafe', 'unit'])
             ->withCount('details');
 
         if ($cafeId) {
@@ -54,6 +54,7 @@ class SemiFinishedMaterialController extends Controller
         $validated = $request->validate([
             'cafe_id'                 => 'required|exists:m_cafes,id',
             'name'                    => 'required|string|max:255',
+            'base_unit_id'            => 'required|exists:m_units,id',
             'details'                 => 'required|array|min:1',
             'details.*.material_id'   => 'required|exists:m_materials,id',
             'details.*.amount'        => 'required|numeric|min:0.01',
@@ -62,8 +63,9 @@ class SemiFinishedMaterialController extends Controller
 
         DB::transaction(function () use ($validated) {
             $sfm = SemiFinishedMaterial::create([
-                'cafe_id' => $validated['cafe_id'],
-                'name'    => $validated['name'],
+                'cafe_id'      => $validated['cafe_id'],
+                'name'         => $validated['name'],
+                'base_unit_id' => $validated['base_unit_id'],
             ]);
 
             foreach ($validated['details'] as $detail) {
@@ -101,6 +103,7 @@ class SemiFinishedMaterialController extends Controller
         $validated = $request->validate([
             'cafe_id'                 => 'required|exists:m_cafes,id',
             'name'                    => 'required|string|max:255',
+            'base_unit_id'            => 'required|exists:m_units,id',
             'details'                 => 'required|array|min:1',
             'details.*.material_id'   => 'required|exists:m_materials,id',
             'details.*.amount'        => 'required|numeric|min:0.01',
@@ -109,8 +112,9 @@ class SemiFinishedMaterialController extends Controller
 
         DB::transaction(function () use ($sfm, $validated) {
             $sfm->update([
-                'cafe_id' => $validated['cafe_id'],
-                'name'    => $validated['name'],
+                'cafe_id'      => $validated['cafe_id'],
+                'name'         => $validated['name'],
+                'base_unit_id' => $validated['base_unit_id'],
             ]);
 
             $sfm->details()->delete();

@@ -48,7 +48,7 @@ class MenuController extends Controller
             'materials'             => MMaterial::select('id', 'cafe_id', 'name', 'base_unit_id')->with('baseUnit:id,name')->get(),
             'units'                 => MUnit::select('id', 'name')->get(),
             'converters'            => UnitMaterialConverter::select('material_id', 'from_unit_id', 'to_unit_id')->get(),
-            'semiFinishedMaterials' => SemiFinishedMaterial::select('id', 'cafe_id', 'name')->get(),
+            'semiFinishedMaterials' => SemiFinishedMaterial::with('unit')->select('id', 'cafe_id', 'name', 'base_unit_id')->get(),
         ]);
     }
 
@@ -142,7 +142,7 @@ class MenuController extends Controller
             'materials'             => MMaterial::select('id', 'cafe_id', 'name', 'base_unit_id')->with('baseUnit:id,name')->get(),
             'units'                 => MUnit::select('id', 'name')->get(),
             'converters'            => UnitMaterialConverter::select('material_id', 'from_unit_id', 'to_unit_id')->get(),
-            'semiFinishedMaterials' => SemiFinishedMaterial::select('id', 'cafe_id', 'name')->get(),
+            'semiFinishedMaterials' => SemiFinishedMaterial::with('unit')->select('id', 'cafe_id', 'name', 'base_unit_id')->get(),
         ]);
     }
 

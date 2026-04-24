@@ -11,6 +11,7 @@ class SemiFinishedMaterial extends Model
     protected $fillable = [
         'cafe_id',
         'name',
+        'base_unit_id'
     ];
 
     public function cafe(): BelongsTo
@@ -27,4 +28,9 @@ class SemiFinishedMaterial extends Model
     {
         return $this->hasMany(MenuSemiFinishedMaterial::class);
     }
+
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(MUnit::class, 'base_unit_id');
+    }   
 }

@@ -36,6 +36,7 @@ interface DetailRow {
 interface SfmFormData {
     cafe_id: number | '';
     name: string;
+    base_unit_id: number | '';
     details: DetailRow[];
     errors: Record<string, string>;
     processing: boolean;
@@ -139,6 +140,19 @@ function getConversionError(row: DetailRow): string | null {
                 <input id="sfm-name" v-model="form.name" required placeholder="Contoh: Teh, Saus Tomat"
                     class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                 <InputError :message="form.errors.name" />
+            </div>
+
+            <!-- Satuan -->
+            <div class="grid gap-2">
+                <label for="sfm-unit" class="text-sm font-medium leading-none">
+                    Satuan <span class="text-red-500">*</span>
+                </label>
+                <select id="sfm-unit" v-model="form.base_unit_id" required
+                    class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="" disabled>Pilih Satuan</option>
+                    <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
+                </select>
+                <InputError :message="form.errors.base_unit_id" />
             </div>
         </div>
 
