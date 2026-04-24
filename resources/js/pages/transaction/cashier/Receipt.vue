@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import { onMounted } from 'vue';
+import { onMounted, computed } from 'vue';
 
 interface TransactionDetail {
     id: number;
@@ -28,15 +28,85 @@ const props = defineProps<{
     transaction: Transaction;
 }>();
 
-const cleanNumber = (val: number) =>
-    new Intl.NumberFormat('id-ID')
-        .format(val)
-        .replace(/[^\d]/g, '');
+const receiptText = computed(() => {
+    const trx = props.transaction;
 
-const fmtDate = (val: string) => {
-    const d = new Date(val);
-    return d.toLocaleString('id-ID');
-};
+    const cleanNumber = (val: number) =>
+        new Intl.NumberFormat('id-ID')
+            .format(val)
+            .replace(/[^\d]/g, '');
+
+    const fmtDate = (val: string) => {
+        const d = new Date(val);
+        return d.toLocaleString('id-ID');
+    };
+
+    const WIDTH = 32;
+    const line = '-'.repeat(WIDTH) + '\n';
+
+    const padRight = (left: string, right: string) => {
+        const space = WIDTH - (left.length + right.length);
+        return left + ' '.repeat(space > 0 ? space : 1) + right + '\n';
+    };
+
+    const alignCenter = (text: string) => {
+        if (!text) return '\n';
+        const lines = text.split('\n');
+        return lines.map(l => {
+            const space = WIDTH - l.length;
+            if (space <= 0) return l;
+            const leftSpace = Math.floor(space / 2);
+            return ' '.repeat(leftSpace) + l;
+        }).join('\n') + '\n';
+    };
+
+    let str = '';
+
+    // HEADER
+    str += alignCenter(trx.cafe.name || 'CAFE');
+    if (trx.cafe.address) str += alignCenter(trx.cafe.address);
+    if (trx.cafe.phone_number) str += alignCenter(trx.cafe.phone_number);
+    str += line;
+
+    // INFO
+    str += padRight('No', `#${trx.id}`);
+    str += padRight('Tgl', fmtDate(trx.updated_at));
+    str += padRight('Cust', trx.cust_name || '-');
+    if (trx.table) str += padRight('Table', trx.table.name);
+    str += padRight('Pay', trx.payment_type);
+    str += line;
+
+    // ITEMS
+    trx.details.forEach((d) => {
+        const name = (d.menu?.name || '-').substring(0, WIDTH);
+        str += name + '\n';
+
+        const qtyPrice = `${d.amount}x${cleanNumber(Number(d.price))}`;
+        const subtotal = cleanNumber(Number(d.price) * d.amount);
+
+        str += padRight(qtyPrice, subtotal);
+
+        if (d.description) {
+            str += ' ' + d.description + '\n';
+        }
+    });
+
+    str += line;
+
+    // TOTAL
+    str += padRight('Subtotal', cleanNumber(Number(trx.price)));
+    str += padRight('Fee', cleanNumber(Number(trx.fee)));
+
+    str += line;
+    str += padRight('TOTAL', cleanNumber(Number(trx.total_price)));
+    str += line;
+
+    // FOOTER
+    str += alignCenter('Terima kasih');
+    str += '\n\n\n';
+
+    return str;
+});
 
 onMounted(() => {
     setTimeout(() => window.print(), 500);
@@ -48,86 +118,7 @@ onMounted(() => {
 
     <div class="receipt-container">
         <div class="receipt">
-            <!-- Header -->
-            <div class="text-center mb-1">
-                <h1 class="receipt-title">{{ transaction.cafe.name || 'CAFE' }}</h1>
-                <p v-if="transaction.cafe.address" class="receipt-sub">{{ transaction.cafe.address }}</p>
-                <p v-if="transaction.cafe.phone_number" class="receipt-sub">{{ transaction.cafe.phone_number }}</p>
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Info -->
-            <div class="receipt-info">
-                <div class="receipt-row">
-                    <span>No</span>
-                    <span>#{{ transaction.id }}</span>
-                </div>
-                <div class="receipt-row">
-                    <span>Tgl</span>
-                    <span>{{ fmtDate(transaction.updated_at) }}</span>
-                </div>
-                <div class="receipt-row">
-                    <span>Cust</span>
-                    <span>{{ transaction.cust_name ?? '-' }}</span>
-                </div>
-                <div v-if="transaction.table" class="receipt-row">
-                    <span>Table</span>
-                    <span>{{ transaction.table.name }}</span>
-                </div>
-                <div class="receipt-row">
-                    <span>Pay</span>
-                    <span style="text-transform:capitalize">{{ transaction.payment_type }}</span>
-                </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Items -->
-            <div class="receipt-items">
-                <div v-for="detail in transaction.details" :key="detail.id" class="receipt-item">
-                    <div class="receipt-row-name">
-                        {{ detail.menu?.name ?? '-' }}
-                    </div>
-                    <div class="receipt-row">
-                        <span>{{ detail.amount }}x{{ cleanNumber(Number(detail.price)) }}</span>
-                        <span>{{ cleanNumber(Number(detail.price) * detail.amount) }}</span>
-                    </div>
-                    <div v-if="detail.description" class="receipt-note">
-                        {{ detail.description }}
-                    </div>
-                </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Totals -->
-            <div class="receipt-info">
-                <div class="receipt-row">
-                    <span>Subtotal</span>
-                    <span>{{ cleanNumber(Number(transaction.price)) }}</span>
-                </div>
-                <div class="receipt-row">
-                    <span>Fee</span>
-                    <span>{{ cleanNumber(Number(transaction.fee)) }}</span>
-                </div>
-            </div>
-            
-            <div class="divider"></div>
-            
-            <div class="receipt-info">
-                <div class="receipt-row receipt-total">
-                    <span>TOTAL</span>
-                    <span>{{ cleanNumber(Number(transaction.total_price)) }}</span>
-                </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Footer -->
-            <div class="receipt-footer mt-2">
-                <p>Terima kasih</p>
-            </div>
+            <pre class="receipt-text">{{ receiptText }}</pre>
         </div>
     </div>
 </template>
@@ -142,84 +133,20 @@ onMounted(() => {
 }
 
 .receipt {
-    width: 58mm; /* Standard thermal width */
-    max-width: 100%;
     background: white;
-    padding: 2mm;
+    padding: 20px;
     margin: 0 auto;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.receipt-text {
     font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.2;
     color: #000;
-    -webkit-font-smoothing: none;
-}
-
-.text-center {
-    text-align: center;
-}
-
-.mt-2 {
-    margin-top: 2mm;
-}
-
-.mb-1 {
-    margin-bottom: 1mm;
-}
-
-.receipt-title {
-    font-size: 14px;
-    font-weight: bold;
     margin: 0;
-}
-
-.receipt-sub {
-    font-size: 11px;
-    margin: 0;
-}
-
-.divider {
-    border-top: 1px dashed #000;
-    margin: 2mm 0;
-}
-
-.receipt-info {
-    margin-bottom: 1.5mm;
-}
-
-.receipt-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 1mm;
-    word-break: break-word;
-}
-
-.receipt-row-name {
-    word-break: break-word;
-    margin-bottom: 0.5mm;
-}
-
-.receipt-items {
-    margin-bottom: 1.5mm;
-}
-
-.receipt-item {
-    margin-bottom: 1.5mm;
-}
-
-.receipt-note {
-    padding-left: 2mm;
-    font-style: italic;
-    font-size: 11px;
-}
-
-.receipt-total {
-    font-weight: bold;
-    font-size: 13px;
-}
-
-.receipt-footer {
-    text-align: center;
-    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-all;
 }
 
 @media print {
@@ -240,9 +167,15 @@ onMounted(() => {
     }
 
     .receipt {
-        width: 100%;
-        padding: 2mm;
+        padding: 0;
         box-shadow: none;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .receipt-text {
+        font-size: 12px;
+        white-space: pre-wrap;
     }
 }
 </style>
