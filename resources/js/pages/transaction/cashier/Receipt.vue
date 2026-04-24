@@ -108,17 +108,33 @@ const receiptText = computed(() => {
     return str;
 });
 
-onMounted(() => {
-    setTimeout(() => window.print(), 500);
+const schemeUrl = computed(() => {
+    if (typeof window !== 'undefined') {
+        const responseUrl = `${window.location.origin}/bluetooth-receipt/${props.transaction.id}`;
+        return `my.bluetoothprint.scheme://${responseUrl}`;
+    }
+    return '#';
 });
+
+// Optionally, keep the normal print function for desktop users
+const printBrowser = () => {
+    window.print();
+};
 </script>
 
 <template>
     <Head :title="`Struk #${transaction.id}`" />
 
     <div class="receipt-container">
-        <div class="receipt">
-            <pre class="receipt-text">{{ receiptText }}</pre>
+        <div class="receipt-wrapper">
+            <div class="receipt">
+                <pre class="receipt-text">{{ receiptText }}</pre>
+            </div>
+            
+            <div class="print-actions no-print">
+                <a :href="schemeUrl" class="btn-bluetooth">Print via Bluetooth</a>
+                <button @click="printBrowser" class="btn-browser">Print Browser</button>
+            </div>
         </div>
     </div>
 </template>
@@ -149,7 +165,41 @@ onMounted(() => {
     word-break: break-all;
 }
 
+.print-actions {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-bluetooth, .btn-browser {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    text-align: center;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    border: none;
+}
+
+.btn-bluetooth {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-browser {
+    background-color: #6c757d;
+    color: white;
+}
+
 @media print {
+    .no-print {
+        display: none !important;
+    }
+
     @page {
         size: 58mm auto;
         margin: 0;
@@ -164,6 +214,10 @@ onMounted(() => {
         padding: 0;
         background: white;
         min-height: auto;
+    }
+
+    .receipt-wrapper {
+        width: 100%;
     }
 
     .receipt {

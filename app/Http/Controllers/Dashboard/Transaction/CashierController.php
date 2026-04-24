@@ -152,4 +152,104 @@ class CashierController extends Controller
 
         return response()->json($transaction);
     }
+
+    public function bluetoothReceiptData($id)
+    {
+        $transaction = Transaction::whereIn('status', ['in_order', 'success'])
+            ->with(['cafe', 'table', 'details.menu'])
+            ->findOrFail($id);
+
+        $a = array();
+
+        $cleanNumber = function ($val) {
+            return preg_replace('/[^\d]/', '', number_format($val, 0, ',', '.'));
+        };
+
+        $fmtDate = function ($val) {
+            return date('d/m/Y H:i:s', strtotime($val));
+        };
+
+        $WIDTH = 32;
+        $lineStr = str_repeat('-', $WIDTH);
+
+        $padRight = function ($left, $right) use ($WIDTH) {
+            $space = $WIDTH - (strlen($left) + strlen($right));
+            return $left . str_repeat(' ', $space > 0 ? $space : 1) . $right;
+        };
+
+        $alignCenter = function ($text) use ($WIDTH) {
+            if (!$text) return '';
+            $lines = explode("\n", $text);
+            $result = [];
+            foreach ($lines as $l) {
+                $space = $WIDTH - strlen($l);
+                if ($space <= 0) {
+                    $result[] = $l;
+                } else {
+                    $leftSpace = floor($space / 2);
+                    $result[] = str_repeat(' ', $leftSpace) . $l;
+                }
+            }
+            return implode("\n", $result);
+        };
+
+        $str = '';
+
+        // HEADER
+        $str .= $alignCenter($transaction->cafe->name ?? 'CAFE') . "\n";
+        if ($transaction->cafe->address) $str .= $alignCenter($transaction->cafe->address) . "\n";
+        if ($transaction->cafe->phone_number) $str .= $alignCenter($transaction->cafe->phone_number) . "\n";
+        $str .= $lineStr . "\n";
+
+        // INFO
+        $str .= $padRight('No', '#' . $transaction->id) . "\n";
+        $str .= $padRight('Tgl', $fmtDate($transaction->updated_at)) . "\n";
+        $str .= $padRight('Cust', $transaction->cust_name ?? '-') . "\n";
+        if ($transaction->table) $str .= $padRight('Table', $transaction->table->name) . "\n";
+        $str .= $padRight('Pay', $transaction->payment_type) . "\n";
+        $str .= $lineStr . "\n";
+
+        // ITEMS
+        foreach ($transaction->details as $d) {
+            $name = substr($d->menu->name ?? '-', 0, $WIDTH);
+            $str .= $name . "\n";
+
+            $qtyPrice = $d->amount . 'x' . $cleanNumber($d->price);
+            $subtotal = $cleanNumber($d->price * $d->amount);
+
+            $str .= $padRight($qtyPrice, $subtotal) . "\n";
+
+            if ($d->description) {
+                $str .= ' ' . $d->description . "\n";
+            }
+        }
+
+        $str .= $lineStr . "\n";
+
+        // TOTAL
+        $str .= $padRight('Subtotal', $cleanNumber($transaction->price)) . "\n";
+        $str .= $padRight('Fee', $cleanNumber($transaction->fee)) . "\n";
+
+        $str .= $lineStr . "\n";
+        $str .= $padRight('TOTAL', $cleanNumber($transaction->total_price)) . "\n";
+        $str .= $lineStr . "\n";
+
+        // FOOTER
+        $str .= $alignCenter('Terima kasih') . "\n";
+        $str .= "\n\n\n";
+
+        // Replace \n with <br /> for Bluetooth Print app
+        $str = str_replace("\n", '<br />', $str);
+
+        // sending multi lines text
+        $obj = new \stdClass();
+        $obj->type = 0;
+        $obj->content = $str;
+        $obj->bold = 0;
+        $obj->align = 0;
+
+        array_push($a, $obj);
+
+        return response()->json($a, 200, [], JSON_FORCE_OBJECT);
+    }
 }

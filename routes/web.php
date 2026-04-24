@@ -219,6 +219,8 @@ Route::middleware(['auth'])->group(function () {
 
 Route::get('for-public/{cafeId}', [PublicController::class, 'forPublic']);
 Route::get('for-kitchen/{cafeId}', [PublicController::class, 'forKitchen']);
+Route::get('bluetooth-receipt/{id}', [CashierController::class, 'bluetoothReceiptData'])->name('bluetooth.receipt');
+
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
