@@ -205,7 +205,7 @@ class CashierController extends Controller
             $str .= $padRight($qtyPrice, $subtotal) . "\n";
 
             if ($d->description) {
-                $str .= ' ' . $d->description . "\n";
+                $str .= $d->description . "\n";
             }
         }
 
@@ -221,6 +221,7 @@ class CashierController extends Controller
 
         // FOOTER
         $str .= $alignCenter('Terima kasih') . "\n";
+        $str .= $lineStr . "\n";
         $str .= $lineStr . "\n";
         $str .= "\n";
 
