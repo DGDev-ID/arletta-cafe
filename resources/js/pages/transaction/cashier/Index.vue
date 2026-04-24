@@ -97,7 +97,7 @@ const makeSuccessInOrder = (id: number) => {
 
 const printReceiptInline = async (id: number) => {
     // Jika display adalah tablet/mobile (< 1920px), gunakan Bluetooth Print
-    if (window.innerWidth < 1920) {
+    if (window.innerWidth < 1400) {
         const responseUrl = `${window.location.origin}/bluetooth-receipt/${id}`;
         window.location.href = `my.bluetoothprint.scheme://${responseUrl}`;
         return;
