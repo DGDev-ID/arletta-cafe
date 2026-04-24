@@ -19,7 +19,7 @@ interface Transaction {
     payment_type: string;
     status: string;
     updated_at: string;
-    cafe: { id: number; name: string; address: string | null };
+    cafe: { id: number; name: string; address: string | null; phone_number?: string | null };
     table: { id: number; name: string } | null;
     details: TransactionDetail[];
 }
@@ -28,12 +28,14 @@ const props = defineProps<{
     transaction: Transaction;
 }>();
 
-const formatCurrency = (val: string | number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(val));
+const cleanNumber = (val: number) =>
+    new Intl.NumberFormat('id-ID')
+        .format(val)
+        .replace(/[^\d]/g, '');
 
-const formatDate = (val: string) => {
+const fmtDate = (val: string) => {
     const d = new Date(val);
-    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString('id-ID');
 };
 
 onMounted(() => {
@@ -48,10 +50,9 @@ onMounted(() => {
         <div class="receipt">
             <!-- Header -->
             <div class="text-center mb-1">
-                <h1 class="receipt-title">{{ transaction.cafe.name }}</h1>
+                <h1 class="receipt-title">{{ transaction.cafe.name || 'CAFE' }}</h1>
                 <p v-if="transaction.cafe.address" class="receipt-sub">{{ transaction.cafe.address }}</p>
-                <p class="receipt-sub">main@arlettaluxury.com</p>
-                <p class="receipt-sub">085742089646</p>
+                <p v-if="transaction.cafe.phone_number" class="receipt-sub">{{ transaction.cafe.phone_number }}</p>
             </div>
 
             <div class="divider"></div>
@@ -59,24 +60,24 @@ onMounted(() => {
             <!-- Info -->
             <div class="receipt-info">
                 <div class="receipt-row">
-                    <span>No. Transaksi</span>
-                    <span class="font-medium">#{{ transaction.id }}</span>
+                    <span>No</span>
+                    <span>#{{ transaction.id }}</span>
                 </div>
                 <div class="receipt-row">
-                    <span>Tanggal</span>
-                    <span class="font-medium">{{ formatDate(transaction.updated_at) }}</span>
+                    <span>Tgl</span>
+                    <span>{{ fmtDate(transaction.updated_at) }}</span>
                 </div>
                 <div class="receipt-row">
-                    <span>Customer</span>
-                    <span class="font-medium">{{ transaction.cust_name ?? '-' }}</span>
+                    <span>Cust</span>
+                    <span>{{ transaction.cust_name ?? '-' }}</span>
                 </div>
                 <div v-if="transaction.table" class="receipt-row">
                     <span>Table</span>
-                    <span class="font-medium">{{ transaction.table.name }}</span>
+                    <span>{{ transaction.table.name }}</span>
                 </div>
                 <div class="receipt-row">
-                    <span>Pembayaran</span>
-                    <span class="font-medium" style="text-transform:capitalize">{{ transaction.payment_type }}</span>
+                    <span>Pay</span>
+                    <span style="text-transform:capitalize">{{ transaction.payment_type }}</span>
                 </div>
             </div>
 
@@ -85,12 +86,12 @@ onMounted(() => {
             <!-- Items -->
             <div class="receipt-items">
                 <div v-for="detail in transaction.details" :key="detail.id" class="receipt-item">
-                    <div class="receipt-row">
-                        <span>{{ detail.menu?.name ?? '-' }}</span>
-                        <span>{{ formatCurrency(Number(detail.price) * detail.amount) }}</span>
+                    <div class="receipt-row-name">
+                        {{ detail.menu?.name ?? '-' }}
                     </div>
-                    <div class="receipt-detail">
-                        {{ detail.amount }} x {{ formatCurrency(detail.price) }}
+                    <div class="receipt-row">
+                        <span>{{ detail.amount }}x{{ cleanNumber(Number(detail.price)) }}</span>
+                        <span>{{ cleanNumber(Number(detail.price) * detail.amount) }}</span>
                     </div>
                     <div v-if="detail.description" class="receipt-note">
                         {{ detail.description }}
@@ -104,24 +105,28 @@ onMounted(() => {
             <div class="receipt-info">
                 <div class="receipt-row">
                     <span>Subtotal</span>
-                    <span>{{ formatCurrency(transaction.price) }}</span>
+                    <span>{{ cleanNumber(Number(transaction.price)) }}</span>
                 </div>
                 <div class="receipt-row">
                     <span>Fee</span>
-                    <span>{{ formatCurrency(transaction.fee) }}</span>
+                    <span>{{ cleanNumber(Number(transaction.fee)) }}</span>
                 </div>
-                <div class="divider"></div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="receipt-info">
                 <div class="receipt-row receipt-total">
-                    <span>Total</span>
-                    <span>{{ formatCurrency(transaction.total_price) }}</span>
+                    <span>TOTAL</span>
+                    <span>{{ cleanNumber(Number(transaction.total_price)) }}</span>
                 </div>
             </div>
 
             <div class="divider"></div>
 
             <!-- Footer -->
-            <div class="receipt-footer">
-                <p>Terima kasih atas kunjungan Anda!</p>
+            <div class="receipt-footer mt-2">
+                <p>Terima kasih</p>
             </div>
         </div>
     </div>
@@ -137,7 +142,8 @@ onMounted(() => {
 }
 
 .receipt {
-    width: 44mm;
+    width: 58mm; /* Standard thermal width */
+    max-width: 100%;
     background: white;
     padding: 2mm;
     margin: 0 auto;
@@ -146,6 +152,18 @@ onMounted(() => {
     line-height: 1.2;
     color: #000;
     -webkit-font-smoothing: none;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-2 {
+    margin-top: 2mm;
+}
+
+.mb-1 {
+    margin-bottom: 1mm;
 }
 
 .receipt-title {
@@ -175,6 +193,11 @@ onMounted(() => {
     word-break: break-word;
 }
 
+.receipt-row-name {
+    word-break: break-word;
+    margin-bottom: 0.5mm;
+}
+
 .receipt-items {
     margin-bottom: 1.5mm;
 }
@@ -183,13 +206,8 @@ onMounted(() => {
     margin-bottom: 1.5mm;
 }
 
-.receipt-detail {
-    padding-left: 1mm;
-    font-size: 11px;
-}
-
 .receipt-note {
-    padding-left: 1mm;
+    padding-left: 2mm;
     font-style: italic;
     font-size: 11px;
 }
@@ -206,7 +224,7 @@ onMounted(() => {
 
 @media print {
     @page {
-        size: 58mm 210mm;
+        size: 58mm auto;
         margin: 0;
     }
 
@@ -222,7 +240,7 @@ onMounted(() => {
     }
 
     .receipt {
-        width: 44mm;
+        width: 100%;
         padding: 2mm;
         box-shadow: none;
     }
