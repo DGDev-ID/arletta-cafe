@@ -96,14 +96,17 @@ const makeSuccessInOrder = (id: number) => {
 };
 
 const printReceiptInline = async (id: number) => {
-    // Jika display adalah tablet/mobile (< 1920px), gunakan Bluetooth Print
-    if (window.innerWidth < 1400) {
+    // Deteksi perangkat mobile/tablet menggunakan User Agent & Touch Support
+    const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+        || (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+
+    if (isMobileOrTablet) {
         const responseUrl = `${window.location.origin}/bluetooth-receipt/${id}`;
         window.location.href = `my.bluetoothprint.scheme://${responseUrl}`;
         return;
     }
 
-    // Jika display laptop (>= 1920px), gunakan QZ Tray
+    // Jika display desktop, gunakan QZ Tray
     try {
         const { data: trx } = await axios.get(`/transaction/cashier/${id}/receipt-data`);
 
