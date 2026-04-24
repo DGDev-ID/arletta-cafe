@@ -15,6 +15,7 @@ class MaterialController extends Controller
         $allCafe = MCafe::select('id', 'name')->get();
         $cafeId = $request->query('cafe_id');
         $search = $request->query('search');
+        $stockStatus = $request->query('stock_status');
         
         $query = MMaterial::with('cafe', 'baseUnit');
         if ($cafeId) {
@@ -23,12 +24,18 @@ class MaterialController extends Controller
         if ($search) {
             $query->where('name', 'ilike', "%{$search}%");
         }
+        if ($stockStatus === 'empty') {
+            $query->where('stock', '<=', 0);
+        }
         
         $data = $query->paginate(10)->withQueryString();
 
         return inertia('master/material/Index', [
-            'data'    => $data,
-            'allCafe' => $allCafe,
+            'data'         => $data,
+            'allCafe'      => $allCafe,
+            'search'       => $search ?? '',
+            'cafe_id'      => $cafeId ?? '',
+            'stock_status' => $stockStatus ?? '',
         ]);
     }
 

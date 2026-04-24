@@ -20,21 +20,29 @@ const deleteMaterial = (id: number) => {
     }
 };
 
-defineProps<{
+const props = defineProps<{
     data: any;
     allCafe: any;
+    search?: string;
+    cafe_id?: string;
+    stock_status?: string;
 }>();
 
-const selectedCafe = ref('');
-const searchQuery = ref('');
+const selectedCafe = ref(props.cafe_id || '');
+const searchQuery = ref(props.search || '');
+const selectedStockStatus = ref(props.stock_status || '');
 
-const filterByCafe = () => {
-    router.get('/master/material', { cafe_id: selectedCafe.value, search: searchQuery.value }, { preserveState: true });
+const applyFilters = () => {
+    const params: Record<string, string> = {};
+    if (selectedCafe.value) params.cafe_id = selectedCafe.value;
+    if (searchQuery.value) params.search = searchQuery.value;
+    if (selectedStockStatus.value) params.stock_status = selectedStockStatus.value;
+    router.get('/master/material', params, { preserveState: true });
 };
 
-const searchMaterial = () => {
-    router.get('/master/material', { cafe_id: selectedCafe.value, search: searchQuery.value }, { preserveState: true });
-};
+const filterByCafe = () => applyFilters();
+const filterByStockStatus = () => applyFilters();
+const searchMaterial = () => applyFilters();
 </script>
 
 <template>
@@ -57,18 +65,27 @@ const searchMaterial = () => {
                         </Link>
                     </div>
 
-                    <!-- Filter Cafe -->
-                    <div class="flex flex-col mt-4 sm:flex-row gap-4 w-full md:flex-1 justify-between">
-                        <div class="w-full sm:w-48">
-                            <select v-model="selectedCafe" @change="filterByCafe"
-                                class="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                                <option value="">All Cafes</option>
-                                <option v-for="cafe in allCafe" :key="cafe.id" :value="cafe.id">
-                                    {{ cafe.name }}
-                                </option>
-                            </select>
+                    <!-- Filter Cafe & Stock -->
+                    <div class="flex flex-col mt-4 sm:flex-row gap-4 w-full justify-between items-center">
+                        <div class="flex gap-3 w-full sm:w-auto flex-col sm:flex-row">
+                            <div class="w-full sm:w-48">
+                                <select v-model="selectedCafe" @change="filterByCafe"
+                                    class="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                                    <option value="">All Cafes</option>
+                                    <option v-for="cafe in allCafe" :key="cafe.id" :value="cafe.id">
+                                        {{ cafe.name }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="w-full sm:w-48">
+                                <select v-model="selectedStockStatus" @change="filterByStockStatus"
+                                    class="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                                    <option value="">Semua Stok</option>
+                                    <option value="empty">Stok Kosong</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="w-full sm:w-64">
+                        <div class="w-full sm:max-w-sm">
                             <input v-model="searchQuery" @keyup.enter="searchMaterial" type="text" placeholder="Cari nama material..."
                                 class="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
                         </div>
