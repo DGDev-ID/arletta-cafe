@@ -24,6 +24,8 @@ class MenuController extends Controller
         $allCafe = MCafe::select('id', 'name')->get();
         $cafeId = $request->query('cafe_id');
         $search = $request->query('search');
+        $status = $request->query('status');
+        
         $query = MMenu::with('cafe');
         if ($cafeId) {
             $query->where('cafe_id', $cafeId);
@@ -31,12 +33,17 @@ class MenuController extends Controller
         if ($search) {
             $query->where('name', 'ilike', "%{$search}%");
         }
+        if ($status && in_array($status, ['available', 'unavailable'])) {
+            $query->where('status', $status);
+        }
         $data = $query->paginate(10)->withQueryString();
 
         return inertia('master/menu/Index', [
             'data'    => $data,
             'allCafe' => $allCafe,
             'search'  => $search ?? '',
+            'status'  => $status ?? '',
+            'cafe_id' => $cafeId ?? '',
         ]);
     }
 

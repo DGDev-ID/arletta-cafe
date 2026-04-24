@@ -36,7 +36,7 @@ const masterDataNavItems: NavItem[] = [
         permission: 'master.material.view',
     },
     {
-        title: 'Semi-Finished Material',
+        title: 'Production',
         href: '/master/semi-finished-material',
         icon: BookA,
         permission: 'master.material.view',
@@ -103,7 +103,7 @@ const managementNavItems: NavItem[] = [
         permission: 'management.unit-material-converter',
     },
     {
-        title: 'In-Out Material',
+        title: 'Purchase',
         href: '/management/inbound-outbound-material',
         icon: Inbox,
         permission: 'management.inbound-outbound-material',

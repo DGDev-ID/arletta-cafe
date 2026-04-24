@@ -32,7 +32,7 @@ const props = defineProps<{
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Inbound / Outbound Material', href: '/management/inbound-outbound-material' },
+    { title: 'Purchase', href: '/management/inbound-outbound-material' },
     { title: 'Tambah Inbound', href: '/management/inbound-outbound-material/create' },
 ];
 

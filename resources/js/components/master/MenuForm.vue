@@ -387,10 +387,10 @@ function getConversionError(row: MenuMaterialRow): string | null {
             </div>
         </div>
 
-        <!-- Semi-Finished Material Section -->
+        <!-- Production Section -->
         <div class="space-y-4">
             <div class="flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Semi-Finished Material
+                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Production
                 </h3>
                 <button type="button" @click="addSfm" :disabled="!form.cafe_id"
                     class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium text-muted-foreground hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed">
@@ -399,7 +399,7 @@ function getConversionError(row: MenuMaterialRow): string | null {
             </div>
 
             <p v-if="!form.cafe_id" class="text-sm text-muted-foreground italic">
-                Pilih cafe terlebih dahulu untuk menambahkan semi-finished material.
+                Pilih cafe terlebih dahulu untuk menambahkan Production.
             </p>
 
             <div v-if="form.semi_finished_materials.length > 0" class="space-y-4">
@@ -416,7 +416,7 @@ function getConversionError(row: MenuMaterialRow): string | null {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- SFM select -->
                         <div class="grid gap-2">
-                            <label class="text-sm font-medium leading-none">Semi-Finished Material</label>
+                            <label class="text-sm font-medium leading-none">Production</label>
                             <SearchableSelect
                                 v-model="row.semi_finished_material_id"
                                 :options="filteredSfmOptions"

@@ -9,13 +9,13 @@ import { ref } from 'vue';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Semi-Finished Material',
+        title: 'Production',
         href: '/master/semi-finished-material',
     },
 ];
 
 const deleteSfm = (id: number) => {
-    if (confirm('Apakah Anda yakin ingin menghapus semi-finished material ini?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus Production ini?')) {
         router.delete(`/master/semi-finished-material/${id}`);
     }
 };
@@ -41,7 +41,7 @@ const searchSfm = () => {
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
 
-        <Head title="Semi-Finished Material" />
+        <Head title="Production" />
 
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6 space-y-8">
@@ -49,12 +49,12 @@ const searchSfm = () => {
                 <!-- Header -->
                 <div class="flex-col">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <Heading variant="small" title="Semi-Finished Material"
+                        <Heading variant="small" title="Production"
                             description="Kelola daftar bahan setengah jadi (bundling material)." />
 
                         <Link href="/master/semi-finished-material/create"
                             class="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90">
-                            Tambah Semi-Finished Material
+                            Tambah Production
                         </Link>
                     </div>
 
@@ -144,7 +144,7 @@ const searchSfm = () => {
                             <!-- Empty -->
                             <tr v-if="data.data.length === 0">
                                 <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">
-                                    Belum ada data semi-finished material.
+                                    Belum ada data Production.
                                 </td>
                             </tr>
                         </tbody>

@@ -18,7 +18,7 @@ defineProps<{
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Semi-Finished Material', href: '/master/semi-finished-material' },
+    { title: 'Production', href: '/master/semi-finished-material' },
     { title: 'Tambah', href: '/master/semi-finished-material/create' },
 ];
 
@@ -34,13 +34,13 @@ const submit = () => form.post('/master/semi-finished-material');
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Tambah Semi-Finished Material" />
+        <Head title="Tambah Production" />
 
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <div class="flex items-center justify-between">
-                    <Heading variant="small" title="Tambah Semi-Finished Material" description="Buat bahan setengah jadi baru beserta komposisinya." />
+                    <Heading variant="small" title="Tambah Production" description="Buat bahan setengah jadi baru beserta komposisinya." />
                     <Link href="/master/semi-finished-material" class="text-sm text-muted-foreground hover:text-foreground transition">
                         ← Kembali
                     </Link>

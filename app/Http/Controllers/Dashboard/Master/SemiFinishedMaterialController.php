@@ -80,7 +80,7 @@ class SemiFinishedMaterialController extends Controller
 
         return redirect()
             ->route('master.semi-finished-material.index')
-            ->with('success', 'Semi-finished material berhasil ditambahkan.');
+            ->with('success', 'Production berhasil ditambahkan.');
     }
 
     public function edit($id)
@@ -131,7 +131,7 @@ class SemiFinishedMaterialController extends Controller
 
         return redirect()
             ->route('master.semi-finished-material.index')
-            ->with('success', 'Semi-finished material berhasil diperbarui.');
+            ->with('success', 'Production berhasil diperbarui.');
     }
 
     public function destroy($id)
@@ -141,6 +141,6 @@ class SemiFinishedMaterialController extends Controller
 
         return redirect()
             ->route('master.semi-finished-material.index')
-            ->with('success', 'Semi-finished material berhasil dihapus.');
+            ->with('success', 'Production berhasil dihapus.');
     }
 }

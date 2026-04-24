@@ -52,7 +52,7 @@ const props = defineProps<{
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Inbound / Outbound Material', href: '/management/inbound-outbound-material' },
+    { title: 'Purchase', href: '/management/inbound-outbound-material' },
 ];
 
 const selectedCafe = ref(props.filters.cafe_id || '');
@@ -108,13 +108,13 @@ const formatCurrency = (val: string | number) => {
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
 
-        <Head title="Inbound / Outbound Material" />
+        <Head title="Purchase" />
 
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <!-- Header -->
-                <Heading variant="small" title="Inbound / Outbound Material"
+                <Heading variant="small" title="Purchase"
                     description="Lihat riwayat inbound dan outbound material." />
 
                 <!-- Filters + Add Button -->

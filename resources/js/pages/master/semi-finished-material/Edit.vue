@@ -29,7 +29,7 @@ const props = defineProps<{
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Semi-Finished Material', href: '/master/semi-finished-material' },
+    { title: 'Production', href: '/master/semi-finished-material' },
     { title: 'Edit', href: `/master/semi-finished-material/${props.data.id}/edit` },
 ];
 
@@ -49,13 +49,13 @@ const submit = () => form.put(`/master/semi-finished-material/${props.data.id}`)
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Edit Semi-Finished Material" />
+        <Head title="Edit Production" />
 
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <div class="flex items-center justify-between">
-                    <Heading variant="small" title="Edit Semi-Finished Material" description="Ubah data bahan setengah jadi." />
+                    <Heading variant="small" title="Edit Production" description="Ubah data bahan setengah jadi." />
                     <Link href="/master/semi-finished-material" class="text-sm text-muted-foreground hover:text-foreground transition">
                         ← Kembali
                     </Link>

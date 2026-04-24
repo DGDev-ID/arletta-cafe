@@ -28,10 +28,13 @@ const props = defineProps<{
     data: any;
     allCafe: any;
     search: string;
+    status: string;
+    cafe_id: string;
 }>();
 
-const selectedCafe = ref('');
+const selectedCafe = ref(props.cafe_id || '');
 const searchQuery = ref(props.search);
+const selectedStatus = ref(props.status || '');
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -39,10 +42,12 @@ const applyFilters = () => {
     const params: Record<string, string> = {};
     if (selectedCafe.value) params.cafe_id = selectedCafe.value;
     if (searchQuery.value) params.search = searchQuery.value;
+    if (selectedStatus.value) params.status = selectedStatus.value;
     router.get('/master/menu', params, { preserveState: true });
 };
 
 const filterByCafe = () => applyFilters();
+const filterByStatus = () => applyFilters();
 
 watch(searchQuery, () => {
     if (searchTimeout) clearTimeout(searchTimeout);
@@ -76,16 +81,26 @@ const formatPrice = (price: string | number) => {
 
                     <!-- Filter Cafe + Search -->
                     <div class="flex flex-col mt-4 sm:flex-row gap-3 w-full items-center justify-between">
-                        <div class="w-full sm:w-48">
-                            <select v-model="selectedCafe" @change="filterByCafe"
-                                class="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                                <option value="">All Cafes</option>
-                                <option v-for="cafe in allCafe" :key="cafe.id" :value="cafe.id">
-                                    {{ cafe.name }}
-                                </option>
-                            </select>
+                        <div class="flex gap-3 w-full sm:w-auto flex-col sm:flex-row">
+                            <div class="w-full sm:w-48">
+                                <select v-model="selectedCafe" @change="filterByCafe"
+                                    class="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                                    <option value="">All Cafes</option>
+                                    <option v-for="cafe in allCafe" :key="cafe.id" :value="cafe.id">
+                                        {{ cafe.name }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="w-full sm:w-48">
+                                <select v-model="selectedStatus" @change="filterByStatus"
+                                    class="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                                    <option value="">Semua Status</option>
+                                    <option value="available">Available</option>
+                                    <option value="unavailable">Unavailable</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="relative flex-1 max-w-sm">
+                        <div class="relative flex-1 max-w-sm w-full">
                             <Search :size="16"
                                 class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <input v-model="searchQuery" type="text"

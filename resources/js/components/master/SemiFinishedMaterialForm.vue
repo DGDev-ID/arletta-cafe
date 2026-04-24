@@ -122,7 +122,7 @@ function getConversionError(row: DetailRow): string | null {
 
         <!-- Basic Info Section -->
         <div class="space-y-6">
-            <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Informasi Semi-Finished Material</h3>
+            <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Informasi Production</h3>
 
             <!-- Cafe -->
             <div class="grid gap-2">
