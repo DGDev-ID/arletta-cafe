@@ -5,8 +5,9 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { AlertTriangle } from 'lucide-vue-next';
-import { ref, watch, onMounted } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
+import SearchableSelect from '@/components/SearchableSelect.vue';
 
 interface Cafe {
     id: number;
@@ -46,6 +47,8 @@ const form = useForm({
     inbound_buy_price: props.inboundOutbound.inbound_buy_price,
     description: props.inboundOutbound.description ? props.inboundOutbound.description.replace('spoil - ', '') : '',
 });
+
+const unitOptions = computed(() => props.units.map(u => ({ value: u.id, label: u.name })));
 
 // We need to fetch materials to know the base_unit_id of the current material for validation
 onMounted(async () => {
@@ -126,11 +129,12 @@ const submit = () => {
                         <!-- Unit -->
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Satuan (Unit)</label>
-                            <select v-model="form.base_unit_id" required
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                                <option value="" disabled>Pilih Satuan</option>
-                                <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.base_unit_id"
+                                :options="unitOptions"
+                                placeholder="Pilih Satuan"
+                                required
+                            />
                             <InputError :message="form.errors.base_unit_id" />
 
                             <!-- Unit converter alert -->

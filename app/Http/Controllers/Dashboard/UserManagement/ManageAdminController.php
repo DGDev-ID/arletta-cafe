@@ -16,8 +16,8 @@ class ManageAdminController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhere('email', 'ilike', "%{$search}%");
             });
         }
 
@@ -37,8 +37,8 @@ class ManageAdminController extends Controller
         }
 
         $users = User::where(function ($query) use ($q) {
-                $query->where('name', 'like', "%{$q}%")
-                      ->orWhere('email', 'like', "%{$q}%");
+                $query->where('name', 'ilike', "%{$q}%")
+                      ->orWhere('email', 'ilike', "%{$q}%");
             })
             ->whereDoesntHave('roles', fn ($r) => $r->where('name', 'Admin'))
             ->select('id', 'name', 'email')

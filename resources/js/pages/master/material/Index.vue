@@ -26,9 +26,14 @@ defineProps<{
 }>();
 
 const selectedCafe = ref('');
+const searchQuery = ref('');
 
 const filterByCafe = () => {
-    router.get('/master/material', { cafe_id: selectedCafe.value }, { preserveState: true });
+    router.get('/master/material', { cafe_id: selectedCafe.value, search: searchQuery.value }, { preserveState: true });
+};
+
+const searchMaterial = () => {
+    router.get('/master/material', { cafe_id: selectedCafe.value, search: searchQuery.value }, { preserveState: true });
 };
 </script>
 
@@ -62,6 +67,10 @@ const filterByCafe = () => {
                                     {{ cafe.name }}
                                 </option>
                             </select>
+                        </div>
+                        <div class="w-full sm:w-64">
+                            <input v-model="searchQuery" @keyup.enter="searchMaterial" type="text" placeholder="Cari nama material..."
+                                class="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
                         </div>
                     </div>
                 </div>

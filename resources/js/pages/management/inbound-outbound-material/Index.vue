@@ -5,7 +5,8 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
 import { HelpCircle, Plus, Search, Pencil } from 'lucide-vue-next';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import SearchableSelect from '@/components/SearchableSelect.vue';
 
 interface Cafe {
     id: number;
@@ -60,6 +61,22 @@ const selectedType = ref(props.filters.type || '');
 const cafeSearch = ref('');
 const materialSearch = ref('');
 
+const cafeOptions = computed(() => {
+    const defaultOpt = [{ value: '', label: 'Semua Cafe' }];
+    return defaultOpt.concat(props.cafes.map(c => ({ value: c.id, label: c.name })));
+});
+
+const materialOptions = computed(() => {
+    const defaultOpt = [{ value: '', label: 'Semua Material' }];
+    return defaultOpt.concat(props.materials.map(m => ({ value: m.id, label: m.name })));
+});
+
+const typeOptions = [
+    { value: '', label: 'Semua Tipe' },
+    { value: 'inbound', label: 'Inbound' },
+    { value: 'outbound', label: 'Outbound' }
+];
+
 const applyFilters = () => {
     const params: Record<string, string> = {};
     if (selectedCafe.value) params.cafe_id = selectedCafe.value;
@@ -105,34 +122,31 @@ const formatCurrency = (val: string | number) => {
                     <!-- Filter Cafe -->
                     <div class="grid gap-1.5 min-w-[200px]">
                         <label class="text-xs font-medium text-muted-foreground">Cafe</label>
-                        <div class="relative">
-                            <select v-model="selectedCafe"
-                                class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring appearance-none">
-                                <option value="">Semua Cafe</option>
-                                <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">{{ cafe.name }}</option>
-                            </select>
-                        </div>
+                            <SearchableSelect
+                                v-model="selectedCafe"
+                                :options="cafeOptions"
+                                placeholder="Semua Cafe"
+                            />
                     </div>
 
                     <!-- Filter Material (only when cafe selected) -->
                     <div v-if="selectedCafe" class="grid gap-1.5 min-w-[200px]">
                         <label class="text-xs font-medium text-muted-foreground">Material</label>
-                        <select v-model="selectedMaterial"
-                            class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring appearance-none">
-                            <option value="">Semua Material</option>
-                            <option v-for="mat in materials" :key="mat.id" :value="mat.id">{{ mat.name }}</option>
-                        </select>
+                        <SearchableSelect
+                            v-model="selectedMaterial"
+                            :options="materialOptions"
+                            placeholder="Semua Material"
+                        />
                     </div>
 
                     <!-- Filter Type (only when material selected) -->
                     <div v-if="selectedMaterial" class="grid gap-1.5 min-w-[180px]">
                         <label class="text-xs font-medium text-muted-foreground">Tipe</label>
-                        <select v-model="selectedType"
-                            class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring appearance-none">
-                            <option value="">Semua Tipe</option>
-                            <option value="inbound">Inbound</option>
-                            <option value="outbound">Outbound</option>
-                        </select>
+                        <SearchableSelect
+                            v-model="selectedType"
+                            :options="typeOptions"
+                            placeholder="Semua Tipe"
+                        />
                     </div>
 
                     <div class="flex-1"></div>

@@ -27,7 +27,7 @@ class SemiFinishedMaterialController extends Controller
             $query->where('cafe_id', $cafeId);
         }
         if ($search) {
-            $query->where('name', 'like', "%{$search}%");
+            $query->where('name', 'ilike', "%{$search}%");
         }
 
         $data = $query->paginate(10)->withQueryString();

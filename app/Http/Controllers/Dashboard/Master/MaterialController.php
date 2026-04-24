@@ -14,10 +14,16 @@ class MaterialController extends Controller
     {
         $allCafe = MCafe::select('id', 'name')->get();
         $cafeId = $request->query('cafe_id');
+        $search = $request->query('search');
+        
         $query = MMaterial::with('cafe', 'baseUnit');
         if ($cafeId) {
             $query->where('cafe_id', $cafeId);
         }
+        if ($search) {
+            $query->where('name', 'ilike', "%{$search}%");
+        }
+        
         $data = $query->paginate(10)->withQueryString();
 
         return inertia('master/material/Index', [

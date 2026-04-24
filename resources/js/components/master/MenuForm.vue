@@ -2,6 +2,7 @@
 import InputError from '@/components/InputError.vue';
 import { AlertTriangle, Plus, Trash2, Upload, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+import SearchableSelect from '@/components/SearchableSelect.vue';
 
 interface CafeOption {
     id: number;
@@ -98,6 +99,20 @@ const filteredSfms = computed(() => {
     if (!props.form.cafe_id) return [];
     return props.semiFinishedMaterials.filter(s => s.cafe_id === props.form.cafe_id);
 });
+
+const cafeOptions = computed(() => props.cafes.map(c => ({ value: c.id, label: c.name })));
+const categoryOptions = computed(() => {
+    const defaultOpt = [{ value: null, label: 'Tanpa Kategori' }];
+    return defaultOpt.concat(filteredCategories.value.map(c => ({ value: c.id, label: c.name })));
+});
+const filteredMaterialOptions = computed(() => filteredMaterials.value.map(m => ({ value: m.id, label: m.name })));
+const unitOptions = computed(() => props.units.map(u => ({ value: u.id, label: u.name })));
+const filteredSfmOptions = computed(() => filteredSfms.value.map(s => ({ value: s.id, label: `${s.name} (${s.unit.name})` })));
+
+const promoTypeOptions = [
+    { value: 'discount_percent', label: 'Diskon Persen (%)' },
+    { value: 'discount_amount', label: 'Diskon Nominal (Rp)' }
+];
 
 watch(() => props.form.cafe_id, () => {
     props.form.materials = [];
@@ -199,11 +214,12 @@ function getConversionError(row: MenuMaterialRow): string | null {
                 <label for="menu-cafe" class="text-sm font-medium leading-none">
                     Cafe <span class="text-red-500">*</span>
                 </label>
-                <select id="menu-cafe" v-model="form.cafe_id" required
-                    class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="" disabled>Pilih Cafe</option>
-                    <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">{{ cafe.name }}</option>
-                </select>
+                <SearchableSelect
+                    v-model="form.cafe_id"
+                    :options="cafeOptions"
+                    placeholder="Pilih Cafe"
+                    required
+                />
                 <InputError :message="form.errors.cafe_id" />
             </div>
 
@@ -220,11 +236,11 @@ function getConversionError(row: MenuMaterialRow): string | null {
             <!-- Kategori Menu -->
             <div class="grid gap-2">
                 <label for="menu-category" class="text-sm font-medium leading-none">Kategori Menu</label>
-                <select id="menu-category" v-model="form.menu_category_id"
-                    class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option :value="null">Tanpa Kategori</option>
-                    <option v-for="cat in filteredCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-                </select>
+                <SearchableSelect
+                    v-model="form.menu_category_id"
+                    :options="categoryOptions"
+                    placeholder="Tanpa Kategori"
+                />
                 <InputError :message="form.errors.menu_category_id" />
             </div>
 
@@ -284,12 +300,11 @@ function getConversionError(row: MenuMaterialRow): string | null {
             <div v-if="form.has_promo" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="grid gap-2">
                     <label for="promo-type" class="text-sm font-medium leading-none">Tipe Promo</label>
-                    <select id="promo-type" v-model="form.promo_type"
-                        class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                        <option value="" disabled>Pilih Tipe</option>
-                        <option value="discount_percent">Diskon Persen (%)</option>
-                        <option value="discount_amount">Diskon Nominal (Rp)</option>
-                    </select>
+                    <SearchableSelect
+                        v-model="form.promo_type"
+                        :options="promoTypeOptions"
+                        placeholder="Pilih Tipe"
+                    />
                     <InputError :message="form.errors.promo_type" />
                 </div>
                 <div class="grid gap-2">
@@ -331,12 +346,13 @@ function getConversionError(row: MenuMaterialRow): string | null {
                         <!-- Material select -->
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Material</label>
-                            <select v-model="row.material_id" @change="onMaterialChange(index)" required
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                                <option value="" disabled>Pilih Material</option>
-                                <option v-for="mat in filteredMaterials" :key="mat.id" :value="mat.id">{{ mat.name }}
-                                </option>
-                            </select>
+                            <SearchableSelect
+                                v-model="row.material_id"
+                                :options="filteredMaterialOptions"
+                                @change="onMaterialChange(index)"
+                                placeholder="Pilih Material"
+                                required
+                            />
                             <InputError :message="form.errors[`materials.${index}.material_id`]" />
                         </div>
 
@@ -351,11 +367,12 @@ function getConversionError(row: MenuMaterialRow): string | null {
                         <!-- Unit -->
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Satuan</label>
-                            <select v-model="row.unit_id" required
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                                <option value="" disabled>Pilih Satuan</option>
-                                <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="row.unit_id"
+                                :options="unitOptions"
+                                placeholder="Pilih Satuan"
+                                required
+                            />
                             <InputError :message="form.errors[`materials.${index}.unit_id`]" />
                         </div>
                     </div>
@@ -400,12 +417,12 @@ function getConversionError(row: MenuMaterialRow): string | null {
                         <!-- SFM select -->
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Semi-Finished Material</label>
-                            <select v-model="row.semi_finished_material_id" required
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                                <option value="" disabled>Pilih SFM</option>
-                                <option v-for="sfm in filteredSfms" :key="sfm.id" :value="sfm.id">{{ sfm.name }} ({{
-                                    sfm.unit.name }})</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="row.semi_finished_material_id"
+                                :options="filteredSfmOptions"
+                                placeholder="Pilih SFM"
+                                required
+                            />
                             <InputError
                                 :message="form.errors[`semi_finished_materials.${index}.semi_finished_material_id`]" />
                         </div>

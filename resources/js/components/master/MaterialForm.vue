@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
+import SearchableSelect from '@/components/SearchableSelect.vue';
+import { computed } from 'vue';
 
 interface CafeOption {
     id: number;
@@ -20,7 +22,7 @@ interface MaterialFormData {
     processing: boolean;
 }
 
-defineProps<{
+const props = defineProps<{
     form: MaterialFormData;
     cafes: CafeOption[];
     units: UnitOption[];
@@ -29,6 +31,9 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{ submit: [] }>();
+
+const cafeOptions = computed(() => props.cafes.map(c => ({ value: c.id, label: c.name })));
+const unitOptions = computed(() => props.units.map(u => ({ value: u.id, label: u.name })));
 </script>
 
 <template>
@@ -39,17 +44,12 @@ const emit = defineEmits<{ submit: [] }>();
             <label for="material-cafe" class="text-sm font-medium leading-none">
                 Cafe <span class="text-red-500">*</span>
             </label>
-            <select
-                id="material-cafe"
+            <SearchableSelect
                 v-model="form.cafe_id"
+                :options="cafeOptions"
+                placeholder="Pilih Cafe"
                 required
-                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-                <option value="" disabled>Pilih Cafe</option>
-                <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">
-                    {{ cafe.name }}
-                </option>
-            </select>
+            />
             <InputError :message="form.errors.cafe_id" />
         </div>
 
@@ -73,17 +73,12 @@ const emit = defineEmits<{ submit: [] }>();
             <label for="material-unit" class="text-sm font-medium leading-none">
                 Satuan Dasar <span class="text-red-500">*</span>
             </label>
-            <select
-                id="material-unit"
+            <SearchableSelect
                 v-model="form.base_unit_id"
+                :options="unitOptions"
+                placeholder="Pilih Satuan"
                 required
-                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-                <option value="" disabled>Pilih Satuan</option>
-                <option v-for="unit in units" :key="unit.id" :value="unit.id">
-                    {{ unit.name }}
-                </option>
-            </select>
+            />
             <InputError :message="form.errors.base_unit_id" />
         </div>
 

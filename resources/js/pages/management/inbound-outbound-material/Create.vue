@@ -5,8 +5,9 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { AlertTriangle } from 'lucide-vue-next';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import axios from 'axios';
+import SearchableSelect from '@/components/SearchableSelect.vue';
 
 interface Cafe {
     id: number;
@@ -46,6 +47,10 @@ const form = useForm({
     base_unit_id: '' as number | '',
     inbound_buy_price: '' as number | '',
 });
+
+const cafeOptions = computed(() => props.cafes.map(c => ({ value: c.id, label: c.name })));
+const materialOptions = computed(() => materials.value.map(m => ({ value: m.id, label: `${m.name} (Base: ${m.base_unit.name})` })));
+const unitOptions = computed(() => props.units.map(u => ({ value: u.id, label: u.name })));
 
 // Load materials when cafe changes
 watch(selectedCafe, async (cafeId) => {
@@ -120,23 +125,24 @@ const submit = () => {
                         <!-- Cafe -->
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Cafe</label>
-                            <select v-model="selectedCafe" required
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                                <option value="" disabled>Pilih Cafe</option>
-                                <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">{{ cafe.name }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="selectedCafe"
+                                :options="cafeOptions"
+                                placeholder="Pilih Cafe"
+                                required
+                            />
                         </div>
 
                         <!-- Material -->
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Material</label>
-                            <select v-model="form.material_id" required :disabled="!selectedCafe"
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50">
-                                <option value="" disabled>{{ selectedCafe ? 'Pilih Material' : 'Pilih cafe terlebih dahulu' }}</option>
-                                <option v-for="mat in materials" :key="mat.id" :value="mat.id">
-                                    {{ mat.name }} (Base: {{ mat.base_unit.name }})
-                                </option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.material_id"
+                                :options="materialOptions"
+                                :disabled="!selectedCafe"
+                                :placeholder="selectedCafe ? 'Pilih Material' : 'Pilih cafe terlebih dahulu'"
+                                required
+                            />
                             <InputError :message="form.errors.material_id" />
                         </div>
 
@@ -152,11 +158,13 @@ const submit = () => {
                         <!-- Unit -->
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Satuan (Unit)</label>
-                            <select v-model="form.base_unit_id" required :disabled="!form.material_id"
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50">
-                                <option value="" disabled>{{ form.material_id ? 'Pilih Satuan' : 'Pilih material terlebih dahulu' }}</option>
-                                <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.base_unit_id"
+                                :options="unitOptions"
+                                :disabled="!form.material_id"
+                                :placeholder="form.material_id ? 'Pilih Satuan' : 'Pilih material terlebih dahulu'"
+                                required
+                            />
                             <InputError :message="form.errors.base_unit_id" />
 
                             <!-- Unit converter alert -->

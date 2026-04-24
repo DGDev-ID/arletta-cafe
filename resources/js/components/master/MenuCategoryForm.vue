@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
+import SearchableSelect from '@/components/SearchableSelect.vue';
+import { computed } from 'vue';
 
 interface CafeOption {
     id: number;
@@ -22,7 +24,7 @@ interface MenuCategoryFormData {
     processing: boolean;
 }
 
-defineProps<{
+const props = defineProps<{
     form: MenuCategoryFormData;
     cafes: CafeOption[];
     categories: CategoryOption[];
@@ -31,6 +33,13 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{ submit: [] }>();
+
+const cafeOptions = computed(() => props.cafes.map(c => ({ value: c.id, label: c.name })));
+const parentOptions = computed(() => {
+    const parentCats = [{ value: null, label: 'Tidak ada (root)' }];
+    const available = props.categories.filter(c => c.cafe_id === props.form.cafe_id);
+    return parentCats.concat(available.map(c => ({ value: c.id, label: c.name })));
+});
 </script>
 
 <template>
@@ -41,17 +50,12 @@ const emit = defineEmits<{ submit: [] }>();
             <label for="category-cafe" class="text-sm font-medium leading-none">
                 Cafe <span class="text-red-500">*</span>
             </label>
-            <select
-                id="category-cafe"
+            <SearchableSelect
                 v-model="form.cafe_id"
+                :options="cafeOptions"
+                placeholder="Pilih Cafe"
                 required
-                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-                <option value="" disabled>Pilih Cafe</option>
-                <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">
-                    {{ cafe.name }}
-                </option>
-            </select>
+            />
             <InputError :message="form.errors.cafe_id" />
         </div>
 
@@ -75,20 +79,11 @@ const emit = defineEmits<{ submit: [] }>();
             <label for="category-parent" class="text-sm font-medium leading-none">
                 Kategori Induk
             </label>
-            <select
-                id="category-parent"
+            <SearchableSelect
                 v-model="form.parent_id"
-                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-                <option :value="null">Tidak ada (root)</option>
-                <option
-                    v-for="cat in categories.filter(c => c.cafe_id === form.cafe_id)"
-                    :key="cat.id"
-                    :value="cat.id"
-                >
-                    {{ cat.name }}
-                </option>
-            </select>
+                :options="parentOptions"
+                placeholder="Tidak ada (root)"
+            />
             <InputError :message="form.errors.parent_id" />
         </div>
 

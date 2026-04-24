@@ -2,6 +2,7 @@
 import InputError from '@/components/InputError.vue';
 import { AlertTriangle, Plus, Trash2 } from 'lucide-vue-next';
 import { computed, watch } from 'vue';
+import SearchableSelect from '@/components/SearchableSelect.vue';
 
 interface CafeOption {
     id: number;
@@ -58,6 +59,10 @@ const filteredMaterials = computed(() => {
     if (!props.form.cafe_id) return [];
     return props.materials.filter(m => m.cafe_id === props.form.cafe_id);
 });
+
+const cafeOptions = computed(() => props.cafes.map(c => ({ value: c.id, label: c.name })));
+const unitOptions = computed(() => props.units.map(u => ({ value: u.id, label: u.name })));
+const filteredMaterialOptions = computed(() => filteredMaterials.value.map(m => ({ value: m.id, label: m.name })));
 
 watch(() => props.form.cafe_id, () => {
     props.form.details = [];
@@ -124,11 +129,12 @@ function getConversionError(row: DetailRow): string | null {
                 <label for="sfm-cafe" class="text-sm font-medium leading-none">
                     Cafe <span class="text-red-500">*</span>
                 </label>
-                <select id="sfm-cafe" v-model="form.cafe_id" required
-                    class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="" disabled>Pilih Cafe</option>
-                    <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">{{ cafe.name }}</option>
-                </select>
+            <SearchableSelect
+                v-model="form.cafe_id"
+                :options="cafeOptions"
+                placeholder="Pilih Cafe"
+                required
+            />
                 <InputError :message="form.errors.cafe_id" />
             </div>
 
@@ -147,11 +153,12 @@ function getConversionError(row: DetailRow): string | null {
                 <label for="sfm-unit" class="text-sm font-medium leading-none">
                     Satuan <span class="text-red-500">*</span>
                 </label>
-                <select id="sfm-unit" v-model="form.base_unit_id" required
-                    class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="" disabled>Pilih Satuan</option>
-                    <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
-                </select>
+            <SearchableSelect
+                v-model="form.base_unit_id"
+                :options="unitOptions"
+                placeholder="Pilih Satuan"
+                required
+            />
                 <InputError :message="form.errors.base_unit_id" />
             </div>
         </div>
@@ -188,11 +195,13 @@ function getConversionError(row: DetailRow): string | null {
                         <!-- Material select -->
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Material</label>
-                            <select v-model="row.material_id" @change="onMaterialChange(index)" required
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                                <option value="" disabled>Pilih Material</option>
-                                <option v-for="mat in filteredMaterials" :key="mat.id" :value="mat.id">{{ mat.name }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="row.material_id"
+                                :options="filteredMaterialOptions"
+                                @change="onMaterialChange(index)"
+                                placeholder="Pilih Material"
+                                required
+                            />
                             <InputError :message="form.errors[`details.${index}.material_id`]" />
                         </div>
 
@@ -207,11 +216,12 @@ function getConversionError(row: DetailRow): string | null {
                         <!-- Unit -->
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Satuan</label>
-                            <select v-model="row.unit_id" required
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                                <option value="" disabled>Pilih Satuan</option>
-                                <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="row.unit_id"
+                                :options="unitOptions"
+                                placeholder="Pilih Satuan"
+                                required
+                            />
                             <InputError :message="form.errors[`details.${index}.unit_id`]" />
                         </div>
                     </div>

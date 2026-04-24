@@ -5,7 +5,8 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Pencil, Trash2, Plus, Check, X } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import SearchableSelect from '@/components/SearchableSelect.vue';
 
 interface Unit {
     id: number;
@@ -43,6 +44,8 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Unit Material Converter', href: '/management/unit-material-converter' },
     { title: props.material.name, href: `/management/unit-material-converter/${props.material.id}` },
 ];
+
+const unitOptions = computed(() => props.units.map(u => ({ value: u.id, label: u.name })));
 
 // --- Add converter form ---
 const addForm = useForm({
@@ -210,21 +213,23 @@ function deleteConverter(converterId: number) {
                     <form @submit.prevent="submitAdd" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Dari Satuan</label>
-                            <select v-model="addForm.from_unit_id" required
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                                <option value="" disabled>Pilih Satuan</option>
-                                <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="addForm.from_unit_id"
+                                :options="unitOptions"
+                                placeholder="Pilih Satuan"
+                                required
+                            />
                             <InputError :message="addForm.errors.from_unit_id" />
                         </div>
 
                         <div class="grid gap-2">
                             <label class="text-sm font-medium leading-none">Ke Satuan</label>
-                            <select v-model="addForm.to_unit_id" required
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                                <option value="" disabled>Pilih Satuan</option>
-                                <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="addForm.to_unit_id"
+                                :options="unitOptions"
+                                placeholder="Pilih Satuan"
+                                required
+                            />
                             <InputError :message="addForm.errors.to_unit_id" />
                         </div>
 

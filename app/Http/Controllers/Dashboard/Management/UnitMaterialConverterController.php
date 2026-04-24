@@ -19,8 +19,8 @@ class UnitMaterialConverterController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhereHas('cafe', fn ($c) => $c->where('name', 'like', "%{$search}%"));
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhereHas('cafe', fn ($c) => $c->where('name', 'ilike', "%{$search}%"));
             });
         }
 
