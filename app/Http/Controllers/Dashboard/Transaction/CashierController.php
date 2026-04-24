@@ -221,7 +221,7 @@ class CashierController extends Controller
 
         // FOOTER
         $str .= $alignCenter('Terima kasih') . "\n";
-        $str .= "\n\n\n\n\n\n";
+        $str . ".";
         $str .= "\n";
 
         // Replace \n with <br /> for Bluetooth Print app
