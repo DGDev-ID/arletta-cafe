@@ -129,21 +129,6 @@ class CashierController extends Controller
             ->with('success', 'Transaksi berhasil diselesaikan.');
     }
 
-    public function printReceipt($id)
-    {
-        $transaction = Transaction::whereIn('status', ['in_order', 'success'])
-            ->with([
-                'cafe',
-                'table',
-                'details.menu',
-            ])
-            ->findOrFail($id);
-
-        return Inertia::render('transaction/cashier/Receipt', [
-            'transaction' => $transaction,
-        ]);
-    }
-
     public function receiptData($id)
     {
         $transaction = Transaction::whereIn('status', ['in_order', 'success'])
@@ -236,7 +221,8 @@ class CashierController extends Controller
 
         // FOOTER
         $str .= $alignCenter('Terima kasih') . "\n";
-        $str .= "\n\n\n";
+        $str .= "\n\n\n\n\n\n";
+        $str .= "\n";
 
         // Replace \n with <br /> for Bluetooth Print app
         $str = str_replace("\n", '<br />', $str);

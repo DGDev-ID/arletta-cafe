@@ -199,9 +199,6 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('cashier/{id}/success-in-order', [CashierController::class, 'makeSuccessInOrder'])
             ->name('cashier.success-in-order')
             ->middleware('can:transaction.cashier');
-        Route::get('cashier/{id}/receipt', [CashierController::class, 'printReceipt'])
-            ->name('cashier.receipt')
-            ->middleware('can:transaction.cashier');
         Route::get('cashier/{id}/receipt-data', [CashierController::class, 'receiptData'])
             ->name('cashier.receipt-data')
             ->middleware('can:transaction.cashier');

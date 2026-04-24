@@ -96,6 +96,14 @@ const makeSuccessInOrder = (id: number) => {
 };
 
 const printReceiptInline = async (id: number) => {
+    // Jika display adalah tablet/mobile (<= 1024px), gunakan Bluetooth Print
+    if (window.innerWidth <= 1024) {
+        const responseUrl = `${window.location.origin}/bluetooth-receipt/${id}`;
+        window.location.href = `my.bluetoothprint.scheme://${responseUrl}`;
+        return;
+    }
+
+    // Jika display laptop (> 1024px), gunakan QZ Tray
     try {
         const { data: trx } = await axios.get(`/transaction/cashier/${id}/receipt-data`);
 
