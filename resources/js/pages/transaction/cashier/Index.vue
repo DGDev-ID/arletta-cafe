@@ -98,7 +98,10 @@ const makeSuccessInOrder = (id: number) => {
 const printReceiptInline = async (id: number) => {
     // Deteksi perangkat mobile/tablet menggunakan User Agent & Touch Support
     const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
-        || (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+        || ((navigator.userAgent.includes('Mac') || navigator.userAgent.includes('Linux')) && navigator.maxTouchPoints > 1);
+
+    // BUKA KOMENTAR DI BAWAH INI UNTUK DEBUGGING (Akan memunculkan pop-up info device)
+    // alert("UserAgent: " + navigator.userAgent + "\nTouchPoints: " + navigator.maxTouchPoints + "\nIsMobile: " + isMobileOrTablet);
 
     if (isMobileOrTablet) {
         const responseUrl = `${window.location.origin}/bluetooth-receipt/${id}`;
