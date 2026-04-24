@@ -107,7 +107,7 @@ const categoryOptions = computed(() => {
 });
 const filteredMaterialOptions = computed(() => filteredMaterials.value.map(m => ({ value: m.id, label: m.name })));
 const unitOptions = computed(() => props.units.map(u => ({ value: u.id, label: u.name })));
-const filteredSfmOptions = computed(() => filteredSfms.value.map(s => ({ value: s.id, label: `${s.name} (${s.unit.name})` })));
+const filteredSfmOptions = computed(() => filteredSfms.value.map(s => ({ value: s.id, label: `${s.name} (${s.unit?.name ?? '-'})` })));
 
 const promoTypeOptions = [
     { value: 'discount_percent', label: 'Diskon Persen (%)' },
@@ -195,7 +195,7 @@ function getConversionError(row: MenuMaterialRow): string | null {
     );
     if (reverse) return null;
 
-    const baseUnitName = material.base_unit.name;
+    const baseUnitName = material.base_unit?.name ?? '-';
     const targetUnit = props.units.find(u => u.id === row.unit_id);
 
     return `Tidak bisa konversi dari ${baseUnitName} ke ${targetUnit?.name} dikarenakan material belum memiliki data konversi. Silahkan tambahkan data konversi pada menu Unit Material Converter`;
