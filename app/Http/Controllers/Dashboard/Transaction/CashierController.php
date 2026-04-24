@@ -14,7 +14,19 @@ class CashierController extends Controller
     public function index(Request $request)
     {
         $cafeId = $request->input('cafe_id');
-        $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
+        $user = auth()->user();
+
+        $allowedCafeIds = null;
+        if ($user->hasRole('Admin')) {
+            $allowedCafeIds = \App\Models\CafeAdmin::where('user_id', $user->id)->pluck('cafe_id');
+            $cafes = MCafe::whereIn('id', $allowedCafeIds)->select('id', 'name')->orderBy('name')->get();
+        } elseif ($user->hasRole('Cashier')) {
+            $allowedCafeIds = \App\Models\CafeCashier::where('user_id', $user->id)->pluck('cafe_id');
+            $cafes = MCafe::whereIn('id', $allowedCafeIds)->select('id', 'name')->orderBy('name')->get();
+        } else {
+            // Super Admin or Backoffice
+            $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
+        }
 
         $pendingQuery = Transaction::where('status', 'pending')
             ->where('payment_type', 'manual')
@@ -27,10 +39,19 @@ class CashierController extends Controller
             ->where('updated_at', '>=', now()->subHours(26))
             ->with(['cafe', 'table']);
 
+        if ($allowedCafeIds !== null) {
+            $pendingQuery->whereIn('cafe_id', $allowedCafeIds);
+            $inOrderQuery->whereIn('cafe_id', $allowedCafeIds);
+            $successQuery->whereIn('cafe_id', $allowedCafeIds);
+        }
+
         if ($cafeId) {
-            $pendingQuery->where('cafe_id', $cafeId);
-            $inOrderQuery->where('cafe_id', $cafeId);
-            $successQuery->where('cafe_id', $cafeId);
+            // Ensure requested cafeId is allowed if restrictions apply
+            if ($allowedCafeIds === null || $allowedCafeIds->contains($cafeId)) {
+                $pendingQuery->where('cafe_id', $cafeId);
+                $inOrderQuery->where('cafe_id', $cafeId);
+                $successQuery->where('cafe_id', $cafeId);
+            }
         }
 
         return Inertia::render('transaction/cashier/Index', [
