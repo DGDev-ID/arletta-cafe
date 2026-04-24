@@ -244,7 +244,7 @@ class CashierController extends Controller
         // sending image entry
         $imageObj = new \stdClass();
         $imageObj->type = 1; // image
-        $imageObj->path = asset('logo-resize.png'); // complete filepath
+        $imageObj->path = "https://dashboard-cafe.arlettaluxury.com/logo-resize.png"; // complete filepath
         $imageObj->align = 1; // center align
         array_push($a, $imageObj);
 
