@@ -199,8 +199,8 @@ class CashierController extends Controller
             $name = substr($d->menu->name ?? '-', 0, $WIDTH);
             $str .= $name . "\n";
 
-            $qtyPrice = $d->amount . 'x' . $cleanNumber($d->price);
-            $subtotal = $cleanNumber($d->price * $d->amount);
+            $qtyPrice = $d->amount . 'x' . $cleanNumber($d->menu->price ?? 0);
+            $subtotal = $cleanNumber($d->price);
 
             $str .= $padRight($qtyPrice, $subtotal) . "\n";
 
