@@ -16,7 +16,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const deleteMenu = (id: number) => {
     if (confirm('Apakah Anda yakin ingin menghapus menu ini?')) {
-        router.delete(`/master/menu/${id}`);
+        router.delete(`/master/menu/${id}?page=${props.data.current_page}`);
     }
 };
 
@@ -73,7 +73,7 @@ const formatPrice = (price: string | number) => {
                         <Heading variant="small" title="Master Menu"
                             description="Kelola daftar menu untuk setiap cafe." />
 
-                        <Link href="/master/menu/create"
+                        <Link :href="`/master/menu/create?page=${data.current_page}`"
                             class="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90">
                             Tambah Menu
                         </Link>
@@ -178,7 +178,7 @@ const formatPrice = (price: string | number) => {
                                         </button>
 
                                         <!-- Edit -->
-                                        <Link :href="`/master/menu/${menu.id}/edit`"
+                                        <Link :href="`/master/menu/${menu.id}/edit?page=${data.current_page}`"
                                             class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-yellow-100 text-yellow-600 hover:bg-yellow-500 hover:text-white transition"
                                             title="Edit Menu">
                                             <Pencil :size="16" />

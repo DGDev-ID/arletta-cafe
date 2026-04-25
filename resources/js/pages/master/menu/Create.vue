@@ -40,7 +40,11 @@ const form = useForm({
     semi_finished_materials: [] as { semi_finished_material_id: number | ''; multiplier: number | '' }[],
 });
 
-const submit = () => form.post('/master/menu');
+const submit = () => {
+    const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    const page = urlParams.get('page');
+    form.post(page ? `/master/menu?page=${page}` : '/master/menu');
+};
 </script>
 
 <template>

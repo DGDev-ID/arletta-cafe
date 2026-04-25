@@ -70,7 +70,11 @@ const form = useForm({
     })),
 });
 
-const submit = () => form.put(`/master/menu/${props.data.id}`);
+const submit = () => {
+    const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    const page = urlParams.get('page');
+    form.put(page ? `/master/menu/${props.data.id}?page=${page}` : `/master/menu/${props.data.id}`);
+};
 </script>
 
 <template>

@@ -134,7 +134,7 @@ class MenuController extends Controller
         });
 
         return redirect()
-            ->route('master.menu.index')
+            ->route('master.menu.index', ['page' => request('page')])
             ->with('success', 'Menu berhasil ditambahkan.');
     }
 
@@ -233,7 +233,7 @@ class MenuController extends Controller
         });
 
         return redirect()
-            ->route('master.menu.index')
+            ->route('master.menu.index', ['page' => request('page')])
             ->with('success', 'Menu berhasil diperbarui.');
     }
 
@@ -243,7 +243,7 @@ class MenuController extends Controller
         $menu->delete();
 
         return redirect()
-            ->route('master.menu.index')
+            ->route('master.menu.index', ['page' => request('page')])
             ->with('success', 'Menu berhasil dihapus.');
     }
 
