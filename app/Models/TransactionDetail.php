@@ -14,6 +14,7 @@ class TransactionDetail extends Model
         'amount',
         'price',
         'description',
+        'status',
     ];
 
     protected function casts(): array

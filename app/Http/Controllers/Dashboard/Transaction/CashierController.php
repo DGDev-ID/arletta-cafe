@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MCafe;
 use App\Models\Transaction;
 use App\Services\TransactionService;
+use App\Models\TransactionDetail;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -30,6 +31,12 @@ class CashierController extends Controller
 
         $pendingQuery = Transaction::where('status', 'pending')
             ->where('payment_type', 'manual')
+            ->where('is_open_bill', 0)
+            ->with(['cafe', 'table']);
+
+        // Open-bill pending transactions
+        $openBillQuery = Transaction::where('status', 'pending')
+            ->where('is_open_bill', 1)
             ->with(['cafe', 'table']);
 
         $inOrderQuery = Transaction::where('status', 'in_order')
@@ -43,6 +50,7 @@ class CashierController extends Controller
             $pendingQuery->whereIn('cafe_id', $allowedCafeIds);
             $inOrderQuery->whereIn('cafe_id', $allowedCafeIds);
             $successQuery->whereIn('cafe_id', $allowedCafeIds);
+            $openBillQuery->whereIn('cafe_id', $allowedCafeIds);
         }
 
         if ($cafeId) {
@@ -51,18 +59,74 @@ class CashierController extends Controller
                 $pendingQuery->where('cafe_id', $cafeId);
                 $inOrderQuery->where('cafe_id', $cafeId);
                 $successQuery->where('cafe_id', $cafeId);
+                $openBillQuery->where('cafe_id', $cafeId);
             }
         }
 
+        // Transaction details that belong to open-bill & pending transactions
+        $openBillDetailsQuery = TransactionDetail::whereHas('transaction', function ($q) use ($allowedCafeIds, $cafeId) {
+            $q->where('status', 'pending')->where('is_open_bill', 1);
+            if ($allowedCafeIds !== null) {
+                $q->whereIn('cafe_id', $allowedCafeIds);
+            }
+            if ($cafeId) {
+                $q->where('cafe_id', $cafeId);
+            }
+        })->with(['transaction.cafe', 'transaction.table', 'menu']);
+
         return Inertia::render('transaction/cashier/Index', [
             'pendingTransactions' => $pendingQuery->latest()->get(),
+            'openBillPendingTransactions' => $openBillQuery->latest()->get(),
             'inOrderTransactions' => $inOrderQuery->latest()->get(),
             'successTransactions' => $successQuery->latest()->get(),
+            'openBillPendingDetails' => $openBillDetailsQuery->latest()->get(),
             'cafes' => $cafes,
             'filters' => [
                 'cafe_id' => $cafeId ?? '',
             ],
         ]);
+    }
+
+    public function makeDetailSuccess($id)
+    {
+        $detail = TransactionDetail::with('transaction')->findOrFail($id);
+
+        $transaction = $detail->transaction;
+
+        if (!$transaction || $transaction->status !== 'pending' || (int)$transaction->is_open_bill !== 1) {
+            return redirect()->route('transaction.cashier.index')->with('error', 'Transaksi tidak valid untuk aksi ini.');
+        }
+
+        if ($detail->status === 'success') {
+            return redirect()->route('transaction.cashier.index')->with('info', 'Detail sudah diselesaikan.');
+        }
+
+        // set detail success
+        $detail->status = 'success';
+        $detail->save();
+
+        // recalc transaction totals based on success details
+        $newPrice = $transaction->details()->where('status', 'success')->sum('price');
+        $cafe = MCafe::find($transaction->cafe_id);
+        $ppn = $cafe->ppn_fee > 0 ? ($newPrice * ($cafe->ppn_fee / 100)) : 0;
+        $paymentTypeFee = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris' ? ($newPrice * ($cafe->qris_fee / 100)) : 0;
+        $newFee = $ppn + $paymentTypeFee;
+        $newTotal = $newPrice + $newFee;
+
+        $transaction->update([
+            'price' => $newPrice,
+            'fee' => $newFee,
+            'total_price' => $newTotal,
+        ]);
+
+        return redirect()->route('transaction.cashier.index')->with('success', 'Detail transaksi ditandai selesai.');
+    }
+
+    public function detailReceiptData($id)
+    {
+        $detail = TransactionDetail::with(['transaction.cafe', 'transaction.table', 'menu'])->findOrFail($id);
+
+        return response()->json($detail);
     }
 
     public function searchByQRCode($qr_code)

@@ -15,7 +15,15 @@ class MCafeTable extends Model
         'name',
         'status',
         'description',
+        'is_open_bill',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_open_bill' => 'integer',
+        ];
+    }
 
     public function cafe(): BelongsTo
     {

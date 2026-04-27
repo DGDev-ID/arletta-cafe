@@ -21,6 +21,7 @@ class Transaction extends Model
         'status',
         'snap_token',
         'midtrans_transaction_id',
+        'is_open_bill',
         'profit_margin',
     ];
 
@@ -31,6 +32,7 @@ class Transaction extends Model
             'fee' => 'decimal:2',
             'total_price' => 'decimal:2',
             'profit_margin' => 'decimal:2',
+            'is_open_bill' => 'integer',
         ];
     }
 
