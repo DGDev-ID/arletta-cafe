@@ -145,7 +145,11 @@ class MenuAvailabilityService
                 // } else {
                 //     $convertedAmount = (float) $menuMaterial->amount;
                 // }
-                $convertedAmount = $this->convertToBase($material, $detail->amount, $detail->unit_id);
+                $convertedAmount = $this->convertToBase(
+                    $material,
+                    $menuMaterial->amount,
+                    $menuMaterial->unit_id
+                );
 
                 if ($convertedAmount === null) {
                     return false;
