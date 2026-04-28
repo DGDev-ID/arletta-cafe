@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
+import { computed } from 'vue';
 import { CheckCircle, XCircle } from 'lucide-vue-next';
 
 interface TransactionDetail {
@@ -16,6 +17,7 @@ interface TransactionDetail {
     amount: number;
     price: string;
     description: string | null;
+    status?: string | null;
 }
 
 interface Transaction {
@@ -33,6 +35,7 @@ interface Transaction {
     cafe: { id: number; name: string; address: string | null };
     table: { id: number; name: string } | null;
     details: TransactionDetail[];
+    is_open_bill?: number | boolean;
 }
 
 const props = defineProps<{
@@ -63,6 +66,14 @@ const makeFailed = () => {
         router.patch(`/transaction/cashier/${props.transaction.id}/failed`);
     }
 };
+
+const hideFailedForOpenBill = computed(() => {
+    const trx: Transaction = props.transaction;
+    if (!trx) return false;
+    if (!trx.is_open_bill) return false;
+    if (!trx.details || trx.details.length === 0) return false;
+    return trx.details.some((d) => d.status === 'success');
+});
 </script>
 
 <template>
@@ -79,7 +90,7 @@ const makeFailed = () => {
                     <Heading variant="small" :title="`Transaction #${transaction.id}`"
                         description="Detail transaksi pending manual." />
                     <div class="flex items-center gap-2">
-                        <button @click="makeFailed" type="button"
+                        <button v-if="!hideFailedForOpenBill" @click="makeFailed" type="button"
                             class="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition bg-red-100 text-red-600 hover:bg-red-500 hover:text-white">
                             <XCircle :size="16" /> Failed
                         </button>
