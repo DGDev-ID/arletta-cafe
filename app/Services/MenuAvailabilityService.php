@@ -22,20 +22,26 @@ class MenuAvailabilityService
                 return false;
             }
 
-            if ($material->base_unit_id !== $menuMaterial->unit_id) {
-                $converter = UnitMaterialConverter::where('material_id', $material->id)
-                    ->where('from_unit_id', $menuMaterial->unit_id)
-                    ->where('to_unit_id', $material->base_unit_id)
-                    ->first();
+            $convertedMenuMaterialQuantity = $this->convertToBase($material, $menuMaterial->amount, $menuMaterial->unit_id);
 
-                if (!$converter) {
-                    return false;
-                }
-
-                $convertedMenuMaterialQuantity = (float) $menuMaterial->amount * (float) $converter->multiplier;
-            } else {
-                $convertedMenuMaterialQuantity = (float) $menuMaterial->amount;
+            if ($convertedMenuMaterialQuantity === null) {
+                return false;
             }
+
+            // if ($material->base_unit_id !== $menuMaterial->unit_id) {
+            //     $converter = UnitMaterialConverter::where('material_id', $material->id)
+            //         ->where('from_unit_id', $menuMaterial->unit_id)
+            //         ->where('to_unit_id', $material->base_unit_id)
+            //         ->first();
+
+            //     if (!$converter) {
+            //         return false;
+            //     }
+
+            //     $convertedMenuMaterialQuantity = (float) $menuMaterial->amount * (float) $converter->multiplier;
+            // } else {
+            //     $convertedMenuMaterialQuantity = (float) $menuMaterial->amount;
+            // }
 
             $totalMaterialNeeded = $convertedMenuMaterialQuantity * $quantity;
 
@@ -207,29 +213,29 @@ class MenuAvailabilityService
     }
 
     private function convertToBase($material, $amount, $unitId)
-{
-    if ($material->base_unit_id == $unitId) {
-        return (float) $amount;
+    {
+        if ($material->base_unit_id == $unitId) {
+            return (float) $amount;
+        }
+
+        $converter = UnitMaterialConverter::where('material_id', $material->id)
+            ->where('from_unit_id', $unitId)
+            ->where('to_unit_id', $material->base_unit_id)
+            ->first();
+
+        if ($converter) {
+            return (float) $amount * (float) $converter->multiplier;
+        }
+
+        $reverse = UnitMaterialConverter::where('material_id', $material->id)
+            ->where('from_unit_id', $material->base_unit_id)
+            ->where('to_unit_id', $unitId)
+            ->first();
+
+        if ($reverse) {
+            return (float) $amount / (float) $reverse->multiplier;
+        }
+
+        return null;
     }
-
-    $converter = UnitMaterialConverter::where('material_id', $material->id)
-        ->where('from_unit_id', $unitId)
-        ->where('to_unit_id', $material->base_unit_id)
-        ->first();
-
-    if ($converter) {
-        return (float) $amount * (float) $converter->multiplier;
-    }
-
-    $reverse = UnitMaterialConverter::where('material_id', $material->id)
-        ->where('from_unit_id', $material->base_unit_id)
-        ->where('to_unit_id', $unitId)
-        ->first();
-
-    if ($reverse) {
-        return (float) $amount / (float) $reverse->multiplier;
-    }
-
-    return null;
-}
 }
