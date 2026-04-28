@@ -169,4 +169,19 @@ class CafeTableController extends Controller
             ->route('master.cafe.edit', $cafeId)
             ->with('success', 'Meja berhasil dihapus.');
     }
+
+    public function toggleOpenBill(Request $request, $cafeId, $tableId)
+    {
+        $validated = $request->validate([
+            'is_open_bill' => ['required', 'in:0,1'],
+        ]);
+
+        $table = MCafeTable::where('cafe_id', $cafeId)->findOrFail($tableId);
+        $table->is_open_bill = (int) $validated['is_open_bill'];
+        $table->save();
+
+        return redirect()
+            ->route('master.cafe.edit', $cafeId)
+            ->with('success', 'Pengaturan Open Bill berhasil diperbarui.');
+    }
 }

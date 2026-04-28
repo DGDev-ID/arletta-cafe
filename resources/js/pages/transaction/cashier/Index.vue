@@ -25,11 +25,29 @@ interface Transaction {
     table: { id: number; name: string } | null;
 }
 
+interface TransactionDetailItem {
+    id: number;
+    transaction: {
+        id: number;
+        cafe?: { id: number; name: string } | null;
+        table?: { id: number; name: string } | null;
+        cust_name?: string | null;
+        payment_type?: string | null;
+    };
+    menu?: { id: number; name: string } | null;
+    amount: number;
+    price: string;
+    description?: string | null;
+    status?: string | null;
+}
+
 
 const props = defineProps<{
     pendingTransactions: Transaction[];
+    openBillPendingTransactions: Transaction[];
     inOrderTransactions: Transaction[];
     successTransactions: Transaction[];
+    openBillPendingDetails: TransactionDetailItem[];
     cafes: Cafe[];
     filters: {
         cafe_id: string;
@@ -92,6 +110,68 @@ let pollInterval: ReturnType<typeof setInterval> | null = null;
 const makeSuccessInOrder = (id: number) => {
     if (confirm('Selesaikan transaksi ini? Status akan diubah ke success.')) {
         router.patch(`/transaction/cashier/${id}/success-in-order`);
+    }
+};
+
+const makeDetailSuccess = (id: number) => {
+    if (confirm('Tandai pesanan ini selesai?')) {
+        router.patch(`/transaction/cashier/detail/${id}/success`);
+    }
+};
+
+const printDetailReceiptInline = async (detailId: number) => {
+    try {
+        const { data: detail } = await axios.get(`/transaction/cashier/detail/${detailId}/receipt-data`);
+
+        // Simple print of single menu item — reuse QZ logic but minimal
+        if (!qz.websocket.isActive()) {
+            qz.security.setCertificatePromise(resolve => resolve(null));
+            qz.security.setSignaturePromise(() => resolve => resolve(null));
+            await qz.websocket.connect();
+        }
+
+        const printers = await qz.printers.find();
+        let printerName = await qz.printers.getDefault();
+
+        const posPrinter = printers.find((p: string) =>
+            p.toLowerCase().includes('thermal') ||
+            p.toLowerCase().includes('pos') ||
+            p.toLowerCase().includes('58')
+        );
+
+        if (posPrinter) printerName = posPrinter;
+
+        if (!printerName) {
+            notyf.error('Printer tidak ditemukan');
+            return;
+        }
+
+        const config = qz.configs.create(printerName, { encoding: 'ISO-8859-1', scaleContent: true });
+
+        const init = '\x1B\x40';
+        const alignCenter = '\x1B\x61\x01';
+        const alignLeft = '\x1B\x61\x00';
+        const cut = '\x1D\x56\x41\x00';
+
+        let str = '';
+        str += init + alignCenter;
+        str += (detail.transaction.cafe?.name || 'CAFE') + '\n';
+        str += alignLeft;
+        str += `No: #${detail.transaction.id}` + '\n';
+        str += `Cust: ${detail.transaction.cust_name || '-'} ` + '\n';
+        if (detail.transaction.table) str += `Table: ${detail.transaction.table.name}` + '\n';
+        str += '-------------------------------' + '\n';
+        str += (detail.menu?.name || '-') + '\n';
+        str += `${detail.amount} x ${detail.price}` + '\n';
+        if (detail.description) str += detail.description + '\n';
+        str += '-------------------------------' + '\n';
+        str += 'Terima kasih\n\n\n' + cut;
+
+        await qz.print(config, [{ type: 'raw', format: 'command', data: str }]);
+        notyf.success('Struk berhasil dicetak');
+    } catch (e: any) {
+        console.error(e);
+        notyf.error('Print gagal: ' + (e.message || 'QZ error'));
     }
 };
 
@@ -300,6 +380,82 @@ onUnmounted(() => {
                             <option value="">Semua Cafe</option>
                             <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">{{ cafe.name }}</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Open Bill Pending Transactions -->
+                <div class="space-y-3">
+                    <h2 class="text-base font-semibold">Open Bill - Pending Transactions</h2>
+                    <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-muted/50">
+                                <tr class="text-muted-foreground">
+                                    <th class="px-6 py-4 text-left font-medium">No</th>
+                                    <th class="px-6 py-4 text-left font-medium">Cafe</th>
+                                    <th class="px-6 py-4 text-left font-medium">Table</th>
+                                    <th class="px-6 py-4 text-left font-medium">Customer Name</th>
+                                    <th class="px-6 py-4 text-right font-medium">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(trx, index) in openBillPendingTransactions" :key="trx.id" class="border-t hover:bg-muted/40 transition">
+                                    <td class="px-6 py-4">{{ index + 1 }}</td>
+                                    <td class="px-6 py-4 font-medium">{{ trx.cafe?.name ?? '-' }}</td>
+                                    <td class="px-6 py-4">{{ trx.table?.name ?? '-' }}</td>
+                                    <td class="px-6 py-4">{{ trx.cust_name ?? '-' }}</td>
+                                    <td class="px-6 py-4 text-right">
+                                        <Link :href="`/transaction/cashier/${trx.id}`" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
+                                            <Eye :size="14" /> Detail
+                                        </Link>
+                                    </td>
+                                </tr>
+                                <tr v-if="openBillPendingTransactions.length === 0">
+                                    <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">Tidak ada open bill pending.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Open Bill Pending Details -->
+                <div class="space-y-3">
+                    <h2 class="text-base font-semibold">Open Bill - Pending Details</h2>
+                    <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-muted/50">
+                                <tr class="text-muted-foreground">
+                                    <th class="px-6 py-4 text-left font-medium">No</th>
+                                    <th class="px-6 py-4 text-left font-medium">Cafe</th>
+                                    <th class="px-6 py-4 text-left font-medium">Table</th>
+                                    <th class="px-6 py-4 text-left font-medium">Menu & Deskripsi</th>
+                                    <th class="px-6 py-4 text-right font-medium">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(d, idx) in openBillPendingDetails" :key="d.id" class="border-t hover:bg-muted/40 transition">
+                                    <td class="px-6 py-4">{{ idx + 1 }}</td>
+                                    <td class="px-6 py-4 font-medium">{{ d.transaction?.cafe?.name ?? '-' }}</td>
+                                    <td class="px-6 py-4">{{ d.transaction?.table?.name ?? '-' }}</td>
+                                    <td class="px-6 py-4">
+                                        <div class="font-medium">{{ d.menu?.name ?? '-' }}</div>
+                                        <div class="text-xs text-muted-foreground">{{ d.description ?? '-' }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <div class="flex justify-end items-center gap-2">
+                                            <button @click="printDetailReceiptInline(d.id)" type="button" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition">
+                                                <Printer :size="14" /> Cetak Struk
+                                            </button>
+                                            <button @click="makeDetailSuccess(d.id)" type="button" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 text-green-600 text-xs font-medium hover:bg-green-500 hover:text-white transition">
+                                                <CheckCircle :size="14" /> Selesai
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="openBillPendingDetails.length === 0">
+                                    <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">Tidak ada detail open bill pending.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\ApiBaseController;
 use App\Models\MCafe;
 use App\Models\MCafeTable;
 use App\Models\MMenuCategory;
+use App\Models\Transaction;
 use App\Services\MenuAvailabilityService;
 use Illuminate\Http\Request;
 
@@ -70,9 +71,18 @@ class GetMenuCafeTableController extends ApiBaseController
                 return $hasMenus || $hasChildren;
             })->values();
 
+            // Get open transaction for this table (if any)
+            $transaction = Transaction::with(['details.menu'])
+                ->where('table_id', $table->id)
+                ->where('is_open_bill', 1)
+                ->orderBy('id', 'desc')
+                ->first();
+
             return $this->success([
                 'cafe' => $cafe,
                 'table' => $table,
+                'transaction' => $transaction ? $transaction : null,
+                'is_transaction_pending' => $transaction ? ($transaction->status === 'pending') : false,
                 'menu_categories' => $menuCategories,
             ]);
         } catch (\Throwable $th) {
