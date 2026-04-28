@@ -75,6 +75,7 @@ class GetMenuCafeTableController extends ApiBaseController
             $transaction = Transaction::with(['details.menu'])
                 ->where('table_id', $table->id)
                 ->where('is_open_bill', 1)
+                ->where('status', 'pending')
                 ->orderBy('id', 'desc')
                 ->first();
 
