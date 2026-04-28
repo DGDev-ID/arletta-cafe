@@ -33,6 +33,9 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('master')->name('master.')->group(function () {
         Route::post('cafe/{cafeId}/table', [CafeTableController::class, 'storeTable'])->name('cafe.table.store');
         Route::delete('cafe/{cafeId}/table/{tableId}', [CafeTableController::class, 'destroyTable'])->name('cafe.table.destroy');
+        Route::patch('cafe/{cafeId}/table/{tableId}/toggle-open-bill', [CafeTableController::class, 'toggleOpenBill'])
+            ->name('cafe.table.toggle-open-bill')
+            ->middleware('can:master.cafe.update');
         Route::resource('cafe', CafeTableController::class)
             ->except(['show'])
             ->middleware([

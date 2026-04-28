@@ -9,6 +9,7 @@ interface CafeTable {
     name: string;
     status: 'available' | 'occupied';
     description: string | null;
+    is_open_bill?: number | boolean;
 }
 
 const props = defineProps<{
@@ -50,6 +51,25 @@ const downloadQR = async (table: CafeTable) => {
         console.error(error);
     }
 };
+
+const toggleOpenBill = (table: CafeTable) => {
+    const newVal = table.is_open_bill ? 0 : 1;
+    const action = newVal === 1 ? 'Aktifkan' : 'Nonaktifkan';
+    if (!confirm(`${action} Open Bill untuk meja "${table.name}"?`)) {
+        return;
+    }
+
+    router.patch(`/master/cafe/${props.cafeId}/table/${table.id}/toggle-open-bill`, { is_open_bill: newVal }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            // reload to reflect updated props from server
+            window.location.reload();
+        },
+        onError: () => {
+            alert('Gagal memperbarui pengaturan open bill.');
+        }
+    });
+};
 </script>
 
 <template>
@@ -69,6 +89,7 @@ const downloadQR = async (table: CafeTable) => {
                     <th class="px-6 py-3 text-left font-medium">Nama Meja</th>
                     <th class="px-6 py-3 text-left font-medium">Deskripsi</th>
                     <th class="px-6 py-3 text-left font-medium">Status</th>
+                    <th class="px-6 py-3 text-left font-medium">Open Bill</th>
                     <th class="px-6 py-3 text-right font-medium">Aksi</th>
                 </tr>
             </thead>
@@ -84,12 +105,26 @@ const downloadQR = async (table: CafeTable) => {
                             {{ table.status === 'available' ? 'Tersedia' : 'Terpakai' }}
                         </span>
                     </td>
+                    <td class="px-6 py-3">
+                        <span v-if="table.is_open_bill" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                            Open Bill
+                        </span>
+                        <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted/10 text-muted-foreground">
+                            -
+                        </span>
+                    </td>
                     <td class="px-6 py-3 text-right">
                         <div class="flex justify-end gap-2">
                             <button type="button" @click="downloadQR(table)"
                                 class="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition"
                                 title="Download QR">
                                 <QrCode :size="14" />
+                            </button>
+
+                            <button type="button" @click="toggleOpenBill(table)"
+                                :title="table.is_open_bill ? 'Nonaktifkan Open Bill' : 'Aktifkan Open Bill'"
+                                :class="['cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md transition', table.is_open_bill ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-600 hover:text-white']">
+                                <span class="text-xs font-medium">Open Bill</span>
                             </button>
 
                             <button type="button" @click="deleteTable(table.id)"
@@ -102,7 +137,7 @@ const downloadQR = async (table: CafeTable) => {
                 </tr>
 
                 <tr v-if="tables.length === 0">
-                    <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">
+                    <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">
                         Belum ada meja. Tambahkan di bawah.
                     </td>
                 </tr>
