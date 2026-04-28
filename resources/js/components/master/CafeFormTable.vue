@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
 import { router, useForm } from '@inertiajs/vue3';
-import { Plus, QrCode, Trash2 } from 'lucide-vue-next';
+import { Plus, QrCode, Trash2, Receipt } from 'lucide-vue-next';
 import QRCode from 'qrcode';
 
 interface CafeTable {
@@ -124,7 +124,7 @@ const toggleOpenBill = (table: CafeTable) => {
                             <button type="button" @click="toggleOpenBill(table)"
                                 :title="table.is_open_bill ? 'Nonaktifkan Open Bill' : 'Aktifkan Open Bill'"
                                 :class="['cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md transition', table.is_open_bill ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-600 hover:text-white']">
-                                <span class="text-xs font-medium">Open Bill</span>
+                                <Receipt class="w-4 h-4" />
                             </button>
 
                             <button type="button" @click="deleteTable(table.id)"

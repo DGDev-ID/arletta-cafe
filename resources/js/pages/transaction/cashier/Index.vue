@@ -105,6 +105,8 @@ const notyf = new Notyf({
 // ── Polling ───────────────────────────────────────────────────────────────
 let prevPendingIds = new Set(props.pendingTransactions.map(t => t.id));
 let prevInOrderIds = new Set(props.inOrderTransactions.map(t => t.id));
+let prevOpenBillIds = new Set((props.openBillPendingTransactions || []).map((t: any) => t.id));
+let prevOpenBillDetailIds = new Set((props.openBillPendingDetails || []).map((d: any) => d.id));
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 const makeSuccessInOrder = (id: number) => {
@@ -335,21 +337,29 @@ const printReceiptInline = async (id: number) => {
 onMounted(() => {
     pollInterval = setInterval(() => {
         router.reload({
-            only: ['pendingTransactions', 'inOrderTransactions', 'flash'],
+            only: ['pendingTransactions', 'inOrderTransactions', 'openBillPendingTransactions', 'openBillPendingDetails', 'flash'],
             preserveState: true,
             preserveScroll: true,
             onSuccess: () => {
                 const newPendingIds = new Set(props.pendingTransactions.map(t => t.id));
                 const newInOrderIds = new Set(props.inOrderTransactions.map(t => t.id));
+                const newOpenBillIds = new Set((props.openBillPendingTransactions || []).map((t: any) => t.id));
+                const newOpenBillDetailIds = new Set((props.openBillPendingDetails || []).map((d: any) => d.id));
 
                 const hasPendingNew = [...newPendingIds].some(id => !prevPendingIds.has(id));
                 const hasInOrderNew = [...newInOrderIds].some(id => !prevInOrderIds.has(id));
+                const hasOpenBillNew = [...newOpenBillIds].some(id => !prevOpenBillIds.has(id));
+                const hasOpenBillDetailNew = [...newOpenBillDetailIds].some(id => !prevOpenBillDetailIds.has(id));
 
                 if (hasPendingNew) notyf.success('Data transaksi pending baru terdeteksi');
                 else if (hasInOrderNew) notyf.success('Data in order baru terdeteksi');
+                else if (hasOpenBillNew) notyf.success('Open bill baru terdeteksi');
+                else if (hasOpenBillDetailNew) notyf.success('Detail open bill baru terdeteksi');
 
                 prevPendingIds = newPendingIds;
                 prevInOrderIds = newInOrderIds;
+                prevOpenBillIds = newOpenBillIds;
+                prevOpenBillDetailIds = newOpenBillDetailIds;
             },
         });
     }, 3000);
