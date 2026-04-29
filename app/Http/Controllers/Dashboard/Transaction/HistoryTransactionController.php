@@ -101,7 +101,7 @@ class HistoryTransactionController extends Controller
         if ($withDetails) {
             $sheet->fromArray([
                 'No', 'Transaction ID', 'Cafe', 'Table', 'Price', 'Fee',
-                'Total Price', 'Payment Type', 'Status', 'Transaction Success At', 'Description', 'Profit Margin',
+                'Total Price', 'Payment Type', 'Status', 'Transaction Success At', 'Profit Margin', 'Description',
                 'Detail - Menu', 'Detail - Amount', 'Detail - Price', 'Detail - Description',
             ], null, 'A1');
 
@@ -112,7 +112,7 @@ class HistoryTransactionController extends Controller
                 if ($details->isEmpty()) {
                     $sheet->fromArray([
                         $no++,
-                        $trx->id,
+                        $trx->unique_code,
                         $trx->cafe->name ?? '-',
                         $trx->table->name ?? '-',
                         $trx->price,
@@ -121,8 +121,8 @@ class HistoryTransactionController extends Controller
                         $trx->payment_type,
                         $trx->status,
                         $trx->updated_at->format('Y-m-d H:i:s'),
-                        $trx->description,
                         $trx->profit_margin,
+                        $trx->description,
                         '-', '-', '-', '-',
                     ], null, "A{$row}");
                     $row++;
@@ -130,7 +130,7 @@ class HistoryTransactionController extends Controller
                     foreach ($details as $i => $detail) {
                         $sheet->fromArray([
                             $i === 0 ? $no : '',
-                            $i === 0 ? $trx->id : '',
+                            $i === 0 ? $trx->unique_code : '',
                             $i === 0 ? ($trx->cafe->name ?? '-') : '',
                             $i === 0 ? ($trx->table->name ?? '-') : '',
                             $i === 0 ? $trx->price : '',
@@ -139,6 +139,7 @@ class HistoryTransactionController extends Controller
                             $i === 0 ? $trx->payment_type : '',
                             $i === 0 ? $trx->status : '',
                             $i === 0 ? $trx->updated_at->format('Y-m-d H:i:s') : '',
+                            $i === 0 ? $trx->profit_margin : '',
                             $detail->menu->name ?? '-',
                             $detail->amount,
                             $detail->price,
