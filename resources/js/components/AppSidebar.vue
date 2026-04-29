@@ -108,6 +108,12 @@ const managementNavItems: NavItem[] = [
         icon: Inbox,
         permission: 'management.inbound-outbound-material',
     },
+    {
+        title: 'Expense',
+        href: '/management/expense',
+        icon: DollarSign,
+        permission: 'management.expense',
+    },
 ];
 
 const transactionNavItems: NavItem[] = [

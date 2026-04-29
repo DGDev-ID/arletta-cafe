@@ -13,6 +13,7 @@ use App\Http\Controllers\Dashboard\UserManagement\ManageCashierController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageBackofficeController;
 use App\Http\Controllers\Dashboard\Management\UnitMaterialConverterController;
 use App\Http\Controllers\Dashboard\Management\InboundOutboundMaterialController;
+use App\Http\Controllers\Dashboard\Management\ExpenseController;
 use App\Http\Controllers\Dashboard\PublicController;
 use App\Http\Controllers\Dashboard\Transaction\HistoryTransactionController;
 use App\Http\Controllers\Dashboard\Transaction\CashierController;
@@ -174,6 +175,26 @@ Route::middleware(['auth'])->group(function () {
         Route::put('inbound-outbound-material/{id}', [InboundOutboundMaterialController::class, 'update'])
             ->name('inbound-outbound-material.update')
             ->middleware('can:management.inbound-outbound-material');
+        
+        // Expense (Pengeluaran)
+        Route::get('expense', [ExpenseController::class, 'index'])
+            ->name('expense.index')
+            ->middleware('can:management.expense');
+        Route::get('expense/create', [ExpenseController::class, 'create'])
+            ->name('expense.create')
+            ->middleware('can:management.expense');
+        Route::get('expense/menus-by-cafe', [ExpenseController::class, 'getMenusByCafe'])
+            ->name('expense.menus-by-cafe')
+            ->middleware('can:management.expense');
+        Route::post('expense/check-availability', [ExpenseController::class, 'checkAvailability'])
+            ->name('expense.check-availability')
+            ->middleware('can:management.expense');
+        Route::post('expense', [ExpenseController::class, 'store'])
+            ->name('expense.store')
+            ->middleware('can:management.expense');
+        Route::patch('expense/{id}/mark', [ExpenseController::class, 'markExpense'])
+            ->name('expense.mark')
+            ->middleware('can:management.expense');
     });
 
     Route::prefix('transaction')->name('transaction.')->group(function () {
