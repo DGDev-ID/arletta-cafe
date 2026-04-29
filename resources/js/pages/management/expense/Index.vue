@@ -151,26 +151,6 @@ const submit = () => {
 // --- quick mark-by-id (kept) ---
 const transactionId = ref('');
 const loading = ref(false);
-const markExpense = async () => {
-    if (!transactionId.value) {
-        notyf.error('Masukkan ID transaksi terlebih dahulu.');
-        return;
-    }
-
-    if (!confirm('Tandai transaksi ini sebagai pengeluaran?')) return;
-
-    loading.value = true;
-    try {
-        await axios.patch(`/management/expense/${transactionId.value}/mark`);
-        notyf.success('Transaksi berhasil ditandai sebagai pengeluaran.');
-        transactionId.value = '';
-    } catch (e: any) {
-        console.error(e);
-        notyf.error(e?.response?.data?.message || 'Gagal menandai transaksi.');
-    } finally {
-        loading.value = false;
-    }
-};
 </script>
 
 <template>

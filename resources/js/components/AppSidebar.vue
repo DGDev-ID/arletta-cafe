@@ -112,7 +112,7 @@ const managementNavItems: NavItem[] = [
         title: 'Expense',
         href: '/management/expense',
         icon: DollarSign,
-        permission: 'management.expense',
+        permission: 'transaction.history',
     },
 ];
 
