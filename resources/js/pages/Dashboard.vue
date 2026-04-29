@@ -8,7 +8,8 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { AlertTriangle, Coffee, ShoppingCart, Utensils, Wallet } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import axios from 'axios';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -47,6 +48,37 @@ const percentChange = (current: number, previous: number) => {
 
 const revenueChange = computed(() => percentChange(props.stats.revenueToday, props.stats.revenueYesterday));
 const txChange = computed(() => percentChange(props.stats.transactionsToday, props.stats.transactionsYesterday));
+
+const topMenusToday = ref(props.topMenusToday ?? []);
+
+let pollInterval: number | undefined;
+
+onMounted(() => {
+    const intervalMs = 60_000; // 60 seconds
+
+    const poll = async () => {
+        try {
+            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+            const { data } = await axios.get('/dashboard/top-menus-today');
+            topMenusToday.value = data;
+        } catch (e) {
+            // silent
+            // console.error('Failed to poll top menus today', e);
+        }
+    };
+
+    // run once immediately to pick up any changes since initial render
+    void poll();
+
+    pollInterval = window.setInterval(() => void poll(), intervalMs);
+});
+
+onBeforeUnmount(() => {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = undefined;
+    }
+});
 </script>
 
 <template>
@@ -106,9 +138,9 @@ const txChange = computed(() => percentChange(props.stats.transactionsToday, pro
                     </div>
 
                     <div class="flex flex-col gap-2">
-                        <template v-if="props.topMenusToday && props.topMenusToday.length">
+                        <template v-if="topMenusToday && topMenusToday.length">
                             <div
-                                v-for="(m, idx) in props.topMenusToday"
+                                v-for="(m, idx) in topMenusToday"
                                 :key="m.menu_id"
                                 class="flex items-center justify-between"
                             >

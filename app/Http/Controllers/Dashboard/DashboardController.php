@@ -141,4 +141,42 @@ class DashboardController extends Controller
             'topMenusToday'       => $topMenusToday,
         ]);
     }
+
+    /**
+     * Return top 3 menus for today as JSON (used by frontend polling).
+     */
+    public function topMenusToday()
+    {
+        $today = Carbon::today();
+
+        $topTodayAggs = TransactionDetail::select(
+                'menu_id',
+                DB::raw('SUM(transaction_details.amount) as total_sold'),
+                DB::raw('SUM(transaction_details.price * transaction_details.amount) as total_revenue')
+            )
+            ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
+            ->where('transactions.status', 'success')
+            ->whereDate('transactions.created_at', $today)
+            ->groupBy('menu_id')
+            ->orderByDesc('total_sold')
+            ->limit(3)
+            ->get();
+
+        $topMenusToday = collect();
+        foreach ($topTodayAggs as $agg) {
+            $menu = MMenu::with('cafe:id,name')->find($agg->menu_id);
+            if ($menu) {
+                $topMenusToday->push([
+                    'menu_id' => $menu->id,
+                    'name' => $menu->name,
+                    'price' => $menu->price,
+                    'total_sold' => (int) $agg->total_sold,
+                    'cafe_id' => $menu->cafe_id,
+                    'cafe_name' => $menu->cafe?->name ?? null,
+                ]);
+            }
+        }
+
+        return response()->json($topMenusToday->values());
+    }
 }
