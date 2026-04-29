@@ -156,6 +156,7 @@ const loading = ref(false);
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
+
         <Head title="Expense" />
 
         <div class="min-h-screen bg-muted/40 py-10">
@@ -163,14 +164,16 @@ const loading = ref(false);
 
                 <div>
                     <div class="flex items-center justify-between mb-6">
-                        <Heading variant="small" title="Expense" description="Buat pengeluaran dengan memilih menu dan jumlahnya. Stok akan dikurangi sesuai kebutuhan." />
+                        <Heading variant="small" title="Expense"
+                            description="Buat pengeluaran dengan memilih menu dan jumlahnya. Stok akan dikurangi sesuai kebutuhan." />
                     </div>
 
                     <div class="rounded-2xl border bg-background shadow-sm p-8">
                         <form @submit.prevent="submit" class="grid gap-6">
                             <div class="grid gap-2">
                                 <label class="text-sm font-medium leading-none">Cafe</label>
-                                <SearchableSelect v-model="selectedCafe" :options="cafeOptions" placeholder="Pilih Cafe" required />
+                                <SearchableSelect v-model="selectedCafe" :options="cafeOptions" placeholder="Pilih Cafe"
+                                    required />
                             </div>
 
                             <div>
@@ -181,13 +184,20 @@ const loading = ref(false);
                                         <div class="flex items-start justify-between gap-2">
                                             <div>
                                                 <div class="font-medium">{{ menu.name }}</div>
-                                                <div class="text-sm text-muted-foreground">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(menu.price) }}</div>
+                                                <div class="text-sm text-muted-foreground">{{ new
+                                                    Intl.NumberFormat('id-ID', {
+                                                        style: 'currency', currency: 'IDR',
+                                                    minimumFractionDigits: 0 }).format(menu.price) }}</div>
                                             </div>
                                             <div class="text-right">
-                                                <button type="button" :disabled="!menu.available || checkingAvailability" @click="addMenuToDetails(menu)" class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-white text-sm">
+                                                <button type="button"
+                                                    :disabled="!menu.available || checkingAvailability"
+                                                    @click="addMenuToDetails(menu)"
+                                                    class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-white text-sm">
                                                     Tambah
                                                 </button>
-                                                <div v-if="!menu.available" class="text-xs text-red-600 mt-1">Stok tidak cukup</div>
+                                                <div v-if="!menu.available" class="text-xs text-red-600 mt-1">Stok tidak
+                                                    cukup</div>
                                             </div>
                                         </div>
                                     </div>
@@ -205,28 +215,40 @@ const loading = ref(false);
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="d in form.details" :key="d.menu_id" class="border-b border-muted/20 last:border-0">
+                                        <tr v-for="d in form.details" :key="d.menu_id"
+                                            class="border-b border-muted/20 last:border-0">
                                             <td class="py-3 font-medium">{{ selectedMenuMap[d.menu_id]?.name }}</td>
                                             <td class="py-3">
                                                 <div class="inline-flex items-center gap-2">
-                                                    <button type="button" @click="decrement(d.menu_id)" class="px-2.5 py-1 rounded-md bg-white border shadow-sm hover:bg-gray-50 transition">-</button>
+                                                    <button type="button" @click="decrement(d.menu_id)"
+                                                        class="px-2.5 py-1 rounded-md bg-white border shadow-sm hover:bg-gray-50 transition">-</button>
                                                     <div class="w-6 text-center font-medium">{{ d.amount }}</div>
-                                                    <button type="button" @click="increment(d.menu_id)" class="px-2.5 py-1 rounded-md bg-white border shadow-sm hover:bg-gray-50 transition">+</button>
+                                                    <button type="button" @click="increment(d.menu_id)"
+                                                        class="px-2.5 py-1 rounded-md bg-white border shadow-sm hover:bg-gray-50 transition">+</button>
                                                 </div>
                                             </td>
                                             <td class="py-3 text-right font-medium text-muted-foreground">
-                                                {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format((selectedMenuMap[d.menu_id]?.price || 0) * d.amount) }}
+                                                {{ new Intl.NumberFormat('id-ID', {
+                                                    style: 'currency', currency: 'IDR',
+                                                    minimumFractionDigits: 0
+                                                }).format((selectedMenuMap[d.menu_id]?.price ||
+                                                0) * d.amount) }}
                                             </td>
                                             <td class="py-3 text-center">
-                                                <button type="button" @click="removeDetail(d.menu_id)" class="text-sm text-red-500 hover:text-red-700 font-medium transition">Hapus</button>
+                                                <button type="button" @click="removeDetail(d.menu_id)"
+                                                    class="text-sm text-red-500 hover:text-red-700 font-medium transition">Hapus</button>
                                             </td>
                                         </tr>
                                     </tbody>
                                     <tfoot>
                                         <tr class="border-t border-muted-foreground/20">
-                                            <td colspan="2" class="py-4 text-right font-medium text-muted-foreground pr-4">Total</td>
+                                            <td colspan="2"
+                                                class="py-4 text-right font-medium text-muted-foreground pr-4">Total
+                                            </td>
                                             <td class="py-4 text-right font-bold text-base text-foreground">
-                                                {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalPrice) }}
+                                                {{ new Intl.NumberFormat('id-ID', {
+                                                    style: 'currency', currency: 'IDR',
+                                                minimumFractionDigits: 0 }).format(totalPrice) }}
                                             </td>
                                             <td></td>
                                         </tr>
@@ -234,18 +256,18 @@ const loading = ref(false);
                                 </table>
 
                                 <div class="pt-4 border-t border-muted-foreground/10">
-                                    <label class="block text-sm font-medium mb-2 text-foreground">Nama / Keterangan</label>
-                                    <input
-                                        v-model="form.cust_name"
-                                        type="text"
+                                    <label class="block text-sm font-medium mb-2 text-foreground">Nama /
+                                        Keterangan</label>
+                                    <input v-model="form.cust_name" type="text"
                                         placeholder="Contoh: Pengeluaran operasional atau pembelian bahan"
-                                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                                    />
+                                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary" />
                                 </div>
                             </div>
 
                             <div class="flex justify-end">
-                                <button type="submit" class="inline-flex items-center px-6 py-2.5 rounded-xl bg-primary text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition disabled:opacity-50" :disabled="form.processing || form.details.length === 0">
+                                <button type="submit"
+                                    class="inline-flex items-center px-6 py-2.5 rounded-xl bg-primary text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition disabled:opacity-50"
+                                    :disabled="form.processing || form.details.length === 0">
                                     {{ form.processing ? 'Menyimpan...' : 'Simpan Pengeluaran' }}
                                 </button>
                             </div>
@@ -259,7 +281,6 @@ const loading = ref(false);
                             <thead class="bg-muted/50">
                                 <tr class="text-muted-foreground">
                                     <th class="px-6 py-4 text-left font-medium">ID</th>
-                                    <th class="px-6 py-4 text-left font-medium">Kode</th>
                                     <th class="px-6 py-4 text-left font-medium">Cafe</th>
                                     <!-- <th class="px-6 py-4 text-left font-medium">Meja</th> -->
                                     <th class="px-6 py-4 text-left font-medium">Nama</th>
@@ -267,26 +288,43 @@ const loading = ref(false);
                                     <th class="px-6 py-4 text-left font-medium">Profit</th>
                                     <th class="px-6 py-4 text-left font-medium">Status</th>
                                     <th class="px-6 py-4 text-left font-medium">Dibuat</th>
+                                    <th class="px-6 py-4 text-left font-medium">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="e in props.expenses" :key="e.id" class="border-t hover:bg-muted/40 transition">
+                                <tr v-for="e in props.expenses" :key="e.id"
+                                    class="border-t hover:bg-muted/40 transition">
                                     <td class="px-6 py-4">{{ e.id }}</td>
                                     <td class="px-6 py-4 font-medium">{{ e.unique_code }}</td>
                                     <td class="px-6 py-4">{{ e.cafe?.name ?? e.cafe_id }}</td>
                                     <!-- <td class="px-6 py-4">{{ e.table?.id ?? e.table_id }}</td> -->
                                     <td class="px-6 py-4">{{ e.cust_name }}</td>
-                                    <td class="px-6 py-4 font-medium">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(e.total_price) }}</td>
-                                    <td class="px-6 py-4">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(e.profit_margin || 0) }}</td>
+                                    <td class="px-6 py-4 font-medium">{{ new Intl.NumberFormat('id-ID', {
+                                        style:
+                                            'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(e.total_price)
+                                        }}</td>
+                                    <td class="px-6 py-4">{{ new Intl.NumberFormat('id-ID', {
+                                        style: 'currency',
+                                        currency: 'IDR', minimumFractionDigits: 0 }).format(e.profit_margin || 0) }}
+                                    </td>
                                     <td class="px-6 py-4">
-                                        <span :class="e.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                                        <span
+                                            :class="e.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
                                             {{ e.status }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">{{ new Date(e.created_at).toLocaleString() }}</td>
+                                    <td class="px-6 py-4 text-right">
+                                        <Link :href="`/transaction/history/${e.id}`"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
+                                            <Eye :size="14" /> Detail
+                                        </Link>
+                                    </td>
                                 </tr>
                                 <tr v-if="!props.expenses || props.expenses.length === 0">
-                                    <td colspan="9" class="px-6 py-10 text-center text-muted-foreground">Belum ada pengeluaran.</td>
+                                    <td colspan="9" class="px-6 py-10 text-center text-muted-foreground">Belum ada
+                                        pengeluaran.</td>
                                 </tr>
                             </tbody>
                         </table>
