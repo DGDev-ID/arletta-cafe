@@ -47,7 +47,7 @@ class TransactionService
         return DB::transaction(function () use ($cafeId, $data, $price, $fee, $totalPrice, $menus) {
             $transaction = Transaction::create([
                 'cafe_id' => $cafeId,
-                'table_id' => $data['table_id'],
+                'table_id' => $data['table_id'] ?? null,
                 'cust_name' => $data['cust_name'] ?? 'Customer',
                 'price' => $price,
                 'fee' => $fee,
@@ -316,81 +316,23 @@ class TransactionService
     }
 
     /**
-     * Create an expense transaction directly (consumes materials and sets negative profit_margin).
+     * Process an existing transaction as an expense (consumes materials and sets negative profit_margin).
      *
-     * Data shape:
-     *  - cafe_id: int (MCafe id) or unique_id string
-     *  - details: [ { menu_id, amount }, ... ]
+     * Accepts a Transaction model instance which was created earlier (e.g. via makeTransaction()).
      */
-    public static function createExpenseTransaction(array $data)
+    public static function makeExpenseTransaction(Transaction $transaction)
     {
-        // Resolve cafe (accept numeric id or unique_id)
-        if (isset($data['cafe_id']) && is_numeric($data['cafe_id'])) {
-            $cafe = MCafe::find($data['cafe_id']);
-        } else {
-            $cafe = MCafe::where('unique_id', $data['cafe_id'] ?? null)->first();
-        }
+        return DB::transaction(function () use ($transaction) {
+            // 🔒 lock transaction row
+            $trx = Transaction::where('id', $transaction->id)
+                ->lockForUpdate()
+                ->first();
 
-        if (!$cafe) {
-            throw new \Exception('Cafe tidak ditemukan.');
-        }
-
-        $menuIds = collect($data['details'])->pluck('menu_id')->all();
-        $menus = \App\Models\MMenu::whereIn('id', $menuIds)->get();
-
-        if ($menus->count() !== count($menuIds)) {
-            throw new \Exception('Some menu items not found.');
-        }
-
-        // Calculate price
-        $price = 0;
-        foreach ($data['details'] as $detail) {
-            $menu = $menus->where('id', $detail['menu_id'])->first();
-            $price += $menu->price * $detail['amount'];
-        }
-
-        // Calculate fee
-        $ppn = $cafe->ppn_fee > 0 ? ($price * ($cafe->ppn_fee / 100)) : 0;
-        $paymentTypeFee = $cafe->qris_fee > 0 && ($data['payment_type'] ?? '') === 'qris' ? ($price * ($cafe->qris_fee / 100)) : 0;
-
-        $fee = $ppn + $paymentTypeFee;
-        $totalPrice = $price + $fee;
-
-        return DB::transaction(function () use ($cafe, $data, $price, $fee, $totalPrice, $menus) {
-            // Ensure we have a valid table_id (transactions.table_id is NOT NULL)
-            $tableId = $data['table_id'] ?? null;
-            if (!$tableId) {
-                $table = $cafe->tables()->first();
-                if (!$table) {
-                    throw new \Exception('Cafe tidak memiliki meja. Mohon tambahkan meja terlebih dahulu.');
-                }
-                $tableId = $table->id;
+            if (!$trx) {
+                throw new \Exception('Transaksi tidak ditemukan.');
             }
 
-            $transaction = Transaction::create([
-                'cafe_id' => $cafe->id,
-                'table_id' => $tableId,
-                'cust_name' => $data['cust_name'] ?? 'Pengeluaran',
-                'price' => $price,
-                'fee' => $fee,
-                'total_price' => $totalPrice,
-                'payment_type' => $data['payment_type'] ?? 'manual',
-                'status' => 'success',
-                'is_expense' => 1,
-            ]);
-
-            foreach ($data['details'] as $detail) {
-                $menu = $menus->where('id', $detail['menu_id'])->first();
-                $transaction->details()->create([
-                    'menu_id' => $menu->id,
-                    'amount' => $detail['amount'],
-                    'price' => $menu->price * $detail['amount'],
-                    'description' => $detail['description'] ?? null,
-                ]);
-            }
-
-            // Build material requirements similar to pendingAction
-            $transaction->load([
+            $trx->load([
                 'details.menu.menuMaterials.material',
                 'details.menu.menuSemiFinishedMaterials.semiFinishedMaterial.details.material',
             ]);
@@ -398,7 +340,7 @@ class TransactionService
             $materialRequirements = [];
             $detailMaterialMap = [];
 
-            foreach ($transaction->details as $detail) {
+            foreach ($trx->details as $detail) {
                 foreach ($detail->menu->menuMaterials as $menuMaterial) {
                     $material = $menuMaterial->material;
                     $recipeUnitId = $menuMaterial->unit_id;
@@ -490,19 +432,20 @@ class TransactionService
                 $material = $materials[$materialId];
 
                 if ($material->stock < $totalNeeded) {
-                    $transaction->update(['status' => 'failed']);
+                    $trx->update(['status' => 'failed']);
 
                     throw new \Exception("Insufficient stock for material: {$material->name}. Required: {$totalNeeded}, Available: {$material->stock}");
                 }
             }
 
-            // Create outbounds
+            // Calculate total material cost
             $totalMaterialCost = 0;
             foreach ($materialRequirements as $materialId => $totalNeeded) {
                 $material = $materials[$materialId];
                 $totalMaterialCost += $totalNeeded * (float) $material->avg_buy_price;
             }
 
+            // Create outbounds
             foreach ($detailMaterialMap as $record) {
                 MaterialInboundOutbound::create([
                     'material_id' => $record['material_id'],
@@ -514,10 +457,12 @@ class TransactionService
                 ]);
             }
 
-            $transaction->profit_margin = -1 * ((float) $transaction->total_price - $totalMaterialCost);
-            $transaction->save();
+            $trx->profit_margin = -1 * ((float) $trx->total_price - $totalMaterialCost);
+            $trx->is_expense = 1;
+            $trx->status = 'success';
+            $trx->save();
 
-            return $transaction->fresh('details');
+            return $trx->fresh('details');
         });
     }
 }

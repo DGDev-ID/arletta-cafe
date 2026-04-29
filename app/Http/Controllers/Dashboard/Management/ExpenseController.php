@@ -112,6 +112,7 @@ class ExpenseController extends Controller
     {
         $request->validate([
             'cafe_id' => 'required|exists:m_cafes,id',
+            'table_id' => 'nullable|exists:m_cafe_tables,id',
             'details' => 'required|array|min:1',
             'details.*.menu_id' => 'required|exists:m_menus,id',
             'details.*.amount' => 'required|integer|min:1',
@@ -120,14 +121,17 @@ class ExpenseController extends Controller
         $cafe = MCafe::findOrFail($request->cafe_id);
 
         $data = [
-            'cafe_id' => $cafe->id,
+            // makeTransaction expects cafe unique_id (API uses unique_id)
+            'cafe_id' => $cafe->unique_id,
+            'table_id' => $request->input('table_id') ?? null,
             'details' => $request->details,
             'cust_name' => $request->cust_name ?? 'Pengeluaran',
             'payment_type' => 'manual',
         ];
 
         try {
-            TransactionService::createExpenseTransaction($data);
+            $transaction = TransactionService::makeTransaction($data);
+            TransactionService::makeExpenseTransaction($transaction);
         } catch (\Throwable $e) {
             return redirect()->back()->with('error', 'Gagal membuat pengeluaran: ' . $e->getMessage());
         }
