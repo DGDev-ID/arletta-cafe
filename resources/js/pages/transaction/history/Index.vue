@@ -92,6 +92,7 @@ const formatDate = (val: string) => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
+
         <Head title="History Transaction" />
 
         <div class="min-h-screen bg-muted/40 py-10">
@@ -119,12 +120,9 @@ const formatDate = (val: string) => {
                             <Download :size="16" /> Export XLS
                             <ChevronDown :size="14" />
                         </button>
-                        <Transition
-                            enter-active-class="transition ease-out duration-100"
-                            enter-from-class="opacity-0 scale-95"
-                            enter-to-class="opacity-100 scale-100"
-                            leave-active-class="transition ease-in duration-75"
-                            leave-from-class="opacity-100 scale-100"
+                        <Transition enter-active-class="transition ease-out duration-100"
+                            enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100"
+                            leave-active-class="transition ease-in duration-75" leave-from-class="opacity-100 scale-100"
                             leave-to-class="opacity-0 scale-95">
                             <div v-if="showExportDropdown"
                                 class="absolute right-0 mt-2 w-56 rounded-xl border bg-popover text-popover-foreground shadow-lg z-30 overflow-hidden">
@@ -142,12 +140,9 @@ const formatDate = (val: string) => {
                 </div>
 
                 <!-- Filter Section (toggle) -->
-                <Transition
-                    enter-active-class="transition ease-out duration-200"
-                    enter-from-class="opacity-0 -translate-y-2"
-                    enter-to-class="opacity-100 translate-y-0"
-                    leave-active-class="transition ease-in duration-150"
-                    leave-from-class="opacity-100 translate-y-0"
+                <Transition enter-active-class="transition ease-out duration-200"
+                    enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0"
+                    leave-active-class="transition ease-in duration-150" leave-from-class="opacity-100 translate-y-0"
                     leave-to-class="opacity-0 -translate-y-2">
                     <div v-if="showFilter" class="rounded-2xl border bg-background shadow-sm p-6 space-y-4">
                         <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Filter</h3>
@@ -158,7 +153,8 @@ const formatDate = (val: string) => {
                                 <select v-model="filterCafe"
                                     class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
                                     <option value="">Semua Cafe</option>
-                                    <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">{{ cafe.name }}</option>
+                                    <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">{{ cafe.name }}
+                                    </option>
                                 </select>
                             </div>
 
@@ -168,7 +164,7 @@ const formatDate = (val: string) => {
                                 <select v-model="filterPaymentType"
                                     class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
                                     <option value="">Semua Tipe</option>
-                                    <option value="cash">Cash</option>
+                                    <option value="manual">Cash</option>
                                     <option value="qris">QRIS</option>
                                 </select>
                             </div>
@@ -224,7 +220,8 @@ const formatDate = (val: string) => {
                                 <td class="px-6 py-4">{{ trx.cust_name ?? '-' }}</td>
                                 <td class="px-6 py-4">{{ formatCurrency(trx.total_price) }}</td>
                                 <td class="px-6 py-4">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
                                         :class="trx.payment_type === 'manual' ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'">
                                         {{ trx.payment_type }}
                                     </span>
