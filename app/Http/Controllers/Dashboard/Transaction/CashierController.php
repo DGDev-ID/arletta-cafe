@@ -211,7 +211,7 @@ class CashierController extends Controller
         $a = array();
 
         $cleanNumber = function ($val) {
-            return preg_replace('/[^\d]/', '', number_format($val, 0, ',', '.'));
+            return number_format($val, 0, ',', '.');
         };
 
         $fmtDate = function ($val) {
