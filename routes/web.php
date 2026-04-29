@@ -179,22 +179,19 @@ Route::middleware(['auth'])->group(function () {
         // Expense (Pengeluaran)
         Route::get('expense', [ExpenseController::class, 'index'])
             ->name('expense.index')
-            ->middleware('can:management.expense');
+            ->middleware('can:transaction.history');
         Route::get('expense/create', [ExpenseController::class, 'create'])
             ->name('expense.create')
-            ->middleware('can:management.expense');
+            ->middleware('can:transaction.history');
         Route::get('expense/menus-by-cafe', [ExpenseController::class, 'getMenusByCafe'])
             ->name('expense.menus-by-cafe')
-            ->middleware('can:management.expense');
+            ->middleware('can:transaction.history');
         Route::post('expense/check-availability', [ExpenseController::class, 'checkAvailability'])
             ->name('expense.check-availability')
-            ->middleware('can:management.expense');
+            ->middleware('can:transaction.history');
         Route::post('expense', [ExpenseController::class, 'store'])
             ->name('expense.store')
-            ->middleware('can:management.expense');
-        Route::patch('expense/{id}/mark', [ExpenseController::class, 'markExpense'])
-            ->name('expense.mark')
-            ->middleware('can:management.expense');
+            ->middleware('can:transaction.history');
     });
 
     Route::prefix('transaction')->name('transaction.')->group(function () {

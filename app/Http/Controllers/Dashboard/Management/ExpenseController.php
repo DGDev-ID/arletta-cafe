@@ -97,17 +97,6 @@ class ExpenseController extends Controller
         return response()->json(['items' => $result]);
     }
 
-    public function markExpense($id)
-    {
-        $transaction = Transaction::findOrFail($id);
-
-        // Call TransactionService to mark as expense
-        TransactionService::makeExpense($transaction);
-
-        return redirect()->route('management.expense.index')
-            ->with('success', 'Transaksi telah ditandai sebagai pengeluaran.');
-    }
-
     public function store(Request $request)
     {
         $request->validate([
@@ -126,13 +115,14 @@ class ExpenseController extends Controller
             'cafe_id' => $cafe->unique_id,
             'table_id' => $request->input('table_id') ?? null,
             'details' => $request->details,
-            'cust_name' => $request->cust_name ?? 'Pengeluaran',
+            'cust_name' => $request->cust_name ? "Expense - $request->cust_name" : "Expense",
             'payment_type' => 'manual',
         ];
 
         try {
             $transaction = TransactionService::makeTransaction($data);
-            TransactionService::makeExpenseTransaction($transaction);
+            TransactionService::pendingAction($transaction);
+            TransactionService::makeExpense($transaction);
         } catch (\Throwable $e) {
             return redirect()->back()->with('error', 'Gagal membuat pengeluaran: ' . $e->getMessage());
         }
