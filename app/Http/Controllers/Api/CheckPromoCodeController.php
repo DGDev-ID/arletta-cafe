@@ -15,26 +15,30 @@ class CheckPromoCodeController extends ApiBaseController
      */
     public function __invoke(Request $request)
     {
-        $validated = $request->validate([
-            'promo_code' => ['required', 'string'],
-            'cafe_id' => ['required', 'exists:m_cafes,unique_id']
-        ]); 
+        try {
+            $validated = $request->validate([
+                'promo_code' => ['required', 'string'],
+                'cafe_id' => ['required', 'exists:m_cafes,unique_id']
+            ]);
 
-        $cafe = MCafe::where('unique_id', $validated['cafe_id'])->first();
+            $cafe = MCafe::where('unique_id', $validated['cafe_id'])->first();
 
-        if (!$cafe) {
-            return $this->clientError('Cafe tidak ditemukan');
+            if (!$cafe) {
+                return $this->clientError('Cafe tidak ditemukan');
+            }
+
+            $cafePromo = CafePromo::where('promo_code', $validated['promo_code'])
+                ->where('cafe_id', $cafe->id)
+                ->where('status', true)
+                ->first();
+
+            if (!$cafePromo) {
+                return $this->clientError('Kode promo tidak ditemukan atau tidak aktif');
+            }
+
+            return $this->success($cafePromo);
+        } catch (\Throwable $e) {
+            return $this->serverError($e);
         }
-
-        $cafePromo = CafePromo::where('promo_code', $validated['promo_code'])
-            ->where('cafe_id', $cafe->id)
-            ->where('status', true)
-            ->first();
-
-        if (!$cafePromo) {
-            return $this->clientError('Kode promo tidak ditemukan atau tidak aktif');
-        }
-
-        return $this->successResponse($cafePromo);
     }
 }
