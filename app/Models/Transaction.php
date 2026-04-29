@@ -24,6 +24,7 @@ class Transaction extends Model
         'is_open_bill',
         'is_expense',
         'profit_margin',
+        'promo_id',
     ];
 
     protected function casts(): array
@@ -67,5 +68,10 @@ class Transaction extends Model
     public function details(): HasMany
     {
         return $this->hasMany(TransactionDetail::class);
+    }
+
+    public function promo(): BelongsTo
+    {
+        return $this->belongsTo(CafePromo::class, 'promo_id');
     }
 }

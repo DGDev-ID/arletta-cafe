@@ -25,6 +25,22 @@ class TransactionService
             throw new \Exception('All menu items must belong to the same cafe.');
         }
 
+        // Validate promo code if provided
+        $promoId = null;
+        $discountAmount = 0;
+        $promo = null;
+        if (!empty($data['promo_code'])) {
+            $promo = \App\Models\CafePromo::where('promo_code', $data['promo_code'])
+                ->where('cafe_id', $cafeId)
+                ->where('status', true)
+                ->first();
+
+            if (!$promo) {
+                throw new \Exception('Invalid or inactive promo code.');
+            }
+            $promoId = $promo->id;
+        }
+
         // Calculate price
         $price = 0;
         foreach ($data['details'] as $detail) {
@@ -32,19 +48,34 @@ class TransactionService
             $price += $menu->price * $detail['amount'];
         }
 
+        // Calculate discount
+        if ($promoId && $promo) {
+            if ($promo->type === 'discount_percent') {
+                $discountAmount = $price * ($promo->value / 100);
+            } else if ($promo->type === 'discount_amount') {
+                $discountAmount = $promo->value;
+            }
+            
+            // Ensure discount doesn't exceed price
+            if ($discountAmount > $price) {
+                $discountAmount = $price;
+            }
+        }
+        $priceAfterDiscount = $price - $discountAmount;
+
         // Calculate fee
         // $ppn = $price * 0.10;
         // $paymentTypeFee = 0;
         // if ($data['payment_type'] === 'qr') {
         //     $paymentTypeFee = $price * 0.007;
         // }
-        $ppn = $cafe->ppn_fee > 0 ? ($price * ($cafe->ppn_fee / 100)) : 0;
-        $paymentTypeFee = $cafe->qris_fee > 0 && $data['payment_type'] === 'qris' ? ($price * ($cafe->qris_fee / 100)) : 0;
+        $ppn = $cafe->ppn_fee > 0 ? ($priceAfterDiscount * ($cafe->ppn_fee / 100)) : 0;
+        $paymentTypeFee = $cafe->qris_fee > 0 && $data['payment_type'] === 'qris' ? ($priceAfterDiscount * ($cafe->qris_fee / 100)) : 0;
 
         $fee = $ppn + $paymentTypeFee;
-        $totalPrice = $price + $fee;
+        $totalPrice = $priceAfterDiscount + $fee;
 
-        return DB::transaction(function () use ($cafeId, $data, $price, $fee, $totalPrice, $menus) {
+        return DB::transaction(function () use ($cafeId, $data, $price, $fee, $totalPrice, $menus, $promoId) {
             $transaction = Transaction::create([
                 'cafe_id' => $cafeId,
                 'table_id' => $data['table_id'] ?? null,
@@ -54,6 +85,7 @@ class TransactionService
                 'total_price' => $totalPrice,
                 'payment_type' => $data['payment_type'],
                 'status' => 'pending',
+                'promo_id' => $promoId,
             ]);
 
             foreach ($data['details'] as $detail) {

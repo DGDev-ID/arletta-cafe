@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CheckTransactionStatusController;
 use App\Http\Controllers\Api\GetMenuCafeTableController;
 use App\Http\Controllers\Api\CreateOpenBillController;
 use App\Http\Controllers\Api\AddOrderOpenBillController;
+use App\Http\Controllers\Api\CheckPromoCodeController;
 use App\Http\Controllers\Api\MakeFailedOpenBillController;
 use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\PaymentWebhookController;
@@ -30,4 +31,6 @@ use Illuminate\Support\Facades\Route;
     Route::post('/make-transaction', TransactionController::class);
     Route::post('/payment-webhook', PaymentWebhookController::class);
     Route::get('/transaction/{transaction}/status', CheckTransactionStatusController::class);
+
+    Route::post('/check-promo-code', CheckPromoCodeController::class);
 // });

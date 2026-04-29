@@ -31,6 +31,7 @@ class TransactionRequest extends FormRequest
             'details.*.menu_id' => ['required', 'exists:m_menus,id'],
             'details.*.amount' => ['required', 'integer', 'min:1'],
             'details.*.description' => ['nullable', 'string'],
+            'promo_code' => ['nullable', 'string']
         ];
     }
 }
