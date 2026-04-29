@@ -34,6 +34,7 @@ const props = defineProps<{
     topMenus: any[];
     criticalStocks: any[];
     recentTransactions: any[];
+    topMenusToday: any[];
 }>();
 
 const formatCurrency = (value: number) =>
@@ -86,12 +87,43 @@ const txChange = computed(() => percentChange(props.stats.transactionsToday, pro
                     :icon="Utensils"
                     icon-class="bg-purple-100 dark:bg-purple-900/30"
                 />
+                
             </div>
 
             <!-- Revenue Chart + Table Occupancy -->
-            <div class="grid gap-4 lg:grid-cols-3">
+            <div class="grid gap-4 lg:grid-cols-4">
                 <div class="lg:col-span-2">
                     <RevenueChart :data="revenueChart" />
+                </div>
+
+                <div class="rounded-lg border bg-card p-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <Coffee class="h-4 w-4 text-primary" />
+                            <span class="text-sm font-medium text-muted-foreground">Produk Terlaris Hari Ini</span>
+                        </div>
+                        <span class="text-xs text-muted-foreground">Top 3</span>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <template v-if="props.topMenusToday && props.topMenusToday.length">
+                            <div
+                                v-for="(m, idx) in props.topMenusToday"
+                                :key="m.menu_id"
+                                class="flex items-center justify-between"
+                            >
+                                <div class="flex items-center gap-3">
+                                    <div class="flex h-8 w-8 items-center justify-center rounded bg-muted/10 text-sm font-semibold">{{ idx + 1 }}</div>
+                                    <div>
+                                        <div class="font-medium">{{ m.name }}</div>
+                                        <div class="text-xs text-muted-foreground">{{ m.cafe_name ?? '' }}</div>
+                                    </div>
+                                </div>
+                                <div class="text-sm font-semibold">{{ m.total_sold }}x</div>
+                            </div>
+                        </template>
+                        <div v-else class="text-sm text-muted-foreground">Belum ada penjualan hari ini</div>
+                    </div>
                 </div>
 
                 <!-- Table Occupancy Card -->

@@ -116,6 +116,7 @@ class ExpenseController extends Controller
             'details' => 'required|array|min:1',
             'details.*.menu_id' => 'required|exists:m_menus,id',
             'details.*.amount' => 'required|integer|min:1',
+            'cust_name' => 'nullable|string|max:255',
         ]);
 
         $cafe = MCafe::findOrFail($request->cafe_id);
