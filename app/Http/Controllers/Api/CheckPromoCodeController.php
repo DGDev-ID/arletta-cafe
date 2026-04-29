@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\ApiBaseController;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\MCage;
+use App\Models\MCafe;
 use App\Models\CafePromo;
 
 class CheckPromoCodeController extends ApiBaseController
@@ -20,7 +20,7 @@ class CheckPromoCodeController extends ApiBaseController
             'cafe_id' => ['required', 'exists:m_cafes,unique_id']
         ]); 
 
-        $cafe = CafePromo::where('unique_id', $validated['cafe_id'])->first();
+        $cafe = MCafe::where('unique_id', $validated['cafe_id'])->first();
 
         if (!$cafe) {
             return $this->clientError('Cafe tidak ditemukan');
