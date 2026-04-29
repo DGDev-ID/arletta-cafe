@@ -7,6 +7,7 @@ import SearchableSelect from '@/components/SearchableSelect.vue';
 import { ref, computed, watch } from 'vue';
 import axios from 'axios';
 import { Notyf } from 'notyf';
+import { Eye } from 'lucide-vue-next';
 
 interface Cafe { id: number; name: string }
 interface MenuItem { id: number; name: string; price: number; available: boolean }
