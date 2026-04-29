@@ -295,7 +295,6 @@ const loading = ref(false);
                                 <tr v-for="e in props.expenses" :key="e.id"
                                     class="border-t hover:bg-muted/40 transition">
                                     <td class="px-6 py-4">{{ e.id }}</td>
-                                    <td class="px-6 py-4 font-medium">{{ e.unique_code }}</td>
                                     <td class="px-6 py-4">{{ e.cafe?.name ?? e.cafe_id }}</td>
                                     <!-- <td class="px-6 py-4">{{ e.table?.id ?? e.table_id }}</td> -->
                                     <td class="px-6 py-4">{{ e.cust_name }}</td>
