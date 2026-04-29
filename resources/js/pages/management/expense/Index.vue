@@ -28,6 +28,7 @@ const checkingAvailability = ref(false);
 const form = useForm({
     cafe_id: '' as number | '',
     details: [] as Array<{ menu_id: number; amount: number }>,
+    cust_name: 'Pengeluaran',
 });
 
 const cafeOptions = computed(() => props.cafes.map(c => ({ value: c.id, label: c.name })));
@@ -193,38 +194,54 @@ const loading = ref(false);
                                 </div>
                             </div>
 
-                            <div v-if="form.details.length > 0" class="rounded-lg border p-4 bg-muted/5">
+                            <div v-if="form.details.length > 0" class="rounded-lg border p-5 bg-muted/5 space-y-4">
                                 <table class="min-w-full text-sm">
-                                    <thead class="text-muted-foreground text-left">
+                                    <thead class="text-muted-foreground text-left border-b border-muted-foreground/20">
                                         <tr>
-                                            <th class="py-2">Menu</th>
-                                            <th class="py-2">Jumlah</th>
-                                            <th class="py-2">Subtotal</th>
-                                            <th class="py-2">Aksi</th>
+                                            <th class="py-2 pb-3 font-medium">Menu</th>
+                                            <th class="py-2 pb-3 font-medium">Jumlah</th>
+                                            <th class="py-2 pb-3 font-medium text-right">Subtotal</th>
+                                            <th class="py-2 pb-3 font-medium text-center">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="d in form.details" :key="d.menu_id" class="border-t">
-                                            <td class="py-2 font-medium">{{ selectedMenuMap[d.menu_id]?.name }}</td>
-                                            <td class="py-2">
+                                        <tr v-for="d in form.details" :key="d.menu_id" class="border-b border-muted/20 last:border-0">
+                                            <td class="py-3 font-medium">{{ selectedMenuMap[d.menu_id]?.name }}</td>
+                                            <td class="py-3">
                                                 <div class="inline-flex items-center gap-2">
-                                                    <button type="button" @click="decrement(d.menu_id)" class="px-2 py-1 rounded bg-gray-100">-</button>
-                                                    <div class="px-3">{{ d.amount }}</div>
-                                                    <button type="button" @click="increment(d.menu_id)" class="px-2 py-1 rounded bg-gray-100">+</button>
+                                                    <button type="button" @click="decrement(d.menu_id)" class="px-2.5 py-1 rounded-md bg-white border shadow-sm hover:bg-gray-50 transition">-</button>
+                                                    <div class="w-6 text-center font-medium">{{ d.amount }}</div>
+                                                    <button type="button" @click="increment(d.menu_id)" class="px-2.5 py-1 rounded-md bg-white border shadow-sm hover:bg-gray-50 transition">+</button>
                                                 </div>
                                             </td>
-                                            <td class="py-2">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format((selectedMenuMap[d.menu_id]?.price || 0) * d.amount) }}</td>
-                                            <td class="py-2"><button type="button" @click="removeDetail(d.menu_id)" class="text-sm text-red-600">Hapus</button></td>
+                                            <td class="py-3 text-right font-medium text-muted-foreground">
+                                                {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format((selectedMenuMap[d.menu_id]?.price || 0) * d.amount) }}
+                                            </td>
+                                            <td class="py-3 text-center">
+                                                <button type="button" @click="removeDetail(d.menu_id)" class="text-sm text-red-500 hover:text-red-700 font-medium transition">Hapus</button>
+                                            </td>
                                         </tr>
                                     </tbody>
                                     <tfoot>
-                                        <tr>
-                                            <td colspan="1" class="py-3 text-right font-medium">Total</td>
-                                            <td class="py-3 text-right font-semibold">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalPrice) }}</td>
+                                        <tr class="border-t border-muted-foreground/20">
+                                            <td colspan="2" class="py-4 text-right font-medium text-muted-foreground pr-4">Total</td>
+                                            <td class="py-4 text-right font-bold text-base text-foreground">
+                                                {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalPrice) }}
+                                            </td>
                                             <td></td>
                                         </tr>
                                     </tfoot>
                                 </table>
+
+                                <div class="pt-4 border-t border-muted-foreground/10">
+                                    <label class="block text-sm font-medium mb-2 text-foreground">Nama / Keterangan</label>
+                                    <input
+                                        v-model="form.cust_name"
+                                        type="text"
+                                        placeholder="Contoh: Pengeluaran operasional atau pembelian bahan"
+                                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                    />
+                                </div>
                             </div>
 
                             <div class="flex justify-end">

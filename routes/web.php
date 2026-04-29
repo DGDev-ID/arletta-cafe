@@ -31,6 +31,11 @@ Route::get('dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+// lightweight JSON endpoint for dashboard top menus today (used by frontend polling)
+Route::get('dashboard/top-menus-today', [DashboardController::class, 'topMenusToday'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard.top-menus-today');
+
 Route::middleware(['auth'])->group(function () {
     Route::prefix('master')->name('master.')->group(function () {
         Route::post('cafe/{cafeId}/table', [CafeTableController::class, 'storeTable'])->name('cafe.table.store');
