@@ -28,7 +28,7 @@ class CheckPromoCodeController extends ApiBaseController
 
         $cafePromo = CafePromo::where('promo_code', $validated['promo_code'])
             ->where('cafe_id', $cafe->id)
-            ->where('status', 'active')
+            ->where('status', true)
             ->first();
 
         if (!$cafePromo) {
