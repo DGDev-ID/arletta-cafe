@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 
 interface TransactionDetail {
@@ -50,10 +50,17 @@ const formatDate = (val: string) => {
     const d = new Date(val);
     return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
+
+const makeFailed = () => {
+    if (confirm('Tolak transaksi ini? Status akan diubah ke failed.')) {
+        router.patch(`/transaction/history/${props.transaction.id}/failed`);
+    }
+};
 </script>
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
+
         <Head :title="`Transaction #${transaction.id}`" />
 
         <div class="min-h-screen bg-muted/40 py-10">
@@ -63,15 +70,23 @@ const formatDate = (val: string) => {
                 <div class="flex items-center justify-between">
                     <Heading variant="small" :title="`Transaction #${transaction.id}`"
                         description="Detail lengkap transaksi." />
-                    <Link href="/transaction/history"
-                        class="text-sm text-muted-foreground hover:text-foreground transition">
-                        ← Kembali
-                    </Link>
+
+                    <div>
+                        <button v-if="transaction.status === 'success'" @click="makeFailed"
+                            class="inline-flex items-center px-3 py-1.5 rounded-md bg-red-100 text-red-700 text-sm font-medium hover:bg-red-200 transition">
+                            Tolak Transaksi
+                        </button>
+                        <Link href="/transaction/history"
+                            class="text-sm text-muted-foreground hover:text-foreground transition">
+                            ← Kembali
+                        </Link>
+                    </div>
                 </div>
 
                 <!-- Transaction Info Card -->
                 <div class="rounded-2xl border bg-background shadow-sm p-6">
-                    <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Informasi Transaksi</h3>
+                    <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Informasi
+                        Transaksi</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm">
                         <div>
                             <span class="text-muted-foreground">Customer Name</span>
@@ -100,7 +115,8 @@ const formatDate = (val: string) => {
                         <div>
                             <span class="text-muted-foreground">Payment Type</span>
                             <p>
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
                                     :class="transaction.payment_type === 'cash' ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'">
                                     {{ transaction.payment_type }}
                                 </span>
@@ -109,7 +125,8 @@ const formatDate = (val: string) => {
                         <div>
                             <span class="text-muted-foreground">Status</span>
                             <p>
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 capitalize">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 capitalize">
                                     {{ transaction.status }}
                                 </span>
                             </p>
@@ -124,7 +141,8 @@ const formatDate = (val: string) => {
                 <!-- Transaction Details Table -->
                 <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
                     <div class="px-6 py-4 border-b">
-                        <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Transaction Details</h3>
+                        <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Transaction
+                            Details</h3>
                     </div>
                     <table class="min-w-full text-sm">
                         <thead class="bg-muted/50">
@@ -145,10 +163,12 @@ const formatDate = (val: string) => {
                                 <td class="px-6 py-4 font-medium">
                                     {{ detail.menu?.name ?? '-' }}
                                 </td>
-                                <td class="px-6 py-4 text-muted-foreground">{{ detail.menu?.category?.name ?? '-' }}</td>
+                                <td class="px-6 py-4 text-muted-foreground">{{ detail.menu?.category?.name ?? '-' }}
+                                </td>
                                 <td class="px-6 py-4">{{ detail.amount }}</td>
                                 <td class="px-6 py-4">{{ formatCurrency(detail.price) }}</td>
-                                <td class="px-6 py-4 font-medium">{{ formatCurrency(Number(detail.price) * detail.amount) }}</td>
+                                <td class="px-6 py-4 font-medium">{{ formatCurrency(Number(detail.price) *
+                                    detail.amount) }}</td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ detail.description ?? '-' }}</td>
                             </tr>
                             <tr v-if="transaction.details.length === 0">
@@ -160,16 +180,21 @@ const formatDate = (val: string) => {
                         <!-- Summary Footer -->
                         <tfoot v-if="transaction.details.length > 0" class="bg-muted/30">
                             <tr class="border-t">
-                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Subtotal</td>
-                                <td colspan="2" class="px-6 py-3 font-semibold">{{ formatCurrency(transaction.price) }}</td>
+                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Subtotal
+                                </td>
+                                <td colspan="2" class="px-6 py-3 font-semibold">{{ formatCurrency(transaction.price) }}
+                                </td>
                             </tr>
                             <tr>
                                 <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Fee</td>
-                                <td colspan="2" class="px-6 py-3 font-semibold">{{ formatCurrency(transaction.fee) }}</td>
+                                <td colspan="2" class="px-6 py-3 font-semibold">{{ formatCurrency(transaction.fee) }}
+                                </td>
                             </tr>
                             <tr class="border-t">
-                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Total</td>
-                                <td colspan="2" class="px-6 py-3 font-bold">{{ formatCurrency(transaction.total_price) }}</td>
+                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Total
+                                </td>
+                                <td colspan="2" class="px-6 py-3 font-bold">{{ formatCurrency(transaction.total_price)
+                                    }}</td>
                             </tr>
                         </tfoot>
                     </table>

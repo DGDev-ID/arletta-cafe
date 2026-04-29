@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\MCafe;
 use App\Models\Transaction;
+use App\Services\TransactionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -195,5 +196,15 @@ class HistoryTransactionController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
             'Cache-Control' => 'max-age=0',
         ]);
+    }
+
+    public function makeFailed($id)
+    {
+        $transaction = Transaction::where('status', 'success')->findOrFail($id);
+        TransactionService::makeFailed($transaction);
+
+        return redirect()
+            ->route('transaction.history.index')
+            ->with('success', 'Transaksi ditolak.');
     }
 }

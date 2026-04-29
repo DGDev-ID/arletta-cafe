@@ -264,9 +264,9 @@ class TransactionService
 
     public static function makeFailed(Transaction $transaction)
     {
-        if ($transaction->status !== 'pending') {
-            throw new \Exception('Only pending transactions can be marked as failed.');
-        }
+        // if ($transaction->status !== 'pending') {
+        //     throw new \Exception('Only pending transactions can be marked as failed.');
+        // }
 
         DB::transaction(function () use ($transaction) {
 
@@ -275,9 +275,9 @@ class TransactionService
                 ->lockForUpdate()
                 ->first();
 
-            if ($transaction->status !== 'pending') {
-                throw new \Exception('Transaction already processed.');
-            }
+            // if ($transaction->status !== 'pending') {
+            //     throw new \Exception('Transaction already processed.');
+            // }
 
             $transaction->load('details');
 
