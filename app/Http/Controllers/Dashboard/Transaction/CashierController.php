@@ -334,6 +334,9 @@ class CashierController extends Controller
         $str .= $padRight('Subtotal', $cleanNumber($transaction->price)) . "\n";
         $str .= $padRight('Fee', $cleanNumber($transaction->fee)) . "\n";
 
+        $discount = $transaction->total_price - $transaction->price;
+        $str .= $padRight('Discount', $cleanNumber($discount)) . "\n";
+
         $str .= $lineStr . "\n";
         $str .= $padRight('TOTAL', $cleanNumber($transaction->total_price)) . "\n";
         $str .= $lineStr . "\n";
