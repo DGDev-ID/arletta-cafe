@@ -45,6 +45,9 @@ class CafePromoController extends Controller
 
     public function store(Request $request)
     {
+        $request->merge([
+            'promo_code' => strtoupper($request->promo_code),
+        ]);
         $validator = Validator::make($request->all(), [
             'cafe_id' => 'required|exists:m_cafes,id',
             'promo_code' => [
@@ -58,6 +61,7 @@ class CafePromoController extends Controller
             'type' => 'required|in:discount_percent,discount_amount',
             'value' => 'required|numeric|min:0',
         ]);
+        $validator['promo_code'] = strtoupper($validator['promo_code']);
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
@@ -81,7 +85,9 @@ class CafePromoController extends Controller
     public function update(Request $request, string $id)
     {
         $promo = CafePromo::findOrFail($id);
-
+        $request->merge([
+            'promo_code' => strtoupper($request->promo_code),
+        ]);
         $validator = Validator::make($request->all(), [
             'cafe_id' => 'required|exists:m_cafes,id',
             'promo_code' => [
