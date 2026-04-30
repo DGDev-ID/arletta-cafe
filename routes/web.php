@@ -222,6 +222,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('history/{id}', [HistoryTransactionController::class, 'show'])
             ->name('history.show')
             ->middleware('can:transaction.history');
+        Route::patch('history/{id}/failed', [HistoryTransactionController::class, 'makeFailed'])
+            ->name('history.failed')
+            ->middleware('can:transaction.history');
 
         Route::get('cashier', [CashierController::class, 'index'])
             ->name('cashier.index')
