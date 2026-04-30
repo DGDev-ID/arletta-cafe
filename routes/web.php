@@ -241,6 +241,9 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('cashier/{id}/success-in-order', [CashierController::class, 'makeSuccessInOrder'])
             ->name('cashier.success-in-order')
             ->middleware('can:transaction.cashier');
+        Route::post('cashier/apply-promo', [CashierController::class, 'applyPromo'])
+            ->name('cashier.apply-promo')
+            ->middleware('can:transaction.cashier');
         Route::patch('cashier/detail/{id}/success', [CashierController::class, 'makeDetailSuccess'])
             ->name('cashier.detail.success')
             ->middleware('can:transaction.cashier');

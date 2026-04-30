@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { CheckCircle, XCircle } from 'lucide-vue-next';
 
 interface TransactionDetail {
@@ -36,6 +36,7 @@ interface Transaction {
     table: { id: number; name: string } | null;
     details: TransactionDetail[];
     is_open_bill?: number | boolean;
+    promo_id?: number | null;
 }
 
 const props = defineProps<{
@@ -74,6 +75,20 @@ const hideFailedForOpenBill = computed(() => {
     if (!trx.details || trx.details.length === 0) return false;
     return trx.details.some((d) => d.status === 'success');
 });
+
+const promoCode = ref('');
+const applyPromo = () => {
+    if (!promoCode.value) return;
+    router.post('/transaction/cashier/apply-promo', {
+        transaction_id: props.transaction.id,
+        promo_code: promoCode.value,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            promoCode.value = '';
+        }
+    });
+};
 </script>
 
 <template>
@@ -198,6 +213,15 @@ const hideFailedForOpenBill = computed(() => {
                                 <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Subtotal
                                 </td>
                                 <td colspan="2" class="px-6 py-3 font-semibold">{{ formatCurrency(transaction.price) }}
+                                </td>
+                            </tr>
+                            <tr v-if="transaction.is_open_bill == 1 && transaction.promo_id == null" class="border-t">
+                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Promo Code</td>
+                                <td colspan="2" class="px-6 py-3">
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" v-model="promoCode" placeholder="Masukkan Promo Code" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm w-full max-w-[150px]" />
+                                        <button @click="applyPromo" type="button" class="cursor-pointer px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition">Apply</button>
+                                    </div>
                                 </td>
                             </tr>
                             <tr>

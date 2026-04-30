@@ -193,6 +193,61 @@ class CashierController extends Controller
             ->with('success', 'Transaksi berhasil diselesaikan.');
     }
 
+    public function applyPromo(Request $request)
+    {
+        $request->validate([
+            'transaction_id' => 'required|exists:transactions,id',
+            'promo_code' => 'required|string',
+        ]);
+
+        $transaction = Transaction::where('id', $request->transaction_id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        if ($transaction->promo_id !== null) {
+            return redirect()->back()->with('error', 'Transaksi ini sudah menggunakan promo.');
+        }
+
+        $promo = \App\Models\CafePromo::where('cafe_id', $transaction->cafe_id)
+            ->where('promo_code', $request->promo_code)
+            ->where('status', true)
+            ->first();
+
+        if (!$promo) {
+            return redirect()->back()->with('error', 'Kode promo tidak valid atau tidak aktif.');
+        }
+
+        $price = $transaction->price;
+        $discountAmount = 0;
+
+        if ($promo->type === 'discount_percent') {
+            $discountAmount = $price * ($promo->value / 100);
+        } else if ($promo->type === 'discount_amount') {
+            $discountAmount = $promo->value;
+        }
+
+        if ($discountAmount > $price) {
+            $discountAmount = $price;
+        }
+
+        $priceAfterDiscount = $price - $discountAmount;
+
+        $cafe = MCafe::find($transaction->cafe_id);
+        $ppn = $cafe->ppn_fee > 0 ? ($priceAfterDiscount * ($cafe->ppn_fee / 100)) : 0;
+        $paymentTypeFee = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris' ? ($priceAfterDiscount * ($cafe->qris_fee / 100)) : 0;
+        
+        $newFee = $ppn + $paymentTypeFee;
+        $newTotal = $priceAfterDiscount + $newFee;
+
+        $transaction->update([
+            'promo_id' => $promo->id,
+            'fee' => $newFee,
+            'total_price' => $newTotal,
+        ]);
+
+        return redirect()->back()->with('success', 'Promo berhasil digunakan.');
+    }
+
     public function receiptData($id)
     {
         $transaction = Transaction::whereIn('status', ['in_order', 'success'])
