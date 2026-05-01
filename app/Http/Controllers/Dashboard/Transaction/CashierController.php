@@ -335,7 +335,7 @@ class CashierController extends Controller
         $str .= $padRight('Fee', $cleanNumber($transaction->fee)) . "\n";
 
         $discount = $transaction->total_price - $transaction->price;
-        if($discount > 0) {
+        if($discount != 0) {
             $str .= $padRight('Discount', $cleanNumber($discount)) . "\n";
         }
 

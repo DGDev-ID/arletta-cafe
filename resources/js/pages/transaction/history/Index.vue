@@ -52,6 +52,7 @@ const filterPaymentType = ref(props.filters.payment_type);
 const filterDateFrom = ref(props.filters.date_from);
 const filterDateTo = ref(props.filters.date_to);
 
+
 const applyFilters = () => {
     const params: Record<string, string> = {};
     if (filterCafe.value) params.cafe_id = filterCafe.value;
@@ -85,8 +86,15 @@ const formatCurrency = (val: string | number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(val));
 
 const formatDate = (val: string) => {
+    // If val is yyyy-mm-dd or ISO, format to dd/mm/yyyy
     const d = new Date(val);
-    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    if (isNaN(d.getTime())) return val;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hour = String(d.getHours()).padStart(2, '0');
+    const minute = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hour}:${minute}`;
 };
 </script>
 
@@ -172,14 +180,14 @@ const formatDate = (val: string) => {
                             <!-- Date From -->
                             <div class="grid gap-1.5">
                                 <label class="text-xs font-medium text-muted-foreground">Dari Tanggal</label>
-                                <input v-model="filterDateFrom" type="date"
+                                <input v-model="filterDateFrom" type="date" lang="id-ID"
                                     class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                             </div>
 
                             <!-- Date To -->
                             <div class="grid gap-1.5">
                                 <label class="text-xs font-medium text-muted-foreground">Sampai Tanggal</label>
-                                <input v-model="filterDateTo" type="date"
+                                <input v-model="filterDateTo" type="date" lang="id-ID"
                                     class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                             </div>
                         </div>
