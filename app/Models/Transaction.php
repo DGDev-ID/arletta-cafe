@@ -23,6 +23,7 @@ class Transaction extends Model
         'midtrans_transaction_id',
         'is_open_bill',
         'is_expense',
+        'expense_date',
         'profit_margin',
         'promo_id',
     ];
