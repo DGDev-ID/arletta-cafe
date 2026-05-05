@@ -120,6 +120,11 @@ class DashboardController extends Controller
         // Total cafes
         $totalCafes = MCafe::count();
 
+        // Parent categories (for filter on dashboard)
+        $parentCategories = \App\Models\MMenuCategory::whereNull('parent_id')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return inertia('Dashboard', [
             'stats' => [
                 'revenueToday'        => (float) $revenueToday,
@@ -138,39 +143,61 @@ class DashboardController extends Controller
             'criticalStocks'      => $criticalStocks,
             'recentTransactions'  => $recentTransactions,
             'topMenusToday'       => $topMenusToday,
+            'parentCategories'    => $parentCategories,
         ]);
     }
 
     /**
-     * Return all menus sold today as JSON (used by frontend polling).
+     * Return all menus sold on a given date as JSON (used by frontend polling + filter).
+     * Query params:
+     *   - date        : Y-m-d (default: today)
+     *   - category_id : parent category id to filter (optional)
      */
-    public function topMenusToday()
+    public function topMenusToday(\Illuminate\Http\Request $request)
     {
-        $today = Carbon::today();
+        $date       = $request->filled('date') ? Carbon::parse($request->date) : Carbon::today();
+        $categoryId = $request->filled('category_id') ? (int) $request->category_id : null;
 
-        $topTodayAggs = TransactionDetail::select(
+        $query = TransactionDetail::select(
                 'menu_id',
                 DB::raw('SUM(transaction_details.amount) as total_sold'),
                 DB::raw('SUM(transaction_details.price * transaction_details.amount) as total_revenue')
             )
             ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
             ->where('transactions.status', 'success')
-            ->whereDate('transactions.created_at', $today)
+            ->whereDate('transactions.created_at', $date)
             ->groupBy('menu_id')
-            ->orderByDesc('total_sold')
-            ->get();
+            ->orderByDesc('total_sold');
+
+        // Filter by parent category (include children categories too)
+        if ($categoryId) {
+            $childIds = \App\Models\MMenuCategory::where('parent_id', $categoryId)->pluck('id');
+            $allCategoryIds = $childIds->push($categoryId);
+            $menuIdsInCategory = MMenu::whereIn('menu_category_id', $allCategoryIds)->pluck('id');
+            $query->whereIn('menu_id', $menuIdsInCategory);
+        }
+
+        $topTodayAggs = $query->get();
 
         $topMenusToday = collect();
         foreach ($topTodayAggs as $agg) {
-            $menu = MMenu::with('cafe:id,name')->find($agg->menu_id);
+            $menu = MMenu::with('cafe:id,name', 'category:id,name,parent_id', 'category.parent:id,name')->find($agg->menu_id);
             if ($menu) {
+                $parentCategory = $menu->category?->parent_id
+                    ? $menu->category->parent
+                    : $menu->category;
+
                 $topMenusToday->push([
-                    'menu_id' => $menu->id,
-                    'name' => $menu->name,
-                    'price' => $menu->price,
-                    'total_sold' => (int) $agg->total_sold,
-                    'cafe_id' => $menu->cafe_id,
-                    'cafe_name' => $menu->cafe?->name ?? null,
+                    'menu_id'              => $menu->id,
+                    'name'                 => $menu->name,
+                    'price'                => $menu->price,
+                    'total_sold'           => (int) $agg->total_sold,
+                    'cafe_id'              => $menu->cafe_id,
+                    'cafe_name'            => $menu->cafe?->name ?? null,
+                    'category_id'          => $menu->category?->id,
+                    'category_name'        => $menu->category?->name,
+                    'parent_category_id'   => $parentCategory?->id,
+                    'parent_category_name' => $parentCategory?->name,
                 ]);
             }
         }

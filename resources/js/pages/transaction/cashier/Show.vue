@@ -165,6 +165,16 @@ const applyPromo = () => {
                             </p>
                         </div>
                         <div>
+                            <span class="text-muted-foreground">Tipe Order</span>
+                            <p>
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                    :class="transaction.is_open_bill ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'">
+                                    {{ transaction.is_open_bill ? '📋 Open Bill' : '🧾 Sekali Bayar' }}
+                                </span>
+                            </p>
+                        </div>
+                        <div>
                             <span class="text-muted-foreground">Tanggal</span>
                             <p class="font-medium">{{ formatDate(transaction.updated_at) }}</p>
                         </div>

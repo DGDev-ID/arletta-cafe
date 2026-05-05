@@ -27,6 +27,7 @@ interface Transaction {
     total_price: string;
     payment_type: string;
     status: string;
+    is_open_bill: number | boolean;
     created_at: string;
     updated_at: string;
     cafe: { id: number; name: string; address: string | null };
@@ -128,6 +129,16 @@ const makeFailed = () => {
                                 <span
                                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 capitalize">
                                     {{ transaction.status }}
+                                </span>
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-muted-foreground">Tipe Order</span>
+                            <p>
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                    :class="transaction.is_open_bill ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'">
+                                    {{ transaction.is_open_bill ? 'Open Bill' : 'Sekali Bayar' }}
                                 </span>
                             </p>
                         </div>

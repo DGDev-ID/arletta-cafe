@@ -9,6 +9,53 @@ import { Notyf } from 'notyf';
 import axios from 'axios';
 import qz from 'qz-tray';
 
+// ── Audio / Speech ────────────────────────────────────────────────────────
+let audioCtx: AudioContext | null = null;
+const userHasInteracted = ref(false);
+
+const unlockAudio = () => {
+    userHasInteracted.value = true;
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+};
+
+const speak = (text: string) => {
+    if (!userHasInteracted.value) return;
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'id-ID';
+        utterance.rate = 1;
+        window.speechSynthesis.speak(utterance);
+    }
+};
+
+const playBeep = () => {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 700;
+    osc.type = 'sine';
+    gain.gain.value = 0.3;
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.25);
+    setTimeout(() => {
+        const osc2 = audioCtx!.createOscillator();
+        const gain2 = audioCtx!.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioCtx!.destination);
+        osc2.frequency.value = 900;
+        osc2.type = 'sine';
+        gain2.gain.value = 0.3;
+        osc2.start();
+        osc2.stop(audioCtx!.currentTime + 0.25);
+    }, 300);
+};
+
 interface Cafe {
     id: number;
     name: string;
@@ -107,6 +154,9 @@ let prevPendingIds = new Set(props.pendingTransactions.map(t => t.id));
 let prevInOrderIds = new Set(props.inOrderTransactions.map(t => t.id));
 let prevOpenBillIds = new Set((props.openBillPendingTransactions || []).map((t: any) => t.id));
 let prevOpenBillDetailIds = new Set((props.openBillPendingDetails || []).map((d: any) => d.id));
+
+// Maps to resolve context (table/menu) for new items
+
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 const makeSuccessInOrder = (id: number) => {
@@ -335,6 +385,9 @@ const printReceiptInline = async (id: number) => {
 };
 
 onMounted(() => {
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+
     pollInterval = setInterval(() => {
         router.reload({
             only: ['pendingTransactions', 'inOrderTransactions', 'openBillPendingTransactions', 'openBillPendingDetails', 'flash'],
@@ -346,15 +399,54 @@ onMounted(() => {
                 const newOpenBillIds = new Set((props.openBillPendingTransactions || []).map((t: any) => t.id));
                 const newOpenBillDetailIds = new Set((props.openBillPendingDetails || []).map((d: any) => d.id));
 
-                const hasPendingNew = [...newPendingIds].some(id => !prevPendingIds.has(id));
-                const hasInOrderNew = [...newInOrderIds].some(id => !prevInOrderIds.has(id));
-                const hasOpenBillNew = [...newOpenBillIds].some(id => !prevOpenBillIds.has(id));
-                const hasOpenBillDetailNew = [...newOpenBillDetailIds].some(id => !prevOpenBillDetailIds.has(id));
+                // New pending manual transactions
+                const newPending = props.pendingTransactions.filter(t => !prevPendingIds.has(t.id));
+                if (newPending.length > 0) {
+                    playBeep();
+                    newPending.forEach(t => {
+                        const table = t.table?.name;
+                        const msg = table
+                            ? `Pesanan baru masuk dari meja ${table}`
+                            : `Pesanan baru masuk`;
+                        notyf.success(msg);
+                        speak(msg);
+                    });
+                }
 
-                if (hasPendingNew) notyf.success('Data transaksi pending baru terdeteksi');
-                else if (hasInOrderNew) notyf.success('Data in order baru terdeteksi');
-                else if (hasOpenBillNew) notyf.success('Open bill baru terdeteksi');
-                else if (hasOpenBillDetailNew) notyf.success('Detail open bill baru terdeteksi');
+                // New open bill pending transactions
+                const newOpenBill = (props.openBillPendingTransactions || []).filter((t: any) => !prevOpenBillIds.has(t.id));
+                if (newOpenBill.length > 0) {
+                    playBeep();
+                    newOpenBill.forEach((t: any) => {
+                        const table = t.table?.name;
+                        const msg = table
+                            ? `Open bill baru dari meja ${table}`
+                            : `Open bill baru masuk`;
+                        notyf.success(msg);
+                        speak(msg);
+                    });
+                }
+
+                // New open bill detail items (tambah menu di open bill)
+                const newOpenBillDetails = (props.openBillPendingDetails || []).filter((d: any) => !prevOpenBillDetailIds.has(d.id));
+                if (newOpenBillDetails.length > 0) {
+                    playBeep();
+                    newOpenBillDetails.forEach((d: any) => {
+                        const table = d.transaction?.table?.name;
+                        const menu = d.menu?.name;
+                        const msg = table && menu
+                            ? `Menu baru dari meja ${table}, ${menu}`
+                            : table
+                                ? `Menu baru dari meja ${table}`
+                                : `Menu baru masuk`;
+                        notyf.success(msg);
+                        speak(msg);
+                    });
+                }
+
+                if ([...newInOrderIds].some(id => !prevInOrderIds.has(id))) {
+                    notyf.success('Data in order baru terdeteksi');
+                }
 
                 prevPendingIds = newPendingIds;
                 prevInOrderIds = newInOrderIds;
@@ -367,6 +459,8 @@ onMounted(() => {
 
 onUnmounted(() => {
     if (pollInterval) clearInterval(pollInterval);
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
 });
 </script>
 
@@ -380,6 +474,18 @@ onUnmounted(() => {
 
                 <!-- Header -->
                 <Heading variant="small" title="Cashier" description="Kelola transaksi pending manual dan in order." />
+
+                <!-- Audio unlock banner -->
+                <div v-if="!userHasInteracted"
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm cursor-pointer select-none"
+                    @click="unlockAudio">
+                    <span class="text-lg">🔔</span>
+                    <span>Klik di sini untuk mengaktifkan notifikasi audio pesanan masuk.</span>
+                </div>
+                <div v-else class="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+                    <span class="text-base">🔊</span>
+                    <span>Notifikasi audio aktif — akan berbunyi saat ada pesanan baru.</span>
+                </div>
 
                 <!-- Filter Cafe -->
                 <div class="flex items-end gap-3">

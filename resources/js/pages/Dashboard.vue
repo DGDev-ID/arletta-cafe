@@ -7,15 +7,12 @@ import TopMenus from '@/components/dashboard/TopMenus.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import { AlertTriangle, Coffee, ShoppingCart, Utensils, Wallet } from 'lucide-vue-next';
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import { AlertTriangle, Coffee, ShoppingCart, Utensils, Wallet, CalendarDays } from 'lucide-vue-next';
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import axios from 'axios';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/dashboard',
-    },
+    { title: 'Dashboard', href: '/dashboard' },
 ];
 
 const props = defineProps<{
@@ -36,6 +33,7 @@ const props = defineProps<{
     criticalStocks: any[];
     recentTransactions: any[];
     topMenusToday: any[];
+    parentCategories: { id: number; name: string }[];
 }>();
 
 const formatCurrency = (value: number) =>
@@ -49,35 +47,43 @@ const percentChange = (current: number, previous: number) => {
 const revenueChange = computed(() => percentChange(props.stats.revenueToday, props.stats.revenueYesterday));
 const txChange = computed(() => percentChange(props.stats.transactionsToday, props.stats.transactionsYesterday));
 
+// ── Produk Terjual Hari Ini ───────────────────────────────────────────────────
+const todayStr = new Date().toISOString().slice(0, 10);
+const filterDate = ref(todayStr);
+const filterCategoryId = ref<number | null>(null);
+const isLoadingMenus = ref(false);
+
 const topMenusToday = ref(props.topMenusToday ?? []);
+
+async function fetchTopMenus() {
+    try {
+        isLoadingMenus.value = true;
+        const params: Record<string, string> = { date: filterDate.value };
+        if (filterCategoryId.value !== null) params.category_id = String(filterCategoryId.value);
+        const { data } = await axios.get('/dashboard/top-menus-today', { params });
+        topMenusToday.value = data;
+    } catch {
+        // silent
+    } finally {
+        isLoadingMenus.value = false;
+    }
+}
+
+// Refetch on filter change
+watch([filterDate, filterCategoryId], () => fetchTopMenus());
 
 let pollInterval: number | undefined;
 
 onMounted(() => {
-    const intervalMs = 60_000; // 60 seconds
-
-    const poll = async () => {
-        try {
-            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-            const { data } = await axios.get('/dashboard/top-menus-today');
-            topMenusToday.value = data;
-        } catch (e) {
-            // silent
-            // console.error('Failed to poll top menus today', e);
-        }
-    };
-
-    // run once immediately to pick up any changes since initial render
-    void poll();
-
-    pollInterval = window.setInterval(() => void poll(), intervalMs);
+    void fetchTopMenus();
+    pollInterval = window.setInterval(() => {
+        // Only auto-poll if viewing today
+        if (filterDate.value === todayStr) void fetchTopMenus();
+    }, 60_000);
 });
 
 onBeforeUnmount(() => {
-    if (pollInterval) {
-        clearInterval(pollInterval);
-        pollInterval = undefined;
-    }
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = undefined; }
 });
 </script>
 
@@ -119,74 +125,96 @@ onBeforeUnmount(() => {
                     :icon="Utensils"
                     icon-class="bg-purple-100 dark:bg-purple-900/30"
                 />
-                
             </div>
 
-            <!-- Revenue Chart + Produk Terjual -->
-            <div class="grid gap-4 lg:grid-cols-4">
-                <div class="lg:col-span-2">
-                    <RevenueChart :data="revenueChart" />
-                </div>
+            <!-- Revenue Chart (full width) -->
+            <RevenueChart :data="revenueChart" />
 
-                <div class="lg:col-span-2 rounded-lg border bg-card p-4 shadow-sm flex flex-col">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                            <Coffee class="h-4 w-4 text-primary" />
-                            <span class="text-sm font-medium text-muted-foreground">Produk Terjual Hari Ini</span>
-                        </div>
-                        <span v-if="topMenusToday.length" class="text-xs text-muted-foreground">{{ topMenusToday.length }} produk</span>
+            <!-- Produk Terjual (full width) -->
+            <div class="rounded-lg border bg-card p-4 shadow-sm flex flex-col gap-4">
+
+                <!-- Header -->
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-2">
+                        <Coffee class="h-4 w-4 text-primary" />
+                        <span class="text-sm font-semibold">Produk Terjual</span>
+                        <span v-if="!isLoadingMenus" class="text-xs text-muted-foreground">
+                            — {{ topMenusToday.length }} produk
+                        </span>
                     </div>
 
-                    <div class="flex flex-col gap-2 overflow-y-auto max-h-52 pr-1">
-                        <template v-if="topMenusToday && topMenusToday.length">
-                            <div
-                                v-for="(m, idx) in topMenusToday"
-                                :key="m.menu_id"
-                                class="flex items-center justify-between py-1.5 border-b border-border/40 last:border-0"
-                            >
-                                <div class="flex items-center gap-3">
-                                    <div class="flex h-7 w-7 items-center justify-center rounded bg-muted/10 text-xs font-semibold text-muted-foreground shrink-0">{{ idx + 1 }}</div>
-                                    <div>
-                                        <div class="text-sm font-medium leading-tight">{{ m.name }}</div>
-                                        <div class="text-xs text-muted-foreground">{{ m.cafe_name ?? '' }}</div>
-                                    </div>
-                                </div>
-                                <div class="text-sm font-semibold shrink-0 ml-2">{{ m.total_sold }}x</div>
-                            </div>
-                        </template>
-                        <div v-else class="text-sm text-muted-foreground py-4 text-center">Belum ada penjualan hari ini</div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Date filter -->
+                        <div class="flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs">
+                            <CalendarDays class="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <input
+                                v-model="filterDate"
+                                type="date"
+                                class="bg-transparent text-xs outline-none cursor-pointer"
+                            />
+                        </div>
                     </div>
                 </div>
 
-                <!-- Table Occupancy Card
-                <div class="flex flex-col gap-4">
-                    <div class="rounded-lg border bg-card p-5 shadow-sm flex flex-col justify-between h-full">
-                        <div class="flex items-center gap-2 mb-4">
-                            <Coffee class="h-4 w-4 text-primary" />
-                            <span class="text-base font-semibold">Occupancy Meja</span>
+                <!-- Category filter buttons -->
+                <div v-if="parentCategories.length" class="flex flex-wrap gap-2">
+                    <button
+                        class="rounded-full px-3 py-1 text-xs font-medium transition-colors"
+                        :class="filterCategoryId === null
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/70'"
+                        @click="filterCategoryId = null"
+                    >
+                        Semua
+                    </button>
+                    <button
+                        v-for="cat in parentCategories"
+                        :key="cat.id"
+                        class="rounded-full px-3 py-1 text-xs font-medium transition-colors"
+                        :class="filterCategoryId === cat.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/70'"
+                        @click="filterCategoryId = cat.id"
+                    >
+                        {{ cat.name }}
+                    </button>
+                </div>
+
+                <!-- List -->
+                <div v-if="isLoadingMenus" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <div v-for="i in 6" :key="i" class="flex items-center gap-3 rounded-md border p-3 animate-pulse">
+                        <div class="h-7 w-7 rounded bg-muted shrink-0"></div>
+                        <div class="flex-1 space-y-1.5">
+                            <div class="h-3 w-3/4 rounded bg-muted"></div>
+                            <div class="h-2.5 w-1/2 rounded bg-muted"></div>
                         </div>
-                        <div class="flex flex-col items-center justify-center flex-1 gap-2">
-                            <div class="relative flex h-28 w-28 items-center justify-center">
-                                <svg class="h-full w-full -rotate-90" viewBox="0 0 100 100">
-                                    <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="10" class="text-muted/30" />
-                                    <circle
-                                        cx="50" cy="50" r="40" fill="none"
-                                        stroke="currentColor" stroke-width="10"
-                                        class="text-primary transition-all"
-                                        stroke-linecap="round"
-                                        :stroke-dasharray="`${stats.totalTables > 0 ? (stats.occupiedTables / stats.totalTables) * 251.2 : 0} 251.2`"
-                                    />
-                                </svg>
-                                <span class="absolute text-2xl font-bold">
-                                    {{ stats.totalTables > 0 ? Math.round((stats.occupiedTables / stats.totalTables) * 100) : 0 }}%
-                                </span>
-                            </div>
-                            <p class="text-sm text-muted-foreground text-center">
-                                {{ stats.occupiedTables }} dari {{ stats.totalTables }} meja sedang digunakan
-                            </p>
-                        </div>
+                        <div class="h-4 w-8 rounded bg-muted shrink-0"></div>
                     </div>
-                </div> -->
+                </div>
+
+                <div v-else-if="topMenusToday.length" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <div
+                        v-for="(m, idx) in topMenusToday"
+                        :key="m.menu_id"
+                        class="flex items-center gap-3 rounded-md border border-border/50 p-3 hover:bg-muted/30 transition-colors"
+                    >
+                        <div class="flex h-7 w-7 items-center justify-center rounded bg-muted/50 text-xs font-semibold text-muted-foreground shrink-0">
+                            {{ idx + 1 }}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-sm font-medium leading-tight truncate">{{ m.name }}</div>
+                            <div class="text-xs text-muted-foreground truncate">
+                                {{ m.parent_category_name ?? m.category_name ?? '' }}
+                                <span v-if="m.cafe_name"> · {{ m.cafe_name }}</span>
+                            </div>
+                        </div>
+                        <div class="text-sm font-bold shrink-0 text-primary">{{ m.total_sold }}x</div>
+                    </div>
+                </div>
+
+                <div v-else class="py-10 text-center text-sm text-muted-foreground">
+                    Belum ada penjualan untuk filter ini.
+                </div>
             </div>
 
             <!-- Top Menus + Critical Stock -->
