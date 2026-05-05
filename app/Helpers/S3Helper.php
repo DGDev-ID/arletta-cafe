@@ -60,7 +60,7 @@ class S3Helper
                 break;
 
             case 'image/png':
-                $image = imagecreatefrompng($file->getRealPath());
+                $image = @imagecreatefrompng($file->getRealPath());
                 imagepalettetotruecolor($image);
                 imagealphablending($image, true);
                 imagesavealpha($image, true);
