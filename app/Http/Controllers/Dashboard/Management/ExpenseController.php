@@ -106,6 +106,7 @@ class ExpenseController extends Controller
             'details.*.menu_id' => 'required|exists:m_menus,id',
             'details.*.amount' => 'required|integer|min:1',
             'cust_name' => 'nullable|string|max:255',
+            'expense_date' => 'nullable|date',
         ]);
 
         $cafe = MCafe::findOrFail($request->cafe_id);
@@ -123,6 +124,12 @@ class ExpenseController extends Controller
             $transaction = TransactionService::makeTransaction($data);
             TransactionService::pendingAction($transaction);
             TransactionService::makeExpense($transaction);
+
+            // Simpan tanggal aktual pengeluaran jika diisi
+            if ($request->expense_date) {
+                $transaction->expense_date = $request->expense_date;
+                $transaction->save();
+            }
         } catch (\Throwable $e) {
             return redirect()->back()->with('error', 'Gagal membuat pengeluaran: ' . $e->getMessage());
         }

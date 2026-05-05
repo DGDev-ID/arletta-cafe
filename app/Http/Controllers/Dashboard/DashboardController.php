@@ -69,7 +69,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // Top selling menus for today (top 3)
+        // Top selling menus for today (all)
         $topTodayAggs = TransactionDetail::select(
                 'menu_id',
                 DB::raw('SUM(transaction_details.amount) as total_sold'),
@@ -80,7 +80,6 @@ class DashboardController extends Controller
             ->whereDate('transactions.created_at', $today)
             ->groupBy('menu_id')
             ->orderByDesc('total_sold')
-            ->limit(3)
             ->get();
 
         $topMenusToday = collect();
@@ -143,7 +142,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Return top 3 menus for today as JSON (used by frontend polling).
+     * Return all menus sold today as JSON (used by frontend polling).
      */
     public function topMenusToday()
     {
@@ -159,7 +158,6 @@ class DashboardController extends Controller
             ->whereDate('transactions.created_at', $today)
             ->groupBy('menu_id')
             ->orderByDesc('total_sold')
-            ->limit(3)
             ->get();
 
         $topMenusToday = collect();

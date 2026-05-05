@@ -18,7 +18,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Expense', href: '/management/expense' },
 ];
 
-const notyf = new Notyf({ duration: 3000, position: { x: 'right', y: 'bottom' } });
+const notyf = new Notyf({ duration: 4000, position: { x: 'right', y: 'bottom' } });
 
 // --- create form state (moved from Create.vue) ---
 const selectedCafe = ref<number | ''>('');
@@ -26,10 +26,14 @@ const menus = ref<MenuItem[]>([]);
 const loadingMenus = ref(false);
 const checkingAvailability = ref(false);
 
+// Default to today's date in YYYY-MM-DD format
+const todayDate = new Date().toISOString().split('T')[0];
+
 const form = useForm({
     cafe_id: '' as number | '',
     details: [] as Array<{ menu_id: number; amount: number }>,
     cust_name: 'Pengeluaran',
+    expense_date: todayDate,
 });
 
 const cafeOptions = computed(() => props.cafes.map(c => ({ value: c.id, label: c.name })));
@@ -51,6 +55,14 @@ watch(selectedCafe, async (val) => {
 });
 
 const addMenuToDetails = async (menu: MenuItem) => {
+    // Notif jika menu sudah ada di daftar pesanan
+    const isDuplicate = form.details.find(d => d.menu_id === menu.id);
+    if (isDuplicate) {
+        console.warn(`Menu duplicate: ${menu.name}`);
+        notyf.error(`"${menu.name}" sudah ditambahkan. Ubah jumlahnya di tabel di bawah.`);
+        return;
+    }
+
     const updated = form.details.map(d => ({ menu_id: d.menu_id, quantity: d.amount }));
     const found = updated.find(u => u.menu_id === menu.id);
     if (found) {
@@ -70,10 +82,16 @@ const addMenuToDetails = async (menu: MenuItem) => {
         }
 
         const existing = form.details.find(d => d.menu_id === menu.id);
+        const isNew = !existing;
         if (existing) {
             existing.amount += 1;
         } else {
             form.details.push({ menu_id: menu.id, amount: 1 });
+        }
+        
+        // Notif sukses tambah
+        if (isNew) {
+            notyf.success(`"${menu.name}" berhasil ditambahkan.`);
         }
     } catch (e: any) {
         console.error(e);
@@ -144,15 +162,11 @@ const submit = () => {
             // reload page so expenses table updates
             window.location.reload();
         },
-        onError: (errors: any) => {
+        onError: () => {
             notyf.error('Gagal membuat pengeluaran.');
         }
     });
 };
-
-// --- quick mark-by-id (kept) ---
-const transactionId = ref('');
-const loading = ref(false);
 </script>
 
 <template>
@@ -256,12 +270,21 @@ const loading = ref(false);
                                     </tfoot>
                                 </table>
 
-                                <div class="pt-4 border-t border-muted-foreground/10">
-                                    <label class="block text-sm font-medium mb-2 text-foreground">Nama /
-                                        Keterangan</label>
-                                    <input v-model="form.cust_name" type="text"
-                                        placeholder="Contoh: Pengeluaran operasional atau pembelian bahan"
-                                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                                <div class="pt-4 border-t border-muted-foreground/10 grid gap-4 md:grid-cols-2">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-2 text-foreground">Nama /
+                                            Keterangan</label>
+                                        <input v-model="form.cust_name" type="text"
+                                            placeholder="Contoh: Pengeluaran operasional atau pembelian bahan"
+                                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium mb-2 text-foreground">Tanggal Pengeluaran</label>
+                                        <input v-model="form.expense_date" type="date"
+                                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                                        <p class="text-xs text-muted-foreground mt-1">Default: hari ini</p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -288,7 +311,8 @@ const loading = ref(false);
                                     <th class="px-6 py-4 text-left font-medium">Total</th>
                                     <th class="px-6 py-4 text-left font-medium">Profit</th>
                                     <th class="px-6 py-4 text-left font-medium">Status</th>
-                                    <th class="px-6 py-4 text-left font-medium">Dibuat</th>
+                                    <th class="px-6 py-4 text-left font-medium">Tanggal</th>
+                                    <th class="px-6 py-4 text-left font-medium">Diinput</th>
                                     <th class="px-6 py-4 text-left font-medium">Aksi</th>
                                 </tr>
                             </thead>
@@ -314,7 +338,8 @@ const loading = ref(false);
                                             {{ e.status }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4">{{ new Date(e.created_at).toLocaleString() }}</td>
+                                    <td class="px-6 py-4">{{ e.expense_date ? new Date(e.expense_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-' }}</td>
+                                    <td class="px-6 py-4 text-muted-foreground text-xs">{{ new Date(e.created_at).toLocaleString('id-ID') }}</td>
                                     <td class="px-6 py-4 text-right">
                                         <Link :href="`/transaction/history/${e.id}`"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
@@ -323,7 +348,7 @@ const loading = ref(false);
                                     </td>
                                 </tr>
                                 <tr v-if="!props.expenses || props.expenses.length === 0">
-                                    <td colspan="9" class="px-6 py-10 text-center text-muted-foreground">Belum ada
+                                    <td colspan="10" class="px-6 py-10 text-center text-muted-foreground">Belum ada
                                         pengeluaran.</td>
                                 </tr>
                             </tbody>

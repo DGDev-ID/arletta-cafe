@@ -122,43 +122,43 @@ onBeforeUnmount(() => {
                 
             </div>
 
-            <!-- Revenue Chart + Table Occupancy -->
+            <!-- Revenue Chart + Produk Terjual -->
             <div class="grid gap-4 lg:grid-cols-4">
                 <div class="lg:col-span-2">
                     <RevenueChart :data="revenueChart" />
                 </div>
 
-                <div class="rounded-lg border bg-card p-4 shadow-sm">
-                    <div class="flex items-center justify-between mb-2">
+                <div class="lg:col-span-2 rounded-lg border bg-card p-4 shadow-sm flex flex-col">
+                    <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
                             <Coffee class="h-4 w-4 text-primary" />
-                            <span class="text-sm font-medium text-muted-foreground">Produk Terlaris Hari Ini</span>
+                            <span class="text-sm font-medium text-muted-foreground">Produk Terjual Hari Ini</span>
                         </div>
-                        <span class="text-xs text-muted-foreground">Top 3</span>
+                        <span v-if="topMenusToday.length" class="text-xs text-muted-foreground">{{ topMenusToday.length }} produk</span>
                     </div>
 
-                    <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-2 overflow-y-auto max-h-52 pr-1">
                         <template v-if="topMenusToday && topMenusToday.length">
                             <div
                                 v-for="(m, idx) in topMenusToday"
                                 :key="m.menu_id"
-                                class="flex items-center justify-between"
+                                class="flex items-center justify-between py-1.5 border-b border-border/40 last:border-0"
                             >
                                 <div class="flex items-center gap-3">
-                                    <div class="flex h-8 w-8 items-center justify-center rounded bg-muted/10 text-sm font-semibold">{{ idx + 1 }}</div>
+                                    <div class="flex h-7 w-7 items-center justify-center rounded bg-muted/10 text-xs font-semibold text-muted-foreground shrink-0">{{ idx + 1 }}</div>
                                     <div>
-                                        <div class="font-medium">{{ m.name }}</div>
+                                        <div class="text-sm font-medium leading-tight">{{ m.name }}</div>
                                         <div class="text-xs text-muted-foreground">{{ m.cafe_name ?? '' }}</div>
                                     </div>
                                 </div>
-                                <div class="text-sm font-semibold">{{ m.total_sold }}x</div>
+                                <div class="text-sm font-semibold shrink-0 ml-2">{{ m.total_sold }}x</div>
                             </div>
                         </template>
-                        <div v-else class="text-sm text-muted-foreground">Belum ada penjualan hari ini</div>
+                        <div v-else class="text-sm text-muted-foreground py-4 text-center">Belum ada penjualan hari ini</div>
                     </div>
                 </div>
 
-                <!-- Table Occupancy Card -->
+                <!-- Table Occupancy Card
                 <div class="flex flex-col gap-4">
                     <div class="rounded-lg border bg-card p-5 shadow-sm flex flex-col justify-between h-full">
                         <div class="flex items-center gap-2 mb-4">
@@ -186,7 +186,7 @@ onBeforeUnmount(() => {
                             </p>
                         </div>
                     </div>
-                </div>
+                </div> -->
             </div>
 
             <!-- Top Menus + Critical Stock -->
