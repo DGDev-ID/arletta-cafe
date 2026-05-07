@@ -260,7 +260,7 @@ class CashierController extends Controller
     public function bluetoothReceiptData($id)
     {
         $transaction = Transaction::whereIn('status', ['in_order', 'success'])
-            ->with(['cafe', 'table', 'details.menu'])
+            ->with(['cafe', 'table', 'details.menu.category.parent'])
             ->findOrFail($id);
 
         $a = array();
@@ -313,19 +313,33 @@ class CashierController extends Controller
         $str .= $padRight('Pay', $transaction->payment_type) . "\n";
         $str .= $lineStr . "\n";
 
-        // ITEMS
-        foreach ($transaction->details as $d) {
-            $name = substr($d->menu->name ?? '-', 0, $WIDTH);
-            $str .= $name . "\n";
+        // ITEMS grouped by category
+        $groupedDetails = $transaction->details->sortBy(function ($d) {
+            $cat = $d->menu->category ?? null;
+            if (!$cat) return PHP_INT_MAX;
+            return $cat->parent_id ?? $cat->id;
+        })->groupBy(function ($d) {
+            $cat = $d->menu->category ?? null;
+            if (!$cat) return 'Lainnya';
+            return $cat->parent_id !== null ? ($cat->parent->name ?? $cat->name) : $cat->name;
+        });
 
-            $qtyPrice = $d->amount . 'x' . $cleanNumber($d->menu->price ?? 0);
-            $subtotal = $cleanNumber($d->price);
+        foreach ($groupedDetails as $categoryName => $groupItems) {
+            $str .= $categoryName . "\n";
+            foreach ($groupItems as $d) {
+                $name = substr($d->menu->name ?? '-', 0, $WIDTH);
+                $str .= $name . "\n";
 
-            $str .= $padRight($qtyPrice, $subtotal) . "\n";
+                $qtyPrice = $d->amount . 'x' . $cleanNumber($d->menu->price ?? 0);
+                $subtotal = $cleanNumber($d->price);
 
-            if ($d->description) {
-                $str .= $d->description . "\n";
+                $str .= $padRight($qtyPrice, $subtotal) . "\n";
+
+                if ($d->description) {
+                    $str .= $d->description . "\n";
+                }
             }
+            $str .= $lineStr . "\n";
         }
 
         $str .= $lineStr . "\n";
@@ -463,11 +477,13 @@ class CashierController extends Controller
 
         $sortedIds = $ids->all();
 
-        $details = TransactionDetail::with(['transaction.cafe', 'transaction.table', 'menu'])
+        $details = TransactionDetail::with(['transaction.cafe', 'transaction.table', 'menu.category.parent'])
             ->whereIn('id', $sortedIds)
             ->get()
-            ->sortBy(function ($detail) use ($sortedIds) {
-                return array_search($detail->id, $sortedIds);
+            ->sortBy(function ($detail) {
+                $cat = $detail->menu->category ?? null;
+                if (!$cat) return PHP_INT_MAX;
+                return $cat->parent_id ?? $cat->id;
             })
             ->values();
 
