@@ -172,6 +172,15 @@ const makeDetailSuccess = (id: number) => {
 };
 
 const printDetailReceiptInline = async (detailId: number) => {
+    const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        || ((navigator.userAgent.includes('Mac') || navigator.userAgent.includes('Linux')) && navigator.maxTouchPoints > 1);
+
+    if (isMobileOrTablet) {
+        const responseUrl = `${window.location.origin}/bluetooth-receipt/detail/${detailId}`;
+        window.location.href = `my.bluetoothprint.scheme://${responseUrl}`;
+        return;
+    }
+
     try {
         const { data: detail } = await axios.get(`/transaction/cashier/detail/${detailId}/receipt-data`);
 

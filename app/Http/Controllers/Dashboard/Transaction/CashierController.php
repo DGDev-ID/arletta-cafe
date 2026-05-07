@@ -370,4 +370,82 @@ class CashierController extends Controller
 
         return response()->json($a, 200, [], JSON_FORCE_OBJECT);
     }
+
+    public function bluetoothReceiptDetailData($id)
+    {
+        $detail = TransactionDetail::with(['transaction.cafe', 'transaction.table', 'menu'])->findOrFail($id);
+
+        $a = array();
+
+        $cleanNumber = function ($val) {
+            return number_format($val, 0, ',', '.');
+        };
+
+        $WIDTH = 32;
+        $lineStr = str_repeat('-', $WIDTH);
+
+        $alignCenter = function ($text) use ($WIDTH) {
+            if (!$text) return '';
+            $lines = explode("\n", $text);
+            $result = [];
+            foreach ($lines as $l) {
+                $space = $WIDTH - strlen($l);
+                if ($space <= 0) {
+                    $result[] = $l;
+                } else {
+                    $leftSpace = floor($space / 2);
+                    $result[] = str_repeat(' ', $leftSpace) . $l;
+                }
+            }
+            return implode("\n", $result);
+        };
+
+        $padRight = function ($left, $right) use ($WIDTH) {
+            $space = $WIDTH - (strlen($left) + strlen($right));
+            return $left . str_repeat(' ', $space > 0 ? $space : 1) . $right;
+        };
+
+        $str = '';
+
+        // HEADER
+        $str .= $alignCenter($detail->transaction->cafe->name ?? 'CAFE') . "\n";
+        $str .= $lineStr . "\n";
+
+        // INFO
+        $str .= $padRight('No', '#' . $detail->transaction->id) . "\n";
+        $str .= $padRight('Cust', $detail->transaction->cust_name ?? '-') . "\n";
+        if ($detail->transaction->table) $str .= $padRight('Table', $detail->transaction->table->name) . "\n";
+        $str .= $lineStr . "\n";
+
+        // ITEM
+        $str .= ($detail->menu->name ?? '-') . "\n";
+        $str .= $padRight($detail->amount . ' x ' . $cleanNumber($detail->price), '') . "\n";
+        if ($detail->description) $str .= $detail->description . "\n";
+        $str .= $lineStr . "\n";
+
+        // FOOTER
+        $str .= $alignCenter('Terima kasih') . "\n";
+        $str .= $lineStr . "\n";
+        $str .= "\n";
+
+        // Replace \n with <br /> for Bluetooth Print app
+        $str = str_replace("\n", '<br />', $str);
+
+        // sending image entry
+        $imageObj = new \stdClass();
+        $imageObj->type = 1;
+        $imageObj->path = "https://dashboard-cafe.arlettaluxury.com/logo-resize.png";
+        $imageObj->align = 1;
+        array_push($a, $imageObj);
+
+        // sending multi lines text
+        $obj = new \stdClass();
+        $obj->type = 0;
+        $obj->content = $str;
+        $obj->bold = 0;
+        $obj->align = 0;
+        array_push($a, $obj);
+
+        return response()->json($a, 200, [], JSON_FORCE_OBJECT);
+    }
 }
