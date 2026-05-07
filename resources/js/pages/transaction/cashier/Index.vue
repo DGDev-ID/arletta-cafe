@@ -259,6 +259,38 @@ const buildDetailReceiptRaw = (detail: any) => {
     return str;
 };
 
+const buildBulkDetailReceiptRaw = (details: any[]) => {
+    const init = '\x1B\x40';
+    const alignCenter = '\x1B\x61\x01';
+    const alignLeft = '\x1B\x61\x00';
+    const cut = '\x1D\x56\x41\x00';
+
+    const firstDetail = details[0];
+    const cafeName = firstDetail?.transaction?.cafe?.name || 'CAFE';
+
+    let str = '';
+    str += init + alignCenter;
+    str += cafeName + '\n';
+    str += 'OPEN BILL - BULK ITEM' + '\n';
+    str += alignLeft;
+    str += '===============================' + '\n';
+
+    details.forEach((detail, index) => {
+        str += `${index + 1}. ${detail.menu?.name || '-'}` + '\n';
+        str += `No: #${detail.transaction?.id || '-'}` + '\n';
+        str += `Cust: ${detail.transaction?.cust_name || '-'}` + '\n';
+        if (detail.transaction?.table?.name) {
+            str += `Table: ${detail.transaction.table.name}` + '\n';
+        }
+        str += `${detail.amount} x ${detail.price}` + '\n';
+        if (detail.description) str += detail.description + '\n';
+        str += '-------------------------------' + '\n';
+    });
+
+    str += 'Terima kasih\n\n\n' + cut;
+    return str;
+};
+
 const printDetailReceiptInline = async (detailId: number) => {
     const isMobileOrTablet = isMobileOrTabletDevice();
 
@@ -308,7 +340,7 @@ const printSelectedDetailReceiptsInline = async () => {
         const config = await getQzPrinterConfig();
         if (!config) return;
 
-        const combinedReceipt = details.map((detail) => buildDetailReceiptRaw(detail)).join('');
+        const combinedReceipt = buildBulkDetailReceiptRaw(details);
         await qz.print(config, [{ type: 'raw', format: 'command', data: combinedReceipt }]);
 
         notyf.success(`${details.length} struk berhasil dicetak`);

@@ -511,35 +511,41 @@ class CashierController extends Controller
         $imageObj->align = 1;
         array_push($a, $imageObj);
 
-        foreach ($details as $detail) {
-            $str = '';
+        $cafeNames = $details
+            ->map(fn($detail) => $detail->transaction->cafe->name ?? 'CAFE')
+            ->unique()
+            ->values();
 
-            $str .= $alignCenter($detail->transaction->cafe->name ?? 'CAFE') . "\n";
-            $str .= $lineStr . "\n";
+        $headerCafeName = $cafeNames->count() === 1 ? $cafeNames->first() : 'MULTI CAFE';
 
+        $str = '';
+        $str .= $alignCenter($headerCafeName) . "\n";
+        $str .= $alignCenter('OPEN BILL - BULK ITEM') . "\n";
+        $str .= $lineStr . "\n";
+
+        foreach ($details as $index => $detail) {
+            $str .= ($index + 1) . '. ' . ($detail->menu->name ?? '-') . "\n";
             $str .= $padRight('No', '#' . $detail->transaction->id) . "\n";
             $str .= $padRight('Cust', $detail->transaction->cust_name ?? '-') . "\n";
-            if ($detail->transaction->table) $str .= $padRight('Table', $detail->transaction->table->name) . "\n";
-            $str .= $lineStr . "\n";
-
-            $str .= ($detail->menu->name ?? '-') . "\n";
+            if ($detail->transaction->table) {
+                $str .= $padRight('Table', $detail->transaction->table->name) . "\n";
+            }
             $str .= $padRight($detail->amount . ' x ' . $cleanNumber($detail->price), '') . "\n";
             if ($detail->description) $str .= $detail->description . "\n";
             $str .= $lineStr . "\n";
-
-            $str .= $alignCenter('Terima kasih') . "\n";
-            $str .= $lineStr . "\n";
-            $str .= "\n";
-
-            $str = str_replace("\n", '<br />', $str);
-
-            $obj = new \stdClass();
-            $obj->type = 0;
-            $obj->content = $str;
-            $obj->bold = 0;
-            $obj->align = 0;
-            array_push($a, $obj);
         }
+
+        $str .= $alignCenter('Terima kasih') . "\n";
+        $str .= "\n";
+
+        $str = str_replace("\n", '<br />', $str);
+
+        $obj = new \stdClass();
+        $obj->type = 0;
+        $obj->content = $str;
+        $obj->bold = 0;
+        $obj->align = 0;
+        array_push($a, $obj);
 
         return response()->json($a, 200, [], JSON_FORCE_OBJECT);
     }
