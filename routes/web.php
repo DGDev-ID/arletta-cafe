@@ -269,6 +269,7 @@ Route::get('for-public/{cafeId}', [PublicController::class, 'forPublic']);
 Route::get('for-kitchen/{cafeId}', [PublicController::class, 'forKitchen']);
 Route::get('bluetooth-receipt/{id}', [CashierController::class, 'bluetoothReceiptData'])->name('bluetooth.receipt');
 Route::get('bluetooth-receipt/detail/{id}', [CashierController::class, 'bluetoothReceiptDetailData'])->name('bluetooth.receipt.detail');
+Route::get('bluetooth-receipt/detail-bulk', [CashierController::class, 'bluetoothReceiptBulkDetailData'])->name('bluetooth.receipt.detail.bulk');
 
 
 require __DIR__ . '/settings.php';

@@ -4,7 +4,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import { Eye, CheckCircle, Printer } from 'lucide-vue-next';
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { Notyf } from 'notyf';
 import axios from 'axios';
 import qz from 'qz-tray';
@@ -171,9 +171,96 @@ const makeDetailSuccess = (id: number) => {
     }
 };
 
+const selectedOpenBillDetailIds = ref<number[]>([]);
+
+const selectedOpenBillDetailIdSet = computed(() => new Set(selectedOpenBillDetailIds.value));
+const selectedOpenBillDetailCount = computed(() => selectedOpenBillDetailIds.value.length);
+const isAllOpenBillDetailsSelected = computed(() => {
+    if (!props.openBillPendingDetails.length) return false;
+    return props.openBillPendingDetails.every((d) => selectedOpenBillDetailIdSet.value.has(d.id));
+});
+
+const toggleOpenBillDetailSelection = (id: number) => {
+    if (selectedOpenBillDetailIdSet.value.has(id)) {
+        selectedOpenBillDetailIds.value = selectedOpenBillDetailIds.value.filter((selectedId) => selectedId !== id);
+        return;
+    }
+
+    selectedOpenBillDetailIds.value = [...selectedOpenBillDetailIds.value, id];
+};
+
+const toggleSelectAllOpenBillDetails = () => {
+    if (isAllOpenBillDetailsSelected.value) {
+        selectedOpenBillDetailIds.value = [];
+        return;
+    }
+
+    selectedOpenBillDetailIds.value = props.openBillPendingDetails.map((d) => d.id);
+};
+
+watch(
+    () => props.openBillPendingDetails,
+    (details) => {
+        const currentIds = new Set(details.map((d) => d.id));
+        selectedOpenBillDetailIds.value = selectedOpenBillDetailIds.value.filter((id) => currentIds.has(id));
+    },
+);
+
+const isMobileOrTabletDevice = () =>
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    || ((navigator.userAgent.includes('Mac') || navigator.userAgent.includes('Linux')) && navigator.maxTouchPoints > 1);
+
+const getQzPrinterConfig = async () => {
+    if (!qz.websocket.isActive()) {
+        qz.security.setCertificatePromise(resolve => resolve(null));
+        qz.security.setSignaturePromise(() => resolve => resolve(null));
+        await qz.websocket.connect();
+    }
+
+    const printers = await qz.printers.find();
+    let printerName = await qz.printers.getDefault();
+
+    const posPrinter = printers.find((p: string) =>
+        p.toLowerCase().includes('thermal')
+        || p.toLowerCase().includes('pos')
+        || p.toLowerCase().includes('58')
+    );
+
+    if (posPrinter) printerName = posPrinter;
+
+    if (!printerName) {
+        notyf.error('Printer tidak ditemukan');
+        return null;
+    }
+
+    return qz.configs.create(printerName, { encoding: 'ISO-8859-1', scaleContent: true });
+};
+
+const buildDetailReceiptRaw = (detail: any) => {
+    const init = '\x1B\x40';
+    const alignCenter = '\x1B\x61\x01';
+    const alignLeft = '\x1B\x61\x00';
+    const cut = '\x1D\x56\x41\x00';
+
+    let str = '';
+    str += init + alignCenter;
+    str += (detail.transaction.cafe?.name || 'CAFE') + '\n';
+    str += alignLeft;
+    str += `No: #${detail.transaction.id}` + '\n';
+    str += `Cust: ${detail.transaction.cust_name || '-'} ` + '\n';
+    if (detail.transaction.table) str += `Table: ${detail.transaction.table.name}` + '\n';
+    str += '-------------------------------' + '\n';
+    str += (detail.menu?.name || '-') + '\n';
+    str += `${detail.amount} x ${detail.price}` + '\n';
+    if (detail.description) str += detail.description + '\n';
+    str += '-------------------------------' + '\n';
+    str += 'Terima kasih\n\n\n' + cut;
+
+    return str;
+};
+
 const printDetailReceiptInline = async (detailId: number) => {
-    const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-        || ((navigator.userAgent.includes('Mac') || navigator.userAgent.includes('Linux')) && navigator.maxTouchPoints > 1);
+    const isMobileOrTablet = isMobileOrTabletDevice();
 
     if (isMobileOrTablet) {
         const responseUrl = `${window.location.origin}/bluetooth-receipt/detail/${detailId}`;
@@ -184,55 +271,50 @@ const printDetailReceiptInline = async (detailId: number) => {
     try {
         const { data: detail } = await axios.get(`/transaction/cashier/detail/${detailId}/receipt-data`);
 
-        // Simple print of single menu item — reuse QZ logic but minimal
-        if (!qz.websocket.isActive()) {
-            qz.security.setCertificatePromise(resolve => resolve(null));
-            qz.security.setSignaturePromise(() => resolve => resolve(null));
-            await qz.websocket.connect();
-        }
+        const config = await getQzPrinterConfig();
+        if (!config) return;
 
-        const printers = await qz.printers.find();
-        let printerName = await qz.printers.getDefault();
-
-        const posPrinter = printers.find((p: string) =>
-            p.toLowerCase().includes('thermal') ||
-            p.toLowerCase().includes('pos') ||
-            p.toLowerCase().includes('58')
-        );
-
-        if (posPrinter) printerName = posPrinter;
-
-        if (!printerName) {
-            notyf.error('Printer tidak ditemukan');
-            return;
-        }
-
-        const config = qz.configs.create(printerName, { encoding: 'ISO-8859-1', scaleContent: true });
-
-        const init = '\x1B\x40';
-        const alignCenter = '\x1B\x61\x01';
-        const alignLeft = '\x1B\x61\x00';
-        const cut = '\x1D\x56\x41\x00';
-
-        let str = '';
-        str += init + alignCenter;
-        str += (detail.transaction.cafe?.name || 'CAFE') + '\n';
-        str += alignLeft;
-        str += `No: #${detail.transaction.id}` + '\n';
-        str += `Cust: ${detail.transaction.cust_name || '-'} ` + '\n';
-        if (detail.transaction.table) str += `Table: ${detail.transaction.table.name}` + '\n';
-        str += '-------------------------------' + '\n';
-        str += (detail.menu?.name || '-') + '\n';
-        str += `${detail.amount} x ${detail.price}` + '\n';
-        if (detail.description) str += detail.description + '\n';
-        str += '-------------------------------' + '\n';
-        str += 'Terima kasih\n\n\n' + cut;
-
-        await qz.print(config, [{ type: 'raw', format: 'command', data: str }]);
+        await qz.print(config, [{ type: 'raw', format: 'command', data: buildDetailReceiptRaw(detail) }]);
         notyf.success('Struk berhasil dicetak');
     } catch (e: any) {
         console.error(e);
         notyf.error('Print gagal: ' + (e.message || 'QZ error'));
+    }
+};
+
+const printSelectedDetailReceiptsInline = async () => {
+    if (!selectedOpenBillDetailIds.value.length) {
+        notyf.error('Pilih minimal 1 item detail untuk dicetak');
+        return;
+    }
+
+    const selectedIds = [...selectedOpenBillDetailIds.value];
+    const isMobileOrTablet = isMobileOrTabletDevice();
+
+    if (isMobileOrTablet) {
+        const responseUrl = `${window.location.origin}/bluetooth-receipt/detail-bulk?detail_ids=${encodeURIComponent(selectedIds.join(','))}`;
+        window.location.href = `my.bluetoothprint.scheme://${responseUrl}`;
+        return;
+    }
+
+    try {
+        const details = await Promise.all(
+            selectedIds.map(async (id) => {
+                const { data } = await axios.get(`/transaction/cashier/detail/${id}/receipt-data`);
+                return data;
+            })
+        );
+
+        const config = await getQzPrinterConfig();
+        if (!config) return;
+
+        const combinedReceipt = details.map((detail) => buildDetailReceiptRaw(detail)).join('');
+        await qz.print(config, [{ type: 'raw', format: 'command', data: combinedReceipt }]);
+
+        notyf.success(`${details.length} struk berhasil dicetak`);
+    } catch (e: any) {
+        console.error(e);
+        notyf.error('Print bulk gagal: ' + (e.message || 'QZ error'));
     }
 };
 
@@ -544,11 +626,29 @@ onUnmounted(() => {
 
                 <!-- Open Bill Pending Details -->
                 <div class="space-y-3">
-                    <h2 class="text-base font-semibold">Open Bill - Pending Details</h2>
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <h2 class="text-base font-semibold">Open Bill - Pending Details</h2>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-muted-foreground">{{ selectedOpenBillDetailCount }} dipilih</span>
+                            <button @click="printSelectedDetailReceiptsInline" type="button"
+                                :disabled="selectedOpenBillDetailCount === 0"
+                                class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-violet-100 disabled:hover:text-violet-600">
+                                <Printer :size="14" /> Cetak Terpilih
+                            </button>
+                        </div>
+                    </div>
                     <div class="rounded-2xl border bg-background shadow-sm overflow-hidden">
                         <table class="min-w-full text-sm">
                             <thead class="bg-muted/50">
                                 <tr class="text-muted-foreground">
+                                    <th class="px-4 py-4 text-center font-medium w-[52px]">
+                                        <input
+                                            type="checkbox"
+                                            :checked="isAllOpenBillDetailsSelected"
+                                            @change="toggleSelectAllOpenBillDetails"
+                                            class="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                                        />
+                                    </th>
                                     <th class="px-6 py-4 text-left font-medium">No</th>
                                     <th class="px-6 py-4 text-left font-medium">Cafe</th>
                                     <th class="px-6 py-4 text-left font-medium">Table</th>
@@ -558,6 +658,14 @@ onUnmounted(() => {
                             </thead>
                             <tbody>
                                 <tr v-for="(d, idx) in openBillPendingDetails" :key="d.id" class="border-t hover:bg-muted/40 transition">
+                                    <td class="px-4 py-4 text-center">
+                                        <input
+                                            type="checkbox"
+                                            :checked="selectedOpenBillDetailIdSet.has(d.id)"
+                                            @change="toggleOpenBillDetailSelection(d.id)"
+                                            class="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                                        />
+                                    </td>
                                     <td class="px-6 py-4">{{ idx + 1 }}</td>
                                     <td class="px-6 py-4 font-medium">{{ d.transaction?.cafe?.name ?? '-' }}</td>
                                     <td class="px-6 py-4">{{ d.transaction?.table?.name ?? '-' }}</td>
@@ -577,7 +685,7 @@ onUnmounted(() => {
                                     </td>
                                 </tr>
                                 <tr v-if="openBillPendingDetails.length === 0">
-                                    <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">Tidak ada detail open bill pending.</td>
+                                    <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">Tidak ada detail open bill pending.</td>
                                 </tr>
                             </tbody>
                         </table>
