@@ -4,7 +4,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import { computed, ref } from 'vue';
-import { CheckCircle, XCircle } from 'lucide-vue-next';
+import { CheckCircle, XCircle, Minus } from 'lucide-vue-next';
 
 interface TransactionDetail {
     id: number;
@@ -75,6 +75,16 @@ const hideFailedForOpenBill = computed(() => {
     if (!trx.details || trx.details.length === 0) return false;
     return trx.details.some((d) => d.status === 'success');
 });
+
+const isPending = computed(() => props.transaction.status === 'pending');
+
+const reduceDetail = (detailId: number) => {
+    if (confirm('Kurangi jumlah item ini? Jika jumlah 1, item akan dihapus dari transaksi.')) {
+        router.patch(`/transaction/cashier/detail/${detailId}/reduce-amount`, {}, {
+            preserveScroll: true,
+        });
+    }
+};
 
 const promoCode = ref('');
 const applyPromo = () => {
@@ -197,6 +207,7 @@ const applyPromo = () => {
                                 <th class="px-6 py-4 text-left font-medium">Harga</th>
                                 <th class="px-6 py-4 text-left font-medium">Subtotal</th>
                                 <th class="px-6 py-4 text-left font-medium">Keterangan</th>
+                                <th v-if="isPending" class="px-6 py-4 text-left font-medium">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -211,22 +222,28 @@ const applyPromo = () => {
                                 <td class="px-6 py-4 font-medium">{{ formatCurrency(Number(detail.price) *
                                     detail.amount) }}</td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ detail.description ?? '-' }}</td>
+                                <td v-if="isPending" class="px-6 py-4">
+                                    <button @click="reduceDetail(detail.id)" type="button"
+                                        class="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-orange-100 text-orange-600 text-xs font-medium hover:bg-orange-500 hover:text-white transition">
+                                        <Minus :size="13" /> Kurang
+                                    </button>
+                                </td>
                             </tr>
                             <tr v-if="transaction.details.length === 0">
-                                <td colspan="7" class="px-6 py-10 text-center text-muted-foreground">
+                                <td :colspan="isPending ? 8 : 7" class="px-6 py-10 text-center text-muted-foreground">
                                     Tidak ada detail transaksi.
                                 </td>
                             </tr>
                         </tbody>
                         <tfoot v-if="transaction.details.length > 0" class="bg-muted/30">
                             <tr class="border-t">
-                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Subtotal
+                                <td :colspan="isPending ? 6 : 5" class="px-6 py-3 text-right font-medium text-muted-foreground">Subtotal
                                 </td>
                                 <td colspan="2" class="px-6 py-3 font-semibold">{{ formatCurrency(transaction.price) }}
                                 </td>
                             </tr>
                             <tr v-if="transaction.is_open_bill == 1 && transaction.promo_id == null" class="border-t">
-                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Promo Code</td>
+                                <td :colspan="isPending ? 6 : 5" class="px-6 py-3 text-right font-medium text-muted-foreground">Promo Code</td>
                                 <td colspan="2" class="px-6 py-3">
                                     <div class="flex items-center gap-2">
                                         <input type="text" v-model="promoCode" placeholder="Masukkan Promo Code" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm w-full max-w-[150px]" />
@@ -235,12 +252,12 @@ const applyPromo = () => {
                                 </td>
                             </tr>
                             <tr>
-                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Fee</td>
+                                <td :colspan="isPending ? 6 : 5" class="px-6 py-3 text-right font-medium text-muted-foreground">Fee</td>
                                 <td colspan="2" class="px-6 py-3 font-semibold">{{ formatCurrency(transaction.fee) }}
                                 </td>
                             </tr>
                             <tr class="border-t">
-                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Total
+                                <td :colspan="isPending ? 6 : 5" class="px-6 py-3 text-right font-medium text-muted-foreground">Total
                                 </td>
                                 <td colspan="2" class="px-6 py-3 font-bold">{{ formatCurrency(transaction.total_price)
                                     }}</td>

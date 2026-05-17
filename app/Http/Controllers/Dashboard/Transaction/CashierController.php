@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Dashboard\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\MaterialInboundOutbound;
 use App\Models\MCafe;
 use App\Models\Transaction;
 use App\Services\TransactionService;
 use App\Models\TransactionDetail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class CashierController extends Controller
@@ -85,6 +87,119 @@ class CashierController extends Controller
                 'cafe_id' => $cafeId ?? '',
             ],
         ]);
+    }
+
+    public function reduceDetailAmount($id)
+    {
+        $detail = TransactionDetail::with(['transaction', 'menu'])->findOrFail($id);
+        $transaction = $detail->transaction;
+
+        if (!$transaction || $transaction->status !== 'pending' || $transaction->payment_type !== 'manual') {
+            return redirect()->back()->with('error', 'Transaksi tidak valid untuk aksi ini.');
+        }
+
+        if ($detail->amount <= 1 && $transaction->details()->count() <= 1) {
+            return redirect()->back()->with('error', 'Tidak bisa mengurangi: transaksi harus memiliki minimal 1 item.');
+        }
+
+        DB::transaction(function () use ($detail, $transaction) {
+            $originalAmount = $detail->amount;
+
+            // Reverse 1-unit worth of material outbounds for this detail.
+            // per-unit reversal = (remaining unreversed outbound) / current_detail_amount
+            $outbounds = MaterialInboundOutbound::where('type', 'outbound')
+                ->where('transaction_detail_id', $detail->id)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($outbounds as $outbound) {
+                $alreadyReversed = (float) MaterialInboundOutbound::where('type', 'inbound')
+                    ->where('transaction_detail_id', $outbound->transaction_detail_id)
+                    ->where('material_id', $outbound->material_id)
+                    ->sum('amount');
+
+                $remainingOutbound = (float) $outbound->amount - $alreadyReversed;
+                if ($remainingOutbound <= 0) continue;
+
+                $reverseAmount = $remainingOutbound / $originalAmount;
+
+                MaterialInboundOutbound::create([
+                    'material_id'           => $outbound->material_id,
+                    'type'                  => 'inbound',
+                    'amount'                => $reverseAmount,
+                    'base_unit_id'          => $outbound->base_unit_id,
+                    'transaction_detail_id' => $outbound->transaction_detail_id,
+                    'inbound_buy_price'     => null,
+                ]);
+            }
+
+            // Delete or reduce the detail row
+            if ($originalAmount <= 1) {
+                $detail->delete();
+            } else {
+                $unitPrice      = $detail->menu ? (float) $detail->menu->price : ((float) $detail->price / $originalAmount);
+                $detail->amount = $originalAmount - 1;
+                $detail->price  = $unitPrice * $detail->amount;
+                $detail->save();
+            }
+
+            // Recalculate transaction totals (re-apply promo if any)
+            $transaction->refresh();
+            $newPrice = $transaction->details()->sum('price');
+            $cafe     = MCafe::find($transaction->cafe_id);
+
+            $discountAmount = 0;
+            if ($transaction->promo_id) {
+                $promo = \App\Models\CafePromo::find($transaction->promo_id);
+                if ($promo) {
+                    if ($promo->type === 'discount_percent') {
+                        $discountAmount = $newPrice * ($promo->value / 100);
+                    } elseif ($promo->type === 'discount_amount') {
+                        $discountAmount = min((float) $promo->value, $newPrice);
+                    }
+                }
+            }
+
+            $priceAfterDiscount = $newPrice - $discountAmount;
+            $ppn                = $cafe->ppn_fee > 0 ? ($priceAfterDiscount * ($cafe->ppn_fee / 100)) : 0;
+            $paymentTypeFee     = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris'
+                ? ($priceAfterDiscount * ($cafe->qris_fee / 100))
+                : 0;
+            $newFee   = $ppn + $paymentTypeFee;
+            $newTotal = $priceAfterDiscount + $newFee;
+
+            // Recalculate profit margin: net outbound cost minus reversal inbounds
+            $detailIds      = $transaction->details()->pluck('id')->all();
+            $netMaterialCost = 0;
+
+            if (!empty($detailIds)) {
+                $allOutbounds = MaterialInboundOutbound::where('type', 'outbound')
+                    ->whereIn('transaction_detail_id', $detailIds)
+                    ->with('material')
+                    ->get();
+
+                $allReversals = MaterialInboundOutbound::where('type', 'inbound')
+                    ->whereIn('transaction_detail_id', $detailIds)
+                    ->with('material')
+                    ->get();
+
+                foreach ($allOutbounds as $o) {
+                    $netMaterialCost += (float) $o->amount * (float) $o->material->avg_buy_price;
+                }
+                foreach ($allReversals as $i) {
+                    $netMaterialCost -= (float) $i->amount * (float) $i->material->avg_buy_price;
+                }
+            }
+
+            $transaction->update([
+                'price'         => $newPrice,
+                'fee'           => $newFee,
+                'total_price'   => $newTotal,
+                'profit_margin' => $newTotal - $netMaterialCost,
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Jumlah item berhasil dikurangi.');
     }
 
     public function makeDetailSuccess($id)

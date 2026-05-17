@@ -193,7 +193,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('inbound-outbound-material/{id}', [InboundOutboundMaterialController::class, 'update'])
             ->name('inbound-outbound-material.update')
             ->middleware('can:management.inbound-outbound-material');
-        
+
         // Expense (Pengeluaran)
         Route::get('expense', [ExpenseController::class, 'index'])
             ->name('expense.index')
@@ -246,6 +246,9 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('can:transaction.cashier');
         Route::patch('cashier/detail/{id}/success', [CashierController::class, 'makeDetailSuccess'])
             ->name('cashier.detail.success')
+            ->middleware('can:transaction.cashier');
+        Route::patch('cashier/detail/{id}/reduce-amount', [CashierController::class, 'reduceDetailAmount'])
+            ->name('cashier.detail.reduce-amount')
             ->middleware('can:transaction.cashier');
         Route::get('cashier/detail/{id}/receipt-data', [CashierController::class, 'detailReceiptData'])
             ->name('cashier.detail.receipt-data')
