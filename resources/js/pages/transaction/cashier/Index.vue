@@ -223,49 +223,65 @@ const sendToRawBT = (bytes: number[]) => {
     window.location.href = 'rawbt:base64,' + btoa(binary);
 };
 
-const buildLogoBytes = (): Promise<number[]> => {
-    return new Promise((resolve, reject) => {
-        const PRINTER_DOT_WIDTH = 576; // 80mm
-        const LOGO_RENDER_WIDTH = 200;
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = 'https://dashboard-cafe.arlettaluxury.com/logo-resize.png';
-        img.onload = () => {
-            const logoHeight = Math.round(LOGO_RENDER_WIDTH * (img.height / img.width));
-            const canvas = document.createElement('canvas');
-            canvas.width = PRINTER_DOT_WIDTH;
-            canvas.height = logoHeight;
-            const ctx = canvas.getContext('2d')!;
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            const offsetX = Math.floor((PRINTER_DOT_WIDTH - LOGO_RENDER_WIDTH) / 2);
-            ctx.drawImage(img, offsetX, 0, LOGO_RENDER_WIDTH, logoHeight);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const bytes: number[] = [];
-            const bytesPerLine = Math.ceil(PRINTER_DOT_WIDTH / 8);
-            bytes.push(
-                0x1D, 0x76, 0x30, 0x00,
-                bytesPerLine & 0xFF, (bytesPerLine >> 8) & 0xFF,
-                logoHeight & 0xFF, (logoHeight >> 8) & 0xFF
-            );
-            for (let y = 0; y < logoHeight; y++) {
-                for (let x = 0; x < bytesPerLine; x++) {
-                    let byte = 0;
-                    for (let bit = 0; bit < 8; bit++) {
-                        const px = x * 8 + bit;
-                        if (px < PRINTER_DOT_WIDTH) {
-                            const i = (y * PRINTER_DOT_WIDTH + px) * 4;
-                            const gray = (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
-                            if (gray < 128) byte |= (0x80 >> bit);
+const buildLogoBytes = async (): Promise<number[]> => {
+    const PRINTER_DOT_WIDTH = 576; // 80mm
+    const LOGO_RENDER_WIDTH = 200;
+
+    try {
+        // Fetch via axios to avoid canvas CORS taint issue
+        const response = await axios.get(
+            'https://dashboard-cafe.arlettaluxury.com/logo-resize.png',
+            { responseType: 'blob' }
+        );
+        const objectUrl = URL.createObjectURL(response.data);
+
+        return await new Promise<number[]>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+                try {
+                    const logoHeight = Math.round(LOGO_RENDER_WIDTH * (img.height / img.width));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = PRINTER_DOT_WIDTH;
+                    canvas.height = logoHeight;
+                    const ctx = canvas.getContext('2d')!;
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    const offsetX = Math.floor((PRINTER_DOT_WIDTH - LOGO_RENDER_WIDTH) / 2);
+                    ctx.drawImage(img, offsetX, 0, LOGO_RENDER_WIDTH, logoHeight);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const bytes: number[] = [];
+                    const bytesPerLine = Math.ceil(PRINTER_DOT_WIDTH / 8);
+                    bytes.push(
+                        0x1D, 0x76, 0x30, 0x00,
+                        bytesPerLine & 0xFF, (bytesPerLine >> 8) & 0xFF,
+                        logoHeight & 0xFF, (logoHeight >> 8) & 0xFF
+                    );
+                    for (let y = 0; y < logoHeight; y++) {
+                        for (let x = 0; x < bytesPerLine; x++) {
+                            let byte = 0;
+                            for (let bit = 0; bit < 8; bit++) {
+                                const px = x * 8 + bit;
+                                if (px < PRINTER_DOT_WIDTH) {
+                                    const i = (y * PRINTER_DOT_WIDTH + px) * 4;
+                                    const gray = (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
+                                    if (gray < 128) byte |= (0x80 >> bit);
+                                }
+                            }
+                            bytes.push(byte);
                         }
                     }
-                    bytes.push(byte);
+                    resolve(bytes);
+                } catch {
+                    resolve([]);
                 }
-            }
-            resolve(bytes);
-        };
-        img.onerror = () => resolve([]); // skip logo on error
-    });
+            };
+            img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve([]); };
+            img.src = objectUrl;
+        });
+    } catch {
+        return []; // skip logo if fetch fails
+    }
 };
 
 const printDetailReceiptInline = async (detailId: number) => {
