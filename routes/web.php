@@ -27,6 +27,15 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 })->name('home');
 
+// Proxy logo to avoid CORS issues when fetching from frontend
+Route::get('proxy/logo', function () {
+    $response = \Illuminate\Support\Facades\Http::timeout(5)
+        ->get('https://dashboard-cafe.arlettaluxury.com/logo-resize.png');
+    return response($response->body(), $response->status())
+        ->header('Content-Type', $response->header('Content-Type') ?? 'image/png')
+        ->header('Cache-Control', 'public, max-age=86400');
+});
+
 Route::get('dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');

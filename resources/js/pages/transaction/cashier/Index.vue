@@ -228,9 +228,9 @@ const buildLogoBytes = async (): Promise<number[]> => {
     const LOGO_RENDER_WIDTH = 200;
 
     try {
-        // Fetch via axios to avoid canvas CORS taint issue
+        // Fetch via same-origin proxy to avoid cross-origin CORS error
         const response = await axios.get(
-            'https://dashboard-cafe.arlettaluxury.com/logo-resize.png',
+            '/proxy/logo',
             { responseType: 'blob' }
         );
         const objectUrl = URL.createObjectURL(response.data);
