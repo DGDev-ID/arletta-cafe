@@ -294,6 +294,7 @@ const printDetailReceiptInline = async (detailId: number) => {
         bytes.push(0x1B, 0x40); // init
         bytes.push(...await buildLogoBytes());
         bytes.push(0x1B, 0x61, 0x01); // center
+        enc('\n');
         enc((detail.transaction?.cafe?.name || 'CAFE') + '\n');
         enc(PRINT_LINE + '\n');
         bytes.push(0x1B, 0x61, 0x00); // left
@@ -338,6 +339,7 @@ const printSelectedDetailReceiptsInline = async () => {
         bytes.push(0x1B, 0x40); // init
         bytes.push(...await buildLogoBytes());
         bytes.push(0x1B, 0x61, 0x01); // center
+        enc('\n');
         enc((details[0]?.transaction?.cafe?.name || 'CAFE') + '\n');
         enc('OPEN BILL - BULK ITEM\n');
         enc(PRINT_LINE + '\n');
@@ -375,6 +377,7 @@ const printReceiptInline = async (id: number) => {
         bytes.push(...await buildLogoBytes());
         bytes.push(0x1B, 0x61, 0x01); // center
         bytes.push(0x1B, 0x45, 0x01); // bold on
+        enc('\n');
         enc((trx.cafe?.name || 'CAFE') + '\n');
         bytes.push(0x1B, 0x45, 0x00); // bold off
         if (trx.cafe?.address) enc(trx.cafe.address + '\n');
