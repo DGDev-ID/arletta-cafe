@@ -7,7 +7,6 @@ import { Eye, CheckCircle, Printer } from 'lucide-vue-next';
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { Notyf } from 'notyf';
 import axios from 'axios';
-import qz from 'qz-tray';
 
 // ── Audio / Speech ────────────────────────────────────────────────────────
 let audioCtx: AudioContext | null = null;
@@ -206,111 +205,52 @@ watch(
     },
 );
 
-const isMobileOrTabletDevice = () =>
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    || ((navigator.userAgent.includes('Mac') || navigator.userAgent.includes('Linux')) && navigator.maxTouchPoints > 1);
+// ── RawBT Print (80mm = 48 chars wide) ────────────────────────────────────
+const PRINT_WIDTH = 48;
+const PRINT_LINE = '-'.repeat(PRINT_WIDTH);
 
-const getQzPrinterConfig = async () => {
-    if (!qz.websocket.isActive()) {
-        qz.security.setCertificatePromise(resolve => resolve(null));
-        qz.security.setSignaturePromise(() => resolve => resolve(null));
-        await qz.websocket.connect();
-    }
-
-    const printers = await qz.printers.find();
-    let printerName = await qz.printers.getDefault();
-
-    const posPrinter = printers.find((p: string) =>
-        p.toLowerCase().includes('thermal')
-        || p.toLowerCase().includes('pos')
-        || p.toLowerCase().includes('58')
-    );
-
-    if (posPrinter) printerName = posPrinter;
-
-    if (!printerName) {
-        notyf.error('Printer tidak ditemukan');
-        return null;
-    }
-
-    return qz.configs.create(printerName, { encoding: 'ISO-8859-1', scaleContent: true });
+const printPadRight = (left: string, right: string): string => {
+    const space = PRINT_WIDTH - (left.length + right.length);
+    return left + ' '.repeat(space > 0 ? space : 1) + right;
 };
 
-const buildDetailReceiptRaw = (detail: any) => {
-    const init = '\x1B\x40';
-    const alignCenter = '\x1B\x61\x01';
-    const alignLeft = '\x1B\x61\x00';
-    const cut = '\x1D\x56\x41\x00';
+const printNumber = (val: number): string => new Intl.NumberFormat('id-ID').format(val);
 
-    let str = '';
-    str += init + alignCenter;
-    str += (detail.transaction.cafe?.name || 'CAFE') + '\n';
-    str += alignLeft;
-    str += `No: #${detail.transaction.id}` + '\n';
-    str += `Cust: ${detail.transaction.cust_name || '-'} ` + '\n';
-    if (detail.transaction.table) str += `Table: ${detail.transaction.table.name}` + '\n';
-    str += '-------------------------------' + '\n';
-    str += (detail.menu?.name || '-') + '\n';
-    str += `${detail.amount} x ${detail.price}` + '\n';
-    if (detail.description) str += detail.description + '\n';
-    str += '-------------------------------' + '\n';
-    str += 'Terima kasih\n\n\n' + cut;
-
-    return str;
-};
-
-const buildBulkDetailReceiptRaw = (details: any[]) => {
-    const init = '\x1B\x40';
-    const alignCenter = '\x1B\x61\x01';
-    const alignLeft = '\x1B\x61\x00';
-    const cut = '\x1D\x56\x41\x00';
-
-    const firstDetail = details[0];
-    const cafeName = firstDetail?.transaction?.cafe?.name || 'CAFE';
-
-    let str = '';
-    str += init + alignCenter;
-    str += cafeName + '\n';
-    str += 'OPEN BILL - BULK ITEM' + '\n';
-    str += alignLeft;
-    str += '===============================' + '\n';
-
-    details.forEach((detail, index) => {
-        str += `${index + 1}. ${detail.menu?.name || '-'}` + '\n';
-        str += `No: #${detail.transaction?.id || '-'}` + '\n';
-        str += `Cust: ${detail.transaction?.cust_name || '-'}` + '\n';
-        if (detail.transaction?.table?.name) {
-            str += `Table: ${detail.transaction.table.name}` + '\n';
-        }
-        str += `${detail.amount} x ${detail.price}` + '\n';
-        if (detail.description) str += detail.description + '\n';
-        str += '-------------------------------' + '\n';
-    });
-
-    str += 'Terima kasih\n\n\n' + cut;
-    return str;
+const sendToRawBT = (bytes: number[]) => {
+    const uint8 = new Uint8Array(bytes);
+    let binary = '';
+    uint8.forEach(b => (binary += String.fromCharCode(b)));
+    window.location.href = 'rawbt:base64,' + btoa(binary);
 };
 
 const printDetailReceiptInline = async (detailId: number) => {
-    const isMobileOrTablet = isMobileOrTabletDevice();
-
-    if (isMobileOrTablet) {
-        const responseUrl = `${window.location.origin}/bluetooth-receipt/detail/${detailId}`;
-        window.location.href = `my.bluetoothprint.scheme://${responseUrl}`;
-        return;
-    }
-
     try {
         const { data: detail } = await axios.get(`/transaction/cashier/detail/${detailId}/receipt-data`);
+        const bytes: number[] = [];
+        const encoder = new TextEncoder();
+        const enc = (text: string) => bytes.push(...encoder.encode(text));
 
-        const config = await getQzPrinterConfig();
-        if (!config) return;
-
-        await qz.print(config, [{ type: 'raw', format: 'command', data: buildDetailReceiptRaw(detail) }]);
-        notyf.success('Struk berhasil dicetak');
+        bytes.push(0x1B, 0x40); // init
+        bytes.push(0x1B, 0x61, 0x01); // center
+        enc((detail.transaction?.cafe?.name || 'CAFE') + '\n');
+        enc(PRINT_LINE + '\n');
+        bytes.push(0x1B, 0x61, 0x00); // left
+        enc('No: #' + detail.transaction?.id + '\n');
+        enc('Cust: ' + (detail.transaction?.cust_name || '-') + '\n');
+        if (detail.transaction?.table) enc('Table: ' + detail.transaction.table.name + '\n');
+        enc(PRINT_LINE + '\n');
+        enc((detail.menu?.name || '-') + '\n');
+        enc(detail.amount + ' x ' + printNumber(Number(detail.price)) + '\n');
+        if (detail.description) enc(detail.description + '\n');
+        enc(PRINT_LINE + '\n');
+        bytes.push(0x1B, 0x61, 0x01); // center
+        enc('Terima kasih\n');
+        bytes.push(0x1B, 0x64, 0x05); // feed 5 lines
+        bytes.push(0x1D, 0x56, 0x41, 0x00); // cut
+        sendToRawBT(bytes);
     } catch (e: any) {
         console.error(e);
-        notyf.error('Print gagal: ' + (e.message || 'QZ error'));
+        notyf.error('Print gagal: ' + (e.message || 'Error'));
     }
 };
 
@@ -320,16 +260,8 @@ const printSelectedDetailReceiptsInline = async () => {
         return;
     }
 
-    const selectedIds = [...selectedOpenBillDetailIds.value];
-    const isMobileOrTablet = isMobileOrTabletDevice();
-
-    if (isMobileOrTablet) {
-        const responseUrl = `${window.location.origin}/bluetooth-receipt/detail-bulk?detail_ids=${encodeURIComponent(selectedIds.join(','))}`;
-        window.location.href = `my.bluetoothprint.scheme://${responseUrl}`;
-        return;
-    }
-
     try {
+        const selectedIds = [...selectedOpenBillDetailIds.value];
         const details = await Promise.all(
             selectedIds.map(async (id) => {
                 const { data } = await axios.get(`/transaction/cashier/detail/${id}/receipt-data`);
@@ -337,173 +269,81 @@ const printSelectedDetailReceiptsInline = async () => {
             })
         );
 
-        const config = await getQzPrinterConfig();
-        if (!config) return;
+        const bytes: number[] = [];
+        const encoder = new TextEncoder();
+        const enc = (text: string) => bytes.push(...encoder.encode(text));
 
-        const combinedReceipt = buildBulkDetailReceiptRaw(details);
-        await qz.print(config, [{ type: 'raw', format: 'command', data: combinedReceipt }]);
-
-        notyf.success(`${details.length} struk berhasil dicetak`);
+        bytes.push(0x1B, 0x40); // init
+        bytes.push(0x1B, 0x61, 0x01); // center
+        enc((details[0]?.transaction?.cafe?.name || 'CAFE') + '\n');
+        enc('OPEN BILL - BULK ITEM\n');
+        enc(PRINT_LINE + '\n');
+        bytes.push(0x1B, 0x61, 0x00); // left
+        details.forEach((detail, index) => {
+            enc((index + 1) + '. ' + (detail.menu?.name || '-') + '\n');
+            enc('No: #' + (detail.transaction?.id || '-') + '\n');
+            enc('Cust: ' + (detail.transaction?.cust_name || '-') + '\n');
+            if (detail.transaction?.table?.name) enc('Table: ' + detail.transaction.table.name + '\n');
+            enc(detail.amount + ' x ' + printNumber(Number(detail.price)) + '\n');
+            if (detail.description) enc(detail.description + '\n');
+            enc(PRINT_LINE + '\n');
+        });
+        bytes.push(0x1B, 0x61, 0x01); // center
+        enc('Terima kasih\n');
+        bytes.push(0x1B, 0x64, 0x05); // feed
+        bytes.push(0x1D, 0x56, 0x41, 0x00); // cut
+        sendToRawBT(bytes);
     } catch (e: any) {
         console.error(e);
-        notyf.error('Print bulk gagal: ' + (e.message || 'QZ error'));
+        notyf.error('Print bulk gagal: ' + (e.message || 'Error'));
     }
 };
 
 const printReceiptInline = async (id: number) => {
-    // Deteksi perangkat mobile/tablet menggunakan User Agent & Touch Support
-    const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
-        || ((navigator.userAgent.includes('Mac') || navigator.userAgent.includes('Linux')) && navigator.maxTouchPoints > 1);
-
-    // BUKA KOMENTAR DI BAWAH INI UNTUK DEBUGGING (Akan memunculkan pop-up info device)
-    // alert("UserAgent: " + navigator.userAgent + "\nTouchPoints: " + navigator.maxTouchPoints + "\nIsMobile: " + isMobileOrTablet);
-
-    if (isMobileOrTablet) {
-        const responseUrl = `${window.location.origin}/bluetooth-receipt/${id}`;
-        window.location.href = `my.bluetoothprint.scheme://${responseUrl}`;
-        return;
-    }
-
-    // Jika display desktop, gunakan QZ Tray
     try {
         const { data: trx } = await axios.get(`/transaction/cashier/${id}/receipt-data`);
+        const fmtDate = (val: string) => new Date(val).toLocaleString('id-ID');
 
-        // ===== FORMAT =====
-        const cleanNumber = (val: number) =>
-            new Intl.NumberFormat('id-ID')
-                .format(val)
-                .replace(/[^\d]/g, '');
+        const bytes: number[] = [];
+        const encoder = new TextEncoder();
+        const enc = (text: string) => bytes.push(...encoder.encode(text));
 
-        const fmtDate = (val: string) => {
-            const d = new Date(val);
-            return d.toLocaleString('id-ID');
-        };
-
-        // ===== CONNECT QZ =====
-        if (!qz.websocket.isActive()) {
-            qz.security.setCertificatePromise(resolve => resolve(null));
-            qz.security.setSignaturePromise(() => resolve => resolve(null));
-            await qz.websocket.connect();
-        }
-
-        const printers = await qz.printers.find();
-        let printerName = await qz.printers.getDefault();
-
-        const posPrinter = printers.find((p: string) =>
-            p.toLowerCase().includes('thermal') ||
-            p.toLowerCase().includes('pos') ||
-            p.toLowerCase().includes('58')
-        );
-
-        if (posPrinter) printerName = posPrinter;
-
-        if (!printerName) {
-            notyf.error('Printer tidak ditemukan');
-            return;
-        }
-
-        // ===== CONFIG =====
-        const config = qz.configs.create(printerName, {
-            encoding: 'ISO-8859-1',
-            scaleContent: true
-        });
-
-        // ===== ESC/POS =====
-        const init = '\x1B\x40';
-        const normal = '\x1B\x21\x00';
-        const alignLeft = '\x1B\x61\x00';
-        const alignCenter = '\x1B\x61\x01';
-        const boldOn = '\x1B\x45\x01';
-        const boldOff = '\x1B\x45\x00';
-        const cut = '\x1D\x56\x41\x00';
-        const codepage = '\x1B\x74\x00';
-
-        const WIDTH = 32;
-        const line = '-'.repeat(WIDTH) + '\n';
-
-        const padRight = (left: string, right: string) => {
-            const space = WIDTH - (left.length + right.length);
-            return left + ' '.repeat(space > 0 ? space : 1) + right + '\n';
-        };
-
-        // ===== BUILD TEXT =====
-        let str = '';
-        str += init;
-        str += codepage;
-        str += normal;
-
-        // HEADER
-        str += alignCenter;
-        str += boldOn;
-        str += (trx.cafe.name || 'CAFE') + '\n';
-        str += boldOff;
-        if (trx.cafe.address) str += trx.cafe.address + '\n';
-        if (trx.cafe.phone_number) str += trx.cafe.phone_number + '\n';
-        str += line;
-
-        // INFO
-        str += alignLeft;
-        str += padRight('No', `#${trx.id}`);
-        str += padRight('Tgl', fmtDate(trx.updated_at));
-        str += padRight('Cust', trx.cust_name || '-');
-        if (trx.table) str += padRight('Table', trx.table.name);
-        str += padRight('Pay', trx.payment_type);
-        str += line;
-
-        // ITEMS
+        bytes.push(0x1B, 0x40); // init
+        bytes.push(0x1B, 0x61, 0x01); // center
+        bytes.push(0x1B, 0x45, 0x01); // bold on
+        enc((trx.cafe?.name || 'CAFE') + '\n');
+        bytes.push(0x1B, 0x45, 0x00); // bold off
+        if (trx.cafe?.address) enc(trx.cafe.address + '\n');
+        enc(PRINT_LINE + '\n');
+        bytes.push(0x1B, 0x61, 0x00); // left
+        enc(printPadRight('No', '#' + trx.id) + '\n');
+        enc(printPadRight('Tgl', fmtDate(trx.updated_at)) + '\n');
+        enc(printPadRight('Cust', trx.cust_name || '-') + '\n');
+        if (trx.table) enc(printPadRight('Table', trx.table.name) + '\n');
+        enc(printPadRight('Pay', trx.payment_type) + '\n');
+        enc(PRINT_LINE + '\n');
         trx.details.forEach((d: any) => {
-            const name = (d.menu?.name || '-').substring(0, WIDTH);
-            str += name + '\n';
-
-            const qtyPrice = `${d.amount}x${cleanNumber(Number(d.price))}`;
-            const subtotal = cleanNumber(Number(d.price) * d.amount);
-
-            str += padRight(qtyPrice, subtotal);
-
-            if (d.description) {
-                str += ' ' + d.description + '\n';
-            }
+            enc((d.menu?.name || '-').substring(0, PRINT_WIDTH) + '\n');
+            const qtyPrice = `${d.amount}x${printNumber(Number(d.menu?.price ?? 0))}`;
+            enc(printPadRight(qtyPrice, printNumber(Number(d.price))) + '\n');
+            if (d.description) enc(' ' + d.description + '\n');
         });
-
-        str += line;
-
-        // TOTAL
-        str += padRight('Subtotal', cleanNumber(Number(trx.price)));
-        str += padRight('Fee', cleanNumber(Number(trx.fee)));
-
-        str += line;
-        str += boldOn;
-        str += padRight('TOTAL', cleanNumber(Number(trx.total_price)));
-        str += boldOff;
-        str += line;
-
-        // FOOTER
-        str += alignCenter;
-        str += 'Terima kasih\n';
-        str += '\n\n\n\n';
-        str += cut;
-
-        // ===== PRINT (URUTAN DIPERBAIKI) =====
-        await qz.print(config, [
-            // 🔥 INIT + CENTER dulu (penting biar logo ikut center)
-            {
-                type: 'raw',
-                format: 'command',
-                data: init + alignCenter
-            },
-
-            {
-                type: 'raw',
-                format: 'command',
-                data: '\n' + str
-            }
-        ]);
-
-        notyf.success('Struk berhasil dicetak');
-
+        enc(PRINT_LINE + '\n');
+        enc(printPadRight('Subtotal', printNumber(Number(trx.price))) + '\n');
+        enc(printPadRight('Fee', printNumber(Number(trx.fee))) + '\n');
+        enc(PRINT_LINE + '\n');
+        bytes.push(0x1B, 0x45, 0x01); // bold on
+        enc(printPadRight('TOTAL', printNumber(Number(trx.total_price))) + '\n');
+        bytes.push(0x1B, 0x45, 0x00); // bold off
+        enc(PRINT_LINE + '\n');
+        bytes.push(0x1B, 0x61, 0x01); // center
+        enc('Terima kasih\n');
+        bytes.push(0x1B, 0x64, 0x05); // feed 5 lines
+        bytes.push(0x1D, 0x56, 0x41, 0x00); // cut
+        sendToRawBT(bytes);
     } catch (e: any) {
         console.error(e);
-        notyf.error('Print gagal: ' + (e.message || 'QZ error'));
+        notyf.error('Print gagal: ' + (e.message || 'Error'));
     }
 };
 
