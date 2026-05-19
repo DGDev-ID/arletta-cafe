@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
+import { Trash2 } from 'lucide-vue-next';
 
 interface TransactionDetail {
     id: number;
@@ -55,6 +56,14 @@ const formatDate = (val: string) => {
 const makeFailed = () => {
     if (confirm('Tolak transaksi ini? Status akan diubah ke failed.')) {
         router.patch(`/transaction/history/${props.transaction.id}/failed`);
+    }
+};
+
+const voidDetail = (detailId: number, menuName: string) => {
+    if (confirm(`Void item "${menuName}" dari transaksi ini?\nItem akan dihapus dan total akan dihitung ulang.`)) {
+        router.patch(`/transaction/history/detail/${detailId}/void`, {}, {
+            preserveScroll: true,
+        });
     }
 };
 </script>
@@ -165,6 +174,7 @@ const makeFailed = () => {
                                 <th class="px-6 py-4 text-left font-medium">Harga</th>
                                 <th class="px-6 py-4 text-left font-medium">Subtotal</th>
                                 <th class="px-6 py-4 text-left font-medium">Keterangan</th>
+                                <th class="px-6 py-4 text-left font-medium">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -181,9 +191,19 @@ const makeFailed = () => {
                                 <td class="px-6 py-4 font-medium">{{ formatCurrency(Number(detail.price) *
                                     detail.amount) }}</td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ detail.description ?? '-' }}</td>
+                                <td class="px-6 py-4">
+                                    <button
+                                        v-if="transaction.details.length > 1"
+                                        @click="voidDetail(detail.id, detail.menu?.name ?? '-')"
+                                        type="button"
+                                        class="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-100 text-red-600 text-xs font-medium hover:bg-red-500 hover:text-white transition">
+                                        <Trash2 :size="13" /> Void
+                                    </button>
+                                    <span v-else class="text-xs text-muted-foreground italic">Min 1 item</span>
+                                </td>
                             </tr>
                             <tr v-if="transaction.details.length === 0">
-                                <td colspan="7" class="px-6 py-10 text-center text-muted-foreground">
+                                <td colspan="8" class="px-6 py-10 text-center text-muted-foreground">
                                     Tidak ada detail transaksi.
                                 </td>
                             </tr>
@@ -191,18 +211,18 @@ const makeFailed = () => {
                         <!-- Summary Footer -->
                         <tfoot v-if="transaction.details.length > 0" class="bg-muted/30">
                             <tr class="border-t">
-                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Subtotal
+                                <td colspan="6" class="px-6 py-3 text-right font-medium text-muted-foreground">Subtotal
                                 </td>
                                 <td colspan="2" class="px-6 py-3 font-semibold">{{ formatCurrency(transaction.price) }}
                                 </td>
                             </tr>
                             <tr>
-                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Fee</td>
+                                <td colspan="6" class="px-6 py-3 text-right font-medium text-muted-foreground">Fee</td>
                                 <td colspan="2" class="px-6 py-3 font-semibold">{{ formatCurrency(transaction.fee) }}
                                 </td>
                             </tr>
                             <tr class="border-t">
-                                <td colspan="5" class="px-6 py-3 text-right font-medium text-muted-foreground">Total
+                                <td colspan="6" class="px-6 py-3 text-right font-medium text-muted-foreground">Total
                                 </td>
                                 <td colspan="2" class="px-6 py-3 font-bold">{{ formatCurrency(transaction.total_price)
                                     }}</td>
