@@ -59,8 +59,11 @@ const makeFailed = () => {
     }
 };
 
-const voidDetail = (detailId: number, menuName: string) => {
-    if (confirm(`Void item "${menuName}" dari transaksi ini?\nItem akan dihapus dan total akan dihitung ulang.`)) {
+const voidDetail = (detailId: number, menuName: string, qty: number) => {
+    const msg = qty > 1
+        ? `Kurangi qty "${menuName}" sebanyak 1?\nQty akan berkurang dari ${qty} menjadi ${qty - 1}.`
+        : `Void item "${menuName}"?\nItem akan dihapus dari transaksi karena qty sudah 1.`;
+    if (confirm(msg)) {
         router.patch(`/transaction/history/detail/${detailId}/void`, {}, {
             preserveScroll: true,
         });
@@ -193,8 +196,8 @@ const voidDetail = (detailId: number, menuName: string) => {
                                 <td class="px-6 py-4 text-muted-foreground">{{ detail.description ?? '-' }}</td>
                                 <td class="px-6 py-4">
                                     <button
-                                        v-if="transaction.details.length > 1"
-                                        @click="voidDetail(detail.id, detail.menu?.name ?? '-')"
+                                        v-if="detail.amount > 1 || transaction.details.length > 1"
+                                        @click="voidDetail(detail.id, detail.menu?.name ?? '-', detail.amount)"
                                         type="button"
                                         class="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-100 text-red-600 text-xs font-medium hover:bg-red-500 hover:text-white transition">
                                         <Trash2 :size="13" /> Void

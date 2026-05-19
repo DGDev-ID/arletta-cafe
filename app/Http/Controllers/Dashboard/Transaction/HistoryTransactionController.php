@@ -220,13 +220,16 @@ class HistoryTransactionController extends Controller
             return redirect()->back()->with('error', 'Transaksi tidak valid untuk aksi ini.');
         }
 
-        // Must keep at least 1 item
-        if ($transaction->details()->count() <= 1) {
+        // Cannot reduce if this is the last item AND qty is already 1
+        if ($detail->amount <= 1 && $transaction->details()->count() <= 1) {
             return redirect()->back()->with('error', 'Tidak bisa void: transaksi harus memiliki minimal 1 item. Gunakan "Tolak Transaksi" untuk membatalkan semua.');
         }
 
         DB::transaction(function () use ($detail, $transaction) {
-            // Reverse material outbounds for this detail
+            $originalAmount = $detail->amount;
+
+            // Reverse 1-unit worth of material outbounds for this detail
+            // per-unit reversal = remaining_unreversed / current_amount
             $outbounds = MaterialInboundOutbound::where('type', 'outbound')
                 ->where('transaction_detail_id', $detail->id)
                 ->lockForUpdate()
@@ -241,18 +244,28 @@ class HistoryTransactionController extends Controller
                 $remainingOutbound = (float) $outbound->amount - $alreadyReversed;
                 if ($remainingOutbound <= 0) continue;
 
+                // Reverse only 1 unit worth
+                $reverseAmount = $remainingOutbound / $originalAmount;
+
                 MaterialInboundOutbound::create([
                     'material_id'           => $outbound->material_id,
                     'type'                  => 'inbound',
-                    'amount'                => $remainingOutbound,
+                    'amount'                => $reverseAmount,
                     'base_unit_id'          => $outbound->base_unit_id,
                     'transaction_detail_id' => $outbound->transaction_detail_id,
                     'inbound_buy_price'     => null,
                 ]);
             }
 
-            // Delete the detail
-            $detail->delete();
+            // Reduce qty by 1 or delete if qty was 1
+            if ($originalAmount <= 1) {
+                $detail->delete();
+            } else {
+                $unitPrice      = $detail->menu ? (float) $detail->menu->price : ((float) $detail->price / $originalAmount);
+                $detail->amount = $originalAmount - 1;
+                $detail->price  = $unitPrice * $detail->amount;
+                $detail->save();
+            }
 
             // Recalculate transaction totals
             $transaction->refresh();
@@ -310,6 +323,6 @@ class HistoryTransactionController extends Controller
             ]);
         });
 
-        return redirect()->back()->with('success', 'Item berhasil di-void dari transaksi.');
+        return redirect()->back()->with('success', 'Qty item berhasil dikurangi 1.');
     }
 }
