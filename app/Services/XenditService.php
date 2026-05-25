@@ -21,12 +21,10 @@ class XenditService
 
         $apiInstance = new PaymentRequestApi();
 
-        $externalId = 'cafe-' . $transaction->id . '-' . time();
-
         try {
 
             $params = new PaymentRequestParameters([
-                'reference_id' => $externalId,
+                'reference_id' => $transaction->unique_code,
                 'amount' => (float) $transaction->total_price,
                 'currency' => 'IDR',
                 'description' => 'Pembayaran ' . $transaction->transaction_type,
@@ -42,7 +40,7 @@ class XenditService
             ]);
 
             $result = $apiInstance->createPaymentRequest(
-                $externalId,
+                $transaction->unique_code,
                 null,
                 null,
                 $params
@@ -55,14 +53,14 @@ class XenditService
                 ->getChannelProperties()
                 ->getQrString();
 
-            $transaction->midtrans_transaction_id = $externalId;
+            $transaction->midtrans_transaction_id = $result->getId();
             $transaction->snap_token = $qrString;
             $transaction->status = 'pending';
             $transaction->save();
 
             return [
                 'id' => $result->getId(),
-                'reference_id' => $externalId,
+                'reference_id' => $transaction->unique_code,
                 'qr_string' => $qrString,
                 'amount' => $transaction->total_price,
                 'status' => $result->getStatus(),
