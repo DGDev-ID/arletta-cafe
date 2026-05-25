@@ -47,7 +47,7 @@ class XenditService
             );
             Log::info('Xendit QR Creation Result', [
                 'transaction_id' => $transaction->id,
-                'xendit_response' => $result->getRawResponse(),
+                'xendit_response' => $result
             ]);
 
             // ambil QR string dari response
