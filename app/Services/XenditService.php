@@ -102,7 +102,7 @@ class XenditService
 
         if (!$transaction) {
             Log::warning('Xendit Webhook: Transaction not found', [
-                'reference_id' => $xenditTransactionId,
+                'xendit_transaction_id' => $xenditTransactionId,
             ]);
             return false;
         }
