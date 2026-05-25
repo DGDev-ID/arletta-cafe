@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\ApiBaseController;
-use App\Services\MidtransService;
+use App\Services\XenditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -16,11 +16,11 @@ class PaymentWebhookController extends ApiBaseController
     {
         try {
             $payload = $request->all();
-            Log::info('Midtrans Webhook Received', $payload);
+            Log::info('Xendit Webhook Received', $payload);
 
-            $result = MidtransService::handleWebhook($payload);
+            $result = XenditService::handleWebhook($payload, $request->header('X-CALLBACK-TOKEN'));
             if ($result === false) {
-                return $this->clientError('Midtrans callback error');
+                return $this->clientError('Xendit callback error');
             }
 
             return $this->success('Webhook processed successfully');

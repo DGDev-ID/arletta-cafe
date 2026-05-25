@@ -6,6 +6,7 @@ use App\Http\Controllers\ApiBaseController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TransactionRequest;
 use App\Services\MidtransService;
+use App\Services\XenditService;
 use App\Services\TransactionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,10 +23,16 @@ class TransactionController extends ApiBaseController
             $validated = $request->validated();
             $transaction = TransactionService::makeTransaction($validated);
             TransactionService::pendingAction($transaction);
-            
-            if($transaction->payment_type === 'qris') {
-                $snapToken = MidtransService::getSnapToken($transaction);
-                $transaction->snap_token = $snapToken;
+
+            if ($transaction->payment_type === 'qris') {
+                $qrResult = XenditService::createQr($transaction);
+                if (!$qrResult) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Gagal membuat QRIS Xendit'
+                    ], 500);
+                }
+                $transaction->snap_token = $qrResult['qr_string']; // atau rename field aja biar gak bingung
                 $transaction->save();
             }
 
