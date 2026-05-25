@@ -86,29 +86,28 @@ class XenditService
         // 1. Validasi callback token
         if ($callbackToken !== $expectedToken) {
             Log::warning('Xendit Webhook: Invalid callback token');
-            return false;
+            return true;
         }
 
         // 2. Ambil data dari payload (Xendit v7 biasanya nested di "data")
         $data = $payload['data'] ?? $payload;
 
-        $xenditTransactionId = $data['id'] ?? null;
         $referenceId = $data['reference_id'] ?? null;
         $status = $data['status'] ?? null;
         $paymentId = $data['id'] ?? null;
 
         if (!$referenceId) {
             Log::warning('Xendit Webhook: Missing reference_id', $payload);
-            return false;
+            return true;
         }
 
-        $transaction = Transaction::where('midtrans_transaction_id', $xenditTransactionId)->first();
+        $transaction = Transaction::where('midtrans_transaction_id', $referenceId)->first();
 
         if (!$transaction) {
             Log::warning('Xendit Webhook: Transaction not found', [
-                'xendit_transaction_id' => $xenditTransactionId,
+                'xendit_transaction_id' => $referenceId,
             ]);
-            return false;
+            return true;
         }
 
         // 3. Update status berdasarkan Xendit
