@@ -88,6 +88,7 @@ class XenditService
         // 2. Ambil data dari payload (Xendit v7 biasanya nested di "data")
         $data = $payload['data'] ?? $payload;
 
+        $xenditTransactionId = $data['id'] ?? null;
         $referenceId = $data['reference_id'] ?? null;
         $status = $data['status'] ?? null;
         $paymentId = $data['id'] ?? null;
@@ -97,11 +98,11 @@ class XenditService
             return false;
         }
 
-        $transaction = Transaction::where('midtrans_transaction_id', $referenceId)->first();
+        $transaction = Transaction::where('midtrans_transaction_id', $xenditTransactionId)->first();
 
         if (!$transaction) {
             Log::warning('Xendit Webhook: Transaction not found', [
-                'reference_id' => $referenceId
+                'reference_id' => $xenditTransactionId,
             ]);
             return false;
         }
