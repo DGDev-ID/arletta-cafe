@@ -92,6 +92,11 @@ class XenditService
         // 2. Ambil data dari payload (Xendit v7 biasanya nested di "data")
         $data = $payload['data'] ?? $payload;
 
+        if ($data['event'] != "payment.succeeded") {
+            Log::info('Xendit Webhook: Ignored event type', ['event' => $data['event']]);
+            return true;
+        }
+
         $xendit_transaction_id = $data['payment_request_id'] ?? null;
         $referenceId = $data['reference_id'] ?? null;
         $status = $data['status'] ?? null;
