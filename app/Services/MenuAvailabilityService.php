@@ -32,16 +32,25 @@ class MenuAvailabilityService
 
             if ($material->type === 'selectable') {
                 // If selected variant provided for this material, check variant stock
-                $variantEntry = collect($selectedVariants)->first(fn($v) => $v['material_id'] == $material->id);
-                if (!$variantEntry) {
-                    // No selection – treat as unavailable
-                    return false;
+                if (!empty($selectedVariants)) {
+                    $variantEntry = collect($selectedVariants)->first(fn($v) => $v['material_id'] == $material->id);
+                    if (!$variantEntry) {
+                        return false;
+                    }
+                    $variant = \App\Models\MaterialVariant::find($variantEntry['variant_id']);
+                    if (!$variant) return false;
+                    if ((float) $variant->stock < $totalMaterialNeeded) return false;
+                } else {
+                    // For listing (empty selectedVariants), check if AT LEAST ONE variant has enough stock
+                    $hasAvailableVariant = false;
+                    foreach ($material->variants as $variant) {
+                        if ((float) $variant->stock >= $totalMaterialNeeded) {
+                            $hasAvailableVariant = true;
+                            break;
+                        }
+                    }
+                    if (!$hasAvailableVariant) return false;
                 }
-
-                $variant = \App\Models\MaterialVariant::find($variantEntry['variant_id']);
-                if (!$variant) return false;
-
-                if ((float) $variant->stock < $totalMaterialNeeded) return false;
             } else {
                 if ((float) $material->stock < $totalMaterialNeeded) return false;
             }
@@ -107,6 +116,7 @@ class MenuAvailabilityService
         // Agregasi total kebutuhan per material_id (dalam base unit)
         // Format: [material_id => total_needed_in_base_unit]
         $aggregatedNeeds = [];
+        $variantNeeds = [];
 
         // Simpan mapping material_id -> nama menu yang membutuhkan (untuk pesan error)
         $materialToMenuNames = [];

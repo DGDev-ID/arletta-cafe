@@ -52,16 +52,35 @@ class MaterialController extends Controller
         $validated = $request->validate([
             'cafe_id'        => 'required|exists:m_cafes,id',
             'name'           => 'required|string|max:255',
+            'type'           => 'required|in:normal,selectable',
             'base_unit_id'   => 'required|exists:m_units,id',
             'critical_stock' => 'nullable|numeric|min:0',
+            'variants'       => 'nullable|array',
+            'variants.*.id'  => 'nullable|exists:material_variants,id',
+            'variants.*.name'=> 'required_if:type,selectable|string|max:255',
+            'variants.*.stock'=> 'required_if:type,selectable|numeric|min:0',
+            'variants.*.minimum_stock'=> 'nullable|numeric|min:0',
         ]);
 
-        MMaterial::create([
-            ...$validated,
+        $material = MMaterial::create([
+            'cafe_id'        => $validated['cafe_id'],
+            'name'           => $validated['name'],
+            'type'           => $validated['type'],
+            'base_unit_id'   => $validated['base_unit_id'],
             'stock'          => 0,
             'avg_buy_price'  => 0,
             'critical_stock' => $validated['critical_stock'] ?? 0,
         ]);
+
+        if ($validated['type'] === 'selectable' && !empty($validated['variants'])) {
+            foreach ($validated['variants'] as $variantData) {
+                $material->variants()->create([
+                    'name'          => $variantData['name'],
+                    'stock'         => $variantData['stock'] ?? 0,
+                    'minimum_stock' => $variantData['minimum_stock'] ?? 0,
+                ]);
+            }
+        }
 
         return redirect()
             ->route('master.material.index')
@@ -85,7 +104,7 @@ class MaterialController extends Controller
 
     public function edit($id)
     {
-        $data = MMaterial::findOrFail($id);
+        $data = MMaterial::with('variants')->findOrFail($id);
 
         return inertia('master/material/Edit', [
             'data'  => $data,
@@ -101,11 +120,54 @@ class MaterialController extends Controller
         $validated = $request->validate([
             'cafe_id'        => 'required|exists:m_cafes,id',
             'name'           => 'required|string|max:255',
+            'type'           => 'required|in:normal,selectable',
             'base_unit_id'   => 'required|exists:m_units,id',
             'critical_stock' => 'nullable|numeric|min:0',
+            'variants'       => 'nullable|array',
+            'variants.*.id'  => 'nullable|exists:material_variants,id',
+            'variants.*.name'=> 'required_if:type,selectable|string|max:255',
+            'variants.*.stock'=> 'required_if:type,selectable|numeric|min:0',
+            'variants.*.minimum_stock'=> 'nullable|numeric|min:0',
         ]);
 
-        $material->update($validated);
+        $material->update([
+            'cafe_id'        => $validated['cafe_id'],
+            'name'           => $validated['name'],
+            'type'           => $validated['type'],
+            'base_unit_id'   => $validated['base_unit_id'],
+            'critical_stock' => $validated['critical_stock'] ?? 0,
+        ]);
+
+        if ($validated['type'] === 'selectable') {
+            $existingVariantIds = [];
+            if (!empty($validated['variants'])) {
+                foreach ($validated['variants'] as $variantData) {
+                    if (!empty($variantData['id'])) {
+                        $variant = $material->variants()->find($variantData['id']);
+                        if ($variant) {
+                            $variant->update([
+                                'name'          => $variantData['name'],
+                                'stock'         => $variantData['stock'] ?? 0,
+                                'minimum_stock' => $variantData['minimum_stock'] ?? 0,
+                            ]);
+                            $existingVariantIds[] = $variant->id;
+                        }
+                    } else {
+                        $newVariant = $material->variants()->create([
+                            'name'          => $variantData['name'],
+                            'stock'         => $variantData['stock'] ?? 0,
+                            'minimum_stock' => $variantData['minimum_stock'] ?? 0,
+                        ]);
+                        $existingVariantIds[] = $newVariant->id;
+                    }
+                }
+            }
+            // Delete variants that were removed
+            $material->variants()->whereNotIn('id', $existingVariantIds)->delete();
+        } else {
+            // If type changed back to normal, delete all variants
+            $material->variants()->delete();
+        }
 
         return redirect()
             ->route('master.material.index')
