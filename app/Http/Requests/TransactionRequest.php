@@ -31,6 +31,9 @@ class TransactionRequest extends FormRequest
             'details.*.menu_id' => ['required', 'exists:m_menus,id'],
             'details.*.amount' => ['required', 'integer', 'min:1'],
             'details.*.description' => ['nullable', 'string'],
+            'details.*.selected_variants' => ['nullable', 'array'],
+            'details.*.selected_variants.*.material_id' => ['required_with:details.*.selected_variants', 'integer'],
+            'details.*.selected_variants.*.variant_id' => ['required_with:details.*.selected_variants', 'integer'],
             'promo_code' => ['nullable', 'string']
         ];
     }
