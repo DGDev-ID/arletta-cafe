@@ -20,7 +20,7 @@ class XenditService
         Configuration::setXenditKey(config('services.xendit.secret_key'));
         
         try {
-            $minutesToExpire = 1;
+            $minutesToExpire = 5;
             $expiredAt = now()->addMinutes($minutesToExpire);
 
             $result = Http::withBasicAuth(
