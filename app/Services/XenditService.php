@@ -18,9 +18,10 @@ class XenditService
     public static function createQr(Transaction $transaction)
     {
         Configuration::setXenditKey(config('services.xendit.secret_key'));
-
+        
         try {
             $minutesToExpire = 1;
+            $expiredAt = now()->addMinutes($minutesToExpire);
 
             $result = Http::withBasicAuth(
                 config('services.xendit.secret_key'),
@@ -31,11 +32,11 @@ class XenditService
                 'currency' => 'IDR',
                 'amount' => (float) $transaction->total_price,
 
-                'expires_at' => now()->addMinutes($minutesToExpire)->toIso8601String(),
+                'expires_at' => $expiredAt->toIso8601String(),
 
                 'callback_url' => config('services.xendit.webhook_url'),
             ]);
-            MakeFailedTransactionIfExpired::dispatch($transaction->id)->delay(now()->addMinutes($minutesToExpire));
+            MakeFailedTransactionIfExpired::dispatch($transaction->id)->delay($expiredAt);
 
             Log::info('Xendit QR Creation Result', [
                 'transaction_id' => $transaction->id,
@@ -58,6 +59,7 @@ class XenditService
                 'qr_string' => $qrString,
                 'amount' => $transaction->total_price,
                 'status' => $data['status'],
+                'expires_at' => $expiredAt
             ];
         } catch (\Exception $e) {
 

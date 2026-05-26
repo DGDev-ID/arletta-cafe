@@ -24,6 +24,7 @@ class TransactionController extends ApiBaseController
             $transaction = TransactionService::makeTransaction($validated);
             TransactionService::pendingAction($transaction);
 
+            $qrResult = null;
             if ($transaction->payment_type === 'qris') {
                 $qrResult = XenditService::createQr($transaction);
                 if (!$qrResult) {
@@ -56,6 +57,7 @@ class TransactionController extends ApiBaseController
             ];
             if ($transaction->payment_type === 'qris') {
                 $dataSend['snap_token'] = $transaction->snap_token;
+                $dataSend['expired_at'] = $qrResult['expires_at'];
             }
 
             if ($transaction->payment_type === 'manual') {
