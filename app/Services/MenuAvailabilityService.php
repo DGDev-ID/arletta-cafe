@@ -33,23 +33,15 @@ class MenuAvailabilityService
             if ($material->type === 'selectable') {
                 // If selected variant provided for this material, check variant stock
                 $variantEntry = collect($selectedVariants)->first(fn($v) => $v['material_id'] == $material->id);
-                if ($variantEntry) {
-                    $variant = \App\Models\MaterialVariant::find($variantEntry['variant_id']);
-                    if (!$variant) return false;
-                    if ((float) $variant->stock < $totalMaterialNeeded) return false;
-                } else {
-                    // No variant selected (landing page / anonymous view):
-                    // consider menu available if at least one variant has sufficient stock
-                    $variants = $material->relationLoaded('variants') ? $material->variants : \App\Models\MaterialVariant::where('material_id', $material->id)->get();
-                    $hasEnough = false;
-                    foreach ($variants as $v) {
-                        if ((float) $v->stock >= $totalMaterialNeeded) {
-                            $hasEnough = true;
-                            break;
-                        }
-                    }
-                    if (!$hasEnough) return false;
+                if (!$variantEntry) {
+                    // No selection – treat as unavailable
+                    return false;
                 }
+
+                $variant = \App\Models\MaterialVariant::find($variantEntry['variant_id']);
+                if (!$variant) return false;
+
+                if ((float) $variant->stock < $totalMaterialNeeded) return false;
             } else {
                 if ((float) $material->stock < $totalMaterialNeeded) return false;
             }
@@ -147,17 +139,16 @@ class MenuAvailabilityService
                 $needed = $convertedAmount * $quantity;
 
                 if ($material->type === 'selectable') {
-                    // If user selected a variant for this item, aggregate per-variant
+                    // Aggregate per-variant if selection provided
                     $selectedVariants = $item['selected_variants'] ?? [];
                     $variantEntry = collect($selectedVariants)->first(fn($v) => $v['material_id'] == $material->id);
-                    if ($variantEntry) {
+                    if (!$variantEntry) {
+                        // No selected variant — mark unavailable
+                        $materialToMenuNames[$material->id][] = $menu->name;
+                        $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed; // fallback to parent check later
+                    } else {
                         $variantId = $variantEntry['variant_id'];
                         $variantNeeds[$variantId] = ($variantNeeds[$variantId] ?? 0) + $needed;
-                        $materialToMenuNames[$material->id][] = $menu->name;
-                    } else {
-                        // No selected variant: treat as available if any single variant can fulfil the aggregated need later.
-                        // We still record the parent need so parent-level fallback check can mark unavailable if no variant able.
-                        $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed;
                         $materialToMenuNames[$material->id][] = $menu->name;
                     }
                 } else {
