@@ -12,7 +12,6 @@ class MenuAvailabilityService
 {
     public function checkAvailableMenu(MMenu $menu, int $quantity, array $selectedVariants = []): bool
     {
-        // --- Cek MenuMaterial (raw material langsung) ---
         $menuMaterials = MenuMaterial::where('menu_id', $menu->id)->get();
 
         foreach ($menuMaterials as $menuMaterial) {
@@ -22,32 +21,44 @@ class MenuAvailabilityService
                 return false;
             }
 
-            $convertedMenuMaterialQuantity = $this->convertToBase($material, $menuMaterial->amount, $menuMaterial->unit_id);
+            $convertedAmount = $this->convertToBase($material, $menuMaterial->amount, $menuMaterial->unit_id);
 
-            if ($convertedMenuMaterialQuantity === null) {
+            if ($convertedAmount === null) {
                 return false;
             }
 
-            $totalMaterialNeeded = $convertedMenuMaterialQuantity * $quantity;
+            $totalNeeded = $convertedAmount * $quantity;
 
             if ($material->type === 'selectable') {
-                // If selected variant provided for this material, check variant stock
-                $variantEntry = collect($selectedVariants)->first(fn($v) => $v['material_id'] == $material->id);
-                if (!$variantEntry) {
-                    // No selection – treat as unavailable
+                // Jika ada selected variant (dari checkout/check), validasi variant spesifik
+                $variantEntry = collect($selectedVariants)
+                    ->first(fn($v) => $v['material_id'] == $material->id);
+
+                if ($variantEntry) {
+                    // Cek stok variant yang dipilih
+                    $variant = \App\Models\MaterialVariant::find($variantEntry['variant_id']);
+                    if (!$variant || (float) $variant->stock < $totalNeeded) {
+                        return false;
+                    }
+                } else {
+                    // Tidak ada selection (filter awal untuk tampilkan menu):
+                    // Cukup pastikan ada minimal 1 variant yang stoknya cukup
+                    $hasAvailableVariant = $material->variants()
+                        ->where('stock', '>=', $totalNeeded)
+                        ->exists();
+
+                    if (!$hasAvailableVariant) {
+                        return false;
+                    }
+                }
+            } else {
+                if ((float) $material->stock < $totalNeeded) {
                     return false;
                 }
-
-                $variant = \App\Models\MaterialVariant::find($variantEntry['variant_id']);
-                if (!$variant) return false;
-
-                if ((float) $variant->stock < $totalMaterialNeeded) return false;
-            } else {
-                if ((float) $material->stock < $totalMaterialNeeded) return false;
             }
         }
 
-        // --- Cek MenuSemiFinishedMaterial (expand SFM ke raw material) ---
+        // --- Cek MenuSemiFinishedMaterial ---
         $menuSfms = MenuSemiFinishedMaterial::where('menu_id', $menu->id)
             ->with('semiFinishedMaterial.details')
             ->get();
@@ -68,21 +79,6 @@ class MenuAvailabilityService
                     return false;
                 }
 
-                // if ($material->base_unit_id !== $detail->unit_id) {
-                //     $converter = UnitMaterialConverter::where('material_id', $material->id)
-                //         ->where('from_unit_id', $detail->unit_id)
-                //         ->where('to_unit_id', $material->base_unit_id)
-                //         ->first();
-
-                //     if (!$converter) {
-                //         return false;
-                //     }
-
-                //     $convertedAmount = (float) $detail->amount * (float) $converter->multiplier;
-                // } else {
-                //     $convertedAmount = (float) $detail->amount;
-                // }
-
                 $totalNeeded = $convertedAmount * $multiplier * $quantity;
 
                 if ((float) $material->stock < $totalNeeded) {
@@ -96,25 +92,18 @@ class MenuAvailabilityService
 
     /**
      * Cek ketersediaan material untuk banyak menu sekaligus.
-     * Material yang sama dari menu yang berbeda di-aggregate terlebih dahulu
-     * sebelum dibandingkan dengan stok, untuk menghindari false-positive.
-     *
-     * @param  array<int, array{menu: MMenu, quantity: int}>  $items
-     * @return array<string>  Nama menu yang tidak bisa dipenuhi (kosong = semua tersedia)
      */
     public function checkAvailableMenus(array $items): array
     {
-        // Agregasi total kebutuhan per material_id (dalam base unit)
-        // Format: [material_id => total_needed_in_base_unit]
-        $aggregatedNeeds = [];
-
-        // Simpan mapping material_id -> nama menu yang membutuhkan (untuk pesan error)
+        $aggregatedNeeds  = [];
+        $variantNeeds     = [];
         $materialToMenuNames = [];
 
         foreach ($items as $item) {
             /** @var MMenu $menu */
             $menu     = $item['menu'];
             $quantity = $item['quantity'];
+            $selectedVariants = $item['selected_variants'] ?? [];
 
             // --- Aggregate dari MenuMaterial ---
             $menuMaterials = MenuMaterial::where('menu_id', $menu->id)->get();
@@ -133,27 +122,26 @@ class MenuAvailabilityService
                 );
 
                 if ($convertedAmount === null) {
-                    return false;
+                    return [$menu->name];
                 }
 
                 $needed = $convertedAmount * $quantity;
+                $materialToMenuNames[$material->id][] = $menu->name;
 
                 if ($material->type === 'selectable') {
-                    // Aggregate per-variant if selection provided
-                    $selectedVariants = $item['selected_variants'] ?? [];
-                    $variantEntry = collect($selectedVariants)->first(fn($v) => $v['material_id'] == $material->id);
+                    $variantEntry = collect($selectedVariants)
+                        ->first(fn($v) => $v['material_id'] == $material->id);
+
                     if (!$variantEntry) {
-                        // No selected variant — mark unavailable
-                        $materialToMenuNames[$material->id][] = $menu->name;
-                        $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed; // fallback to parent check later
+                        // Tidak ada variant dipilih → tandai tidak tersedia
+                        $aggregatedNeeds["missing_variant_{$material->id}"] = 1;
+                        $materialToMenuNames["missing_variant_{$material->id}"][] = $menu->name;
                     } else {
                         $variantId = $variantEntry['variant_id'];
                         $variantNeeds[$variantId] = ($variantNeeds[$variantId] ?? 0) + $needed;
-                        $materialToMenuNames[$material->id][] = $menu->name;
                     }
                 } else {
                     $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed;
-                    $materialToMenuNames[$material->id][] = $menu->name;
                 }
             }
 
@@ -172,49 +160,48 @@ class MenuAvailabilityService
                         return [$menu->name];
                     }
 
-                    if ($material->base_unit_id !== $detail->unit_id) {
-                        $converter = UnitMaterialConverter::where('material_id', $material->id)
-                            ->where('from_unit_id', $detail->unit_id)
-                            ->where('to_unit_id', $material->base_unit_id)
-                            ->first();
+                    $convertedAmount = $this->convertToBase(
+                        $material,
+                        $detail->amount,
+                        $detail->unit_id
+                    );
 
-                        if (!$converter) {
-                            return [$menu->name];
-                        }
-
-                        $convertedAmount = (float) $detail->amount * (float) $converter->multiplier;
-                    } else {
-                        $convertedAmount = (float) $detail->amount;
+                    if ($convertedAmount === null) {
+                        return [$menu->name];
                     }
 
                     $needed = $convertedAmount * $multiplier * $quantity;
-
                     $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed;
                     $materialToMenuNames[$material->id][] = $menu->name;
                 }
             }
         }
 
-        // Cek stok setelah semua kebutuhan diagregasi
         $unavailableMenuNames = [];
 
-        // Check parent materials
-        foreach ($aggregatedNeeds as $materialId => $totalNeeded) {
-            $material = MMaterial::find($materialId);
+        // Cek stok material normal
+        foreach ($aggregatedNeeds as $key => $totalNeeded) {
+            // Key "missing_variant_X" → langsung tandai unavailable
+            if (str_starts_with((string) $key, 'missing_variant_')) {
+                foreach (($materialToMenuNames[$key] ?? []) as $menuName) {
+                    $unavailableMenuNames[] = $menuName;
+                }
+                continue;
+            }
 
+            $material = MMaterial::find($key);
             if (!$material || (float) $material->stock < $totalNeeded) {
-                foreach ($materialToMenuNames[$materialId] as $menuName) {
+                foreach (($materialToMenuNames[$key] ?? []) as $menuName) {
                     $unavailableMenuNames[] = $menuName;
                 }
             }
         }
 
-        // Check variant needs
+        // Cek stok variant
         foreach ($variantNeeds as $variantId => $totalNeeded) {
             $variant = \App\Models\MaterialVariant::find($variantId);
             if (!$variant || (float) $variant->stock < $totalNeeded) {
-                // find parent material id for mapping
-                $parentId = $variant?->material_id ?? null;
+                $parentId = $variant?->material_id;
                 if ($parentId && isset($materialToMenuNames[$parentId])) {
                     foreach ($materialToMenuNames[$parentId] as $menuName) {
                         $unavailableMenuNames[] = $menuName;
