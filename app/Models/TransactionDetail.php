@@ -15,11 +15,13 @@ class TransactionDetail extends Model
         'price',
         'description',
         'status',
+        'selected_variants',
     ];
 
     protected function casts(): array
     {
         return [
+            'selected_variants' => 'array',
             'price' => 'decimal:2',
         ];
     }

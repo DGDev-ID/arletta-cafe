@@ -95,6 +95,7 @@ class TransactionService
                     'amount' => $detail['amount'],
                     'price' => $menu->price * $detail['amount'],
                     'description' => $detail['description'] ?? null,
+                    'selected_variants' => $detail['selected_variants'] ?? null,
                 ]);
             }
 
@@ -102,41 +103,106 @@ class TransactionService
         });
     }
 
-    public static function pendingAction(Transaction $transaction)
-    {
-        if ($transaction->status !== 'pending') {
-            throw new \Exception('Only pending transactions can be processed.');
+    // Di method pendingAction, ganti seluruh bagian loop materialRequirements
+// dan tambahkan support variant:
+
+public static function pendingAction(Transaction $transaction)
+{
+    if ($transaction->status !== 'pending') {
+        throw new \Exception('Only pending transactions can be processed.');
+    }
+
+    $transaction->load([
+        'details.menu.menuMaterials.material.variants',
+        'details.menu.menuSemiFinishedMaterials.semiFinishedMaterial.details.material',
+    ]);
+
+    // selected_variants dari payload disimpan di transaction_details
+    // Pastikan kolom selected_variants ada di transaction_details (lihat catatan migration di bawah)
+
+    $materialRequirements = [];
+    $variantRequirements  = []; // variant_id -> total amount
+    $detailMaterialMap    = [];
+
+    foreach ($transaction->details as $detail) {
+        // Parse selected_variants dari detail
+        $selectedVariants = collect($detail->selected_variants ?? [])
+            ->keyBy('material_id'); // material_id -> variant_id
+
+        foreach ($detail->menu->menuMaterials as $menuMaterial) {
+            $material     = $menuMaterial->material;
+            $recipeUnitId = $menuMaterial->unit_id;
+            $baseUnitId   = $material->base_unit_id;
+            $amountNeeded = $menuMaterial->amount * $detail->amount;
+
+            if ($recipeUnitId !== $baseUnitId) {
+                $converter = UnitMaterialConverter::where('material_id', $material->id)
+                    ->where(function ($query) use ($recipeUnitId, $baseUnitId) {
+                        $query->where([
+                            ['from_unit_id', $recipeUnitId],
+                            ['to_unit_id', $baseUnitId]
+                        ])->orWhere([
+                            ['from_unit_id', $baseUnitId],
+                            ['to_unit_id', $recipeUnitId]
+                        ]);
+                    })->first();
+
+                if (!$converter) {
+                    throw new \Exception("Unit converter not found for material: {$material->name}");
+                }
+
+                $amountNeeded = ($converter->from_unit_id == $recipeUnitId)
+                    ? $amountNeeded * $converter->multiplier
+                    : $amountNeeded / $converter->multiplier;
+            }
+
+            if ($material->type === 'selectable') {
+                // Kurangi stok variant, bukan parent
+                $variantData = $selectedVariants->get($material->id);
+                if (!$variantData) {
+                    throw new \Exception("Variant belum dipilih untuk material: {$material->name}");
+                }
+                $variantId = $variantData['variant_id'];
+                $variantRequirements[$variantId] = ($variantRequirements[$variantId] ?? 0) + $amountNeeded;
+
+                $detailMaterialMap[] = [
+                    'transaction_detail_id' => $detail->id,
+                    'material_id'           => $material->id,
+                    'variant_id'            => $variantId,
+                    'amount'                => $amountNeeded,
+                    'base_unit_id'          => $baseUnitId,
+                    'is_variant'            => true,
+                ];
+            } else {
+                $materialRequirements[$material->id] =
+                    ($materialRequirements[$material->id] ?? 0) + $amountNeeded;
+
+                $detailMaterialMap[] = [
+                    'transaction_detail_id' => $detail->id,
+                    'material_id'           => $material->id,
+                    'variant_id'            => null,
+                    'amount'                => $amountNeeded,
+                    'base_unit_id'          => $baseUnitId,
+                    'is_variant'            => false,
+                ];
+            }
         }
 
-        $transaction->load([
-            'details.menu.menuMaterials.material',
-            'details.menu.menuSemiFinishedMaterials.semiFinishedMaterial.details.material',
-        ]);
-
-        $materialRequirements = [];
-        $detailMaterialMap = [];
-
-        foreach ($transaction->details as $detail) {
-            // --- Direct MenuMaterial ---
-            foreach ($detail->menu->menuMaterials as $menuMaterial) {
-
-                $material = $menuMaterial->material;
-                $recipeUnitId = $menuMaterial->unit_id;
-                $baseUnitId = $material->base_unit_id;
-                $amountNeeded = $menuMaterial->amount * $detail->amount;
+        // SemiFinishedMaterial — asumsi tidak selectable (bisa dikembangkan)
+        foreach ($detail->menu->menuSemiFinishedMaterials as $menuSfm) {
+            $multiplier = (float) $menuSfm->multiplier;
+            foreach ($menuSfm->semiFinishedMaterial->details as $sfmDetail) {
+                $material     = $sfmDetail->material;
+                $recipeUnitId = $sfmDetail->unit_id;
+                $baseUnitId   = $material->base_unit_id;
+                $amountNeeded = $sfmDetail->amount * $multiplier * $detail->amount;
 
                 if ($recipeUnitId !== $baseUnitId) {
                     $converter = UnitMaterialConverter::where('material_id', $material->id)
                         ->where(function ($query) use ($recipeUnitId, $baseUnitId) {
-                            $query->where([
-                                ['from_unit_id', $recipeUnitId],
-                                ['to_unit_id', $baseUnitId]
-                            ])->orWhere([
-                                ['from_unit_id', $baseUnitId],
-                                ['to_unit_id', $recipeUnitId]
-                            ]);
-                        })
-                        ->first();
+                            $query->where([['from_unit_id', $recipeUnitId], ['to_unit_id', $baseUnitId]])
+                                  ->orWhere([['from_unit_id', $baseUnitId], ['to_unit_id', $recipeUnitId]]);
+                        })->first();
 
                     if (!$converter) {
                         throw new \Exception("Unit converter not found for material: {$material->name}");
@@ -152,104 +218,80 @@ class TransactionService
 
                 $detailMaterialMap[] = [
                     'transaction_detail_id' => $detail->id,
-                    'material_id' => $material->id,
-                    'amount' => $amountNeeded,
-                    'base_unit_id' => $baseUnitId,
+                    'material_id'           => $material->id,
+                    'variant_id'            => null,
+                    'amount'                => $amountNeeded,
+                    'base_unit_id'          => $baseUnitId,
+                    'is_variant'            => false,
                 ];
             }
+        }
+    }
 
-            // --- SemiFinishedMaterial (expand ke raw material) ---
-            foreach ($detail->menu->menuSemiFinishedMaterials as $menuSfm) {
-                $multiplier = (float) $menuSfm->multiplier;
+    DB::transaction(function () use ($transaction, $materialRequirements, $variantRequirements, $detailMaterialMap) {
 
-                foreach ($menuSfm->semiFinishedMaterial->details as $sfmDetail) {
-                    $material = $sfmDetail->material;
-                    $recipeUnitId = $sfmDetail->unit_id;
-                    $baseUnitId = $material->base_unit_id;
-                    $amountNeeded = $sfmDetail->amount * $multiplier * $detail->amount;
+        // Validasi stok material normal
+        $materials = MMaterial::whereIn('id', array_keys($materialRequirements))
+            ->lockForUpdate()->get()->keyBy('id');
 
-                    if ($recipeUnitId !== $baseUnitId) {
-                        $converter = UnitMaterialConverter::where('material_id', $material->id)
-                            ->where(function ($query) use ($recipeUnitId, $baseUnitId) {
-                                $query->where([
-                                    ['from_unit_id', $recipeUnitId],
-                                    ['to_unit_id', $baseUnitId]
-                                ])->orWhere([
-                                    ['from_unit_id', $baseUnitId],
-                                    ['to_unit_id', $recipeUnitId]
-                                ]);
-                            })
-                            ->first();
-
-                        if (!$converter) {
-                            throw new \Exception("Unit converter not found for material: {$material->name}");
-                        }
-
-                        $amountNeeded = ($converter->from_unit_id == $recipeUnitId)
-                            ? $amountNeeded * $converter->multiplier
-                            : $amountNeeded / $converter->multiplier;
-                    }
-
-                    $materialRequirements[$material->id] =
-                        ($materialRequirements[$material->id] ?? 0) + $amountNeeded;
-
-                    $detailMaterialMap[] = [
-                        'transaction_detail_id' => $detail->id,
-                        'material_id' => $material->id,
-                        'amount' => $amountNeeded,
-                        'base_unit_id' => $baseUnitId,
-                    ];
-                }
+        foreach ($materialRequirements as $materialId => $totalNeeded) {
+            $material = $materials[$materialId];
+            if ($material->stock < $totalNeeded) {
+                $transaction->update(['status' => 'failed']);
+                throw new \Exception(
+                    "Insufficient stock for material: {$material->name}. Required: {$totalNeeded}, Available: {$material->stock}"
+                );
             }
         }
 
-        DB::transaction(function () use ($transaction, $materialRequirements, $detailMaterialMap) {
+        // Validasi stok variant
+        $variants = \App\Models\MaterialVariant::whereIn('id', array_keys($variantRequirements))
+            ->lockForUpdate()->get()->keyBy('id');
 
-            $materials = MMaterial::whereIn('id', array_keys($materialRequirements))
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
-
-            foreach ($materialRequirements as $materialId => $totalNeeded) {
-                $material = $materials[$materialId];
-
-                if ($material->stock < $totalNeeded) {
-                    $transaction->update(['status' => 'failed']);
-
-                    throw new \Exception(
-                        "Insufficient stock for material: {$material->name}. Required: {$totalNeeded}, Available: {$material->stock}"
-                    );
-                }
+        foreach ($variantRequirements as $variantId => $totalNeeded) {
+            $variant = $variants[$variantId];
+            if ($variant->stock < $totalNeeded) {
+                $transaction->update(['status' => 'failed']);
+                throw new \Exception(
+                    "Insufficient stock for variant: {$variant->name}. Required: {$totalNeeded}, Available: {$variant->stock}"
+                );
             }
+        }
 
-            // foreach ($materialRequirements as $materialId => $totalNeeded) {
-            //     $materials[$materialId]->decrement('stock', $totalNeeded);
-            // }
-
-            // Calculate profit margin
-            $totalMaterialCost = 0;
-            foreach ($materialRequirements as $materialId => $totalNeeded) {
-                $material = $materials[$materialId];
+        // Hitung profit margin
+        $totalMaterialCost = 0;
+        foreach ($materialRequirements as $materialId => $totalNeeded) {
+            $material = $materials[$materialId];
+            $totalMaterialCost += $totalNeeded * (float) $material->avg_buy_price;
+        }
+        // Untuk variant, gunakan avg_buy_price parent
+        foreach ($variantRequirements as $variantId => $totalNeeded) {
+            $variant  = $variants[$variantId];
+            $material = $materials[$variant->material_id] ?? MMaterial::find($variant->material_id);
+            if ($material) {
                 $totalMaterialCost += $totalNeeded * (float) $material->avg_buy_price;
             }
+        }
 
-            $transaction->profit_margin = (float) $transaction->total_price - $totalMaterialCost;
-            $transaction->save();
+        $transaction->profit_margin = (float) $transaction->total_price - $totalMaterialCost;
+        $transaction->save();
 
-            foreach ($detailMaterialMap as $record) {
-                MaterialInboundOutbound::create([
-                    'material_id' => $record['material_id'],
-                    'type' => 'outbound',
-                    'amount' => $record['amount'],
-                    'base_unit_id' => $record['base_unit_id'],
-                    'transaction_detail_id' => $record['transaction_detail_id'],
-                    'inbound_buy_price' => null,
-                ]);
-            }
-        });
+        // Catat outbound; MaterialInboundOutbound boot handler akan mengupdate stok
+        foreach ($detailMaterialMap as $record) {
+            MaterialInboundOutbound::create([
+                'material_id'           => $record['material_id'],
+                'type'                  => 'outbound',
+                'amount'                => $record['amount'],
+                'base_unit_id'          => $record['base_unit_id'],
+                'transaction_detail_id' => $record['transaction_detail_id'],
+                'inbound_buy_price'     => null,
+                'variant_id'            => $record['variant_id'] ?? null,
+            ]);
+        }
+    });
 
-        return true;
-    }
+    return true;
+}
 
     public static function makeSuccess(Transaction $transaction)
     {

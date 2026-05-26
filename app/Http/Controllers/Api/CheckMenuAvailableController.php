@@ -17,12 +17,16 @@ class CheckMenuAvailableController extends ApiBaseController
         $request->validate([
             'menu_id'  => ['required', 'integer', 'exists:m_menus,id'],
             'quantity' => ['required', 'integer', 'min:1'],
+            'selected_variants' => ['nullable', 'array'],
+            'selected_variants.*.material_id' => ['required_with:selected_variants', 'integer'],
+            'selected_variants.*.variant_id' => ['required_with:selected_variants', 'integer'],
         ]);
 
         $menu     = MMenu::find($request->integer('menu_id'));
         $quantity = $request->integer('quantity');
 
-        $isAvailable = $this->menuAvailabilityService->checkAvailableMenu($menu, $quantity);
+    $selectedVariants = $request->input('selected_variants', []);
+    $isAvailable = $this->menuAvailabilityService->checkAvailableMenu($menu, $quantity, $selectedVariants);
 
         if (!$isAvailable) {
             return $this->clientError(

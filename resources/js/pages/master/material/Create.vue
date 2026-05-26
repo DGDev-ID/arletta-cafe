@@ -8,10 +8,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 interface CafeOption { id: number; name: string; }
 interface UnitOption { id: number; name: string; }
 
-defineProps<{
-    cafes: CafeOption[];
-    units: UnitOption[];
-}>();
+defineProps<{ cafes: CafeOption[]; units: UnitOption[]; }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Material', href: '/master/material' },
@@ -21,8 +18,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 const form = useForm({
     cafe_id: '' as number | '',
     name: '',
+    type: 'normal' as 'normal' | 'selectable',
     base_unit_id: '' as number | '',
     critical_stock: '' as number | '',
+    variants: [] as { id?: number | null; name: string; stock: number | ''; minimum_stock: number | '' }[],
 });
 
 const submit = () => form.post('/master/material');
@@ -31,21 +30,15 @@ const submit = () => form.post('/master/material');
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head title="Tambah Material" />
-
         <div class="min-h-screen bg-muted/40 py-10">
             <div class="max-w-7xl mx-auto px-6 space-y-8">
-
                 <div class="flex items-center justify-between">
                     <Heading variant="small" title="Tambah Material" description="Isi data material baru yang akan ditambahkan." />
-                    <Link href="/master/material" class="text-sm text-muted-foreground hover:text-foreground transition">
-                        ← Kembali
-                    </Link>
+                    <Link href="/master/material" class="text-sm text-muted-foreground hover:text-foreground transition">← Kembali</Link>
                 </div>
-
                 <div class="rounded-2xl border bg-background shadow-sm p-8">
                     <MaterialForm :form="form" :cafes="cafes" :units="units" submit-label="Simpan Material" @submit="submit" />
                 </div>
-
             </div>
         </div>
     </AppLayout>

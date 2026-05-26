@@ -38,9 +38,9 @@ class GetMenuCafeTableController extends ApiBaseController
             $availabilityService = new MenuAvailabilityService();
 
             $menuCategories = MMenuCategory::with([
-                'menus.menuMaterials',
+                'menus.menuMaterials.material.variants',
                 'menus.menuSemiFinishedMaterials.semiFinishedMaterial.details',
-                'children.menus.menuMaterials',
+                'children.menus.menuMaterials.material.variants',
                 'children.menus.menuSemiFinishedMaterials.semiFinishedMaterial.details',
             ])
                 ->where('cafe_id', $cafe->id)
@@ -78,6 +78,35 @@ class GetMenuCafeTableController extends ApiBaseController
                 ->where('status', 'pending')
                 ->orderBy('id', 'desc')
                 ->first();
+            
+            $transformMenu = function ($menu) {
+    $selectableMaterials = $menu->menuMaterials
+        ->filter(fn($mm) => $mm->material->type === 'selectable')
+        ->map(fn($mm) => [
+            'material_id'   => $mm->material->id,
+            'material_name' => $mm->material->name,
+            'variants'      => $mm->material->variants
+                ->map(fn($v) => [
+                    'id'            => $v->id,
+                    'material_id'   => $v->material_id,
+                    'name'          => $v->name,
+                    'stock'         => $v->stock,
+                    'minimum_stock' => $v->minimum_stock,
+                ])->values(),
+        ])->values();
+
+    $menu->selectable_materials = $selectableMaterials;
+    return $menu;
+};
+
+$menuCategories->each(function ($category) use ($transformMenu) {
+    $category->menus->each($transformMenu);
+    if ($category->relationLoaded('children')) {
+        $category->children->each(function ($child) use ($transformMenu) {
+            $child->menus->each($transformMenu);
+        });
+    }
+});
 
             return $this->success([
                 'cafe' => $cafe,
