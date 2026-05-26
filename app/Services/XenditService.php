@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
+use App\Jobs\MakeFailedTransactionIfExpired;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Xendit\Configuration;
-use Xendit\PaymentRequest\PaymentRequestApi;
-use Xendit\PaymentRequest\PaymentRequestParameters;
 
 class XenditService
 {
@@ -19,55 +19,45 @@ class XenditService
     {
         Configuration::setXenditKey(config('services.xendit.secret_key'));
 
-        $apiInstance = new PaymentRequestApi();
-
         try {
+            $minutesToExpire = 1;
 
-            $params = new PaymentRequestParameters([
-                'reference_id' => $transaction->unique_code,
-                'amount' => (float) $transaction->total_price,
+            $result = Http::withBasicAuth(
+                config('services.xendit.secret_key'),
+                ''
+            )->post('https://api.xendit.co/qr_codes', [
+                'external_id' => $transaction->unique_code,
+                'type' => 'DYNAMIC',
                 'currency' => 'IDR',
-                'description' => 'Pembayaran ' . $transaction->transaction_type,
+                'amount' => (float) $transaction->total_price,
 
-                'payment_method' => [
-                    'type' => 'QR_CODE',
-                    'reusability' => 'ONE_TIME_USE',
+                'expires_at' => now()->addMinutes($minutesToExpire)->toIso8601String(),
 
-                    'qr_code' => [
-                        'channel_code' => 'QRIS',
-                    ],
-                ],
+                'callback_url' => config('services.xendit.webhook_url'),
             ]);
+            MakeFailedTransactionIfExpired::dispatch($transaction->id)->delay(now()->addMinutes($minutesToExpire));
 
-            $result = $apiInstance->createPaymentRequest(
-                $transaction->unique_code,
-                null,
-                null,
-                $params
-            );
             Log::info('Xendit QR Creation Result', [
                 'transaction_id' => $transaction->id,
-                'xendit_response' => $result
+                'xendit_response' => $result->json()
             ]);
 
-            // ambil QR string dari response
-            $qrString = $result
-                ->getPaymentMethod()
-                ->getQrCode()
-                ->getChannelProperties()
-                ->getQrString();
+            $data = $result->json();
 
-            $transaction->midtrans_transaction_id = $result->getId();
+            // ambil QR string dari response
+            $qrString = $data['qr_string'] ?? null;
+
+            $transaction->midtrans_transaction_id = $data['id'];
             $transaction->snap_token = $qrString;
             $transaction->status = 'pending';
             $transaction->save();
 
             return [
-                'id' => $result->getId(),
+                'id' => $data['id'],
                 'reference_id' => $transaction->unique_code,
                 'qr_string' => $qrString,
                 'amount' => $transaction->total_price,
-                'status' => $result->getStatus(),
+                'status' => $data['status'],
             ];
         } catch (\Exception $e) {
 
@@ -89,29 +79,31 @@ class XenditService
             return true;
         }
 
-        if ($payload['event'] != "payment.succeeded") {
+        if ($payload['event'] != "qr.payment") {
             Log::info('Xendit Webhook: Ignored event type', ['event' => $payload['event']]);
             return true;
         }
 
-        // 2. Ambil data dari payload (Xendit v7 biasanya nested di "data")
-        $data = $payload['data'] ?? $payload;
+        // // 2. Ambil data dari payload (Xendit v7 biasanya nested di "data")
+        // $data = $payload['data'] ?? $payload;
 
-        $xendit_transaction_id = $data['payment_request_id'] ?? null;
-        $referenceId = $data['reference_id'] ?? null;
-        $status = $data['status'] ?? null;
-        $paymentId = $data['id'] ?? null;
+        // $xendit_transaction_id = $data['payment_request_id'] ?? null;
+        // $referenceId = $data['reference_id'] ?? null;
+        // $status = $data['status'] ?? null;
+        // $paymentId = $data['id'] ?? null;
+        $referenceId = $payload['qr_code']['external_id'] ?? null;
+        $status = $payload['status'] ?? null;
 
         if (!$referenceId) {
             Log::warning('Xendit Webhook: Missing reference_id', $payload);
             return true;
         }
 
-        $transaction = Transaction::where('midtrans_transaction_id', $xendit_transaction_id)->first();
+        $transaction = Transaction::where('unique_code', $referenceId)->first();
 
         if (!$transaction) {
             Log::warning('Xendit Webhook: Transaction not found', [
-                'xendit_transaction_id' => $xendit_transaction_id,
+                'reference_id' => $referenceId,
             ]);
             return true;
         }
@@ -120,6 +112,7 @@ class XenditService
         switch ($status) {
 
             case 'SUCCEEDED':
+            case 'COMPLETED':
             case 'PAID':
                 $transaction->update([
                     'status' => 'success',
