@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Dashboard\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\MaterialInboundOutbound;
+use App\Models\MaterialVariant;
 use App\Models\MCafe;
+use App\Models\MMaterial;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Services\TransactionService;
@@ -64,9 +66,43 @@ class HistoryTransactionController extends Controller
             ])
             ->findOrFail($id);
 
+        // Enrich selected_variants for each detail with names from DB
+        $transaction->details->each(function ($detail) {
+            $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
+        });
+
         return Inertia::render('transaction/history/Show', [
             'transaction' => $transaction,
         ]);
+    }
+
+    /**
+     * Enrich selected_variants array with material_name and variant_name
+     * from the database, resolving entries that only have IDs.
+     */
+    private function enrichSelectedVariants(array $variants): array
+    {
+        if (empty($variants)) return $variants;
+
+        $variantIds  = collect($variants)->pluck('variant_id')->filter()->unique()->values()->all();
+        $materialIds = collect($variants)->pluck('material_id')->filter()->unique()->values()->all();
+
+        $variantMap  = MaterialVariant::whereIn('id', $variantIds)->get()->keyBy('id');
+        $materialMap = MMaterial::whereIn('id', $materialIds)->get(['id', 'name'])->keyBy('id');
+
+        return collect($variants)->map(function ($sv) use ($variantMap, $materialMap) {
+            $variantId  = $sv['variant_id']  ?? null;
+            $materialId = $sv['material_id'] ?? null;
+
+            if (empty($sv['variant_name']) && $variantId && isset($variantMap[$variantId])) {
+                $sv['variant_name'] = $variantMap[$variantId]->name;
+            }
+            if (empty($sv['material_name']) && $materialId && isset($materialMap[$materialId])) {
+                $sv['material_name'] = $materialMap[$materialId]->name;
+            }
+
+            return $sv;
+        })->values()->all();
     }
 
     public function export(Request $request)

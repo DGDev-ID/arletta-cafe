@@ -413,6 +413,12 @@ const printReceiptInline = async (id: number) => {
             enc((d.menu?.name || '-').substring(0, PRINT_WIDTH) + '\n');
             const qtyPrice = `${d.amount}x${printNumber(Number(d.menu?.price ?? 0))}`;
             enc(printPadRight(qtyPrice, printNumber(Number(d.price))) + '\n');
+            if (d.selected_variants && d.selected_variants.length > 0) {
+                d.selected_variants.forEach((sv: any) => {
+                    const label = sv.material_name ? sv.material_name + ': ' + (sv.variant_name || '-') : (sv.variant_name || '-');
+                    enc('  [' + label + ']\n');
+                });
+            }
             if (d.description) enc(' ' + d.description + '\n');
         });
         enc(PRINT_LINE + '\n');
