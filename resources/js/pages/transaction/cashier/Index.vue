@@ -69,6 +69,7 @@ interface Transaction {
     payment_type: string;
     cafe: Cafe;
     table: { id: number; name: string } | null;
+    is_promo: boolean;
 }
 
 interface SelectedVariant {
@@ -86,6 +87,7 @@ interface TransactionDetailItem {
         table?: { id: number; name: string } | null;
         cust_name?: string | null;
         payment_type?: string | null;
+        is_promo?: boolean;
     };
     menu?: { id: number; name: string } | null;
     amount: number;
