@@ -153,7 +153,7 @@ class XenditService
         Log::info('Xendit Webhook Processed', [
             'reference_id' => $referenceId,
             'status' => $status,
-            'payment_id' => $paymentId
+            // 'payment_id' => $paymentId
         ]);
 
         return true;
