@@ -55,6 +55,25 @@ const playBeep = () => {
     }, 300);
 };
 
+// Beep berbeda (lebih tinggi) untuk notifikasi in_order QRIS
+const playBeepQris = () => {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const freqs = [800, 1000, 1200];
+    freqs.forEach((freq, i) => {
+        setTimeout(() => {
+            const osc = audioCtx!.createOscillator();
+            const gain = audioCtx!.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx!.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.value = 0.3;
+            osc.start();
+            osc.stop(audioCtx!.currentTime + 0.2);
+        }, i * 250);
+    });
+};
+
 interface Cafe {
     id: number;
     name: string;
@@ -164,8 +183,6 @@ let prevInOrderIds = new Set(props.inOrderTransactions.map(t => t.id));
 let prevOpenBillIds = new Set((props.openBillPendingTransactions || []).map((t: any) => t.id));
 let prevOpenBillDetailIds = new Set((props.openBillPendingDetails || []).map((d: any) => d.id));
 
-// Maps to resolve context (table/menu) for new items
-
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 const makeSuccessInOrder = (id: number) => {
@@ -194,7 +211,6 @@ const toggleOpenBillDetailSelection = (id: number) => {
         selectedOpenBillDetailIds.value = selectedOpenBillDetailIds.value.filter((selectedId) => selectedId !== id);
         return;
     }
-
     selectedOpenBillDetailIds.value = [...selectedOpenBillDetailIds.value, id];
 };
 
@@ -203,7 +219,6 @@ const toggleSelectAllOpenBillDetails = () => {
         selectedOpenBillDetailIds.value = [];
         return;
     }
-
     selectedOpenBillDetailIds.value = props.openBillPendingDetails.map((d) => d.id);
 };
 
@@ -234,15 +249,11 @@ const sendToRawBT = (bytes: number[]) => {
 };
 
 const buildLogoBytes = async (): Promise<number[]> => {
-    const PRINTER_DOT_WIDTH = 576; // 80mm
+    const PRINTER_DOT_WIDTH = 576;
     const LOGO_RENDER_WIDTH = 200;
 
     try {
-        // Fetch via same-origin proxy to avoid cross-origin CORS error
-        const response = await axios.get(
-            '/proxy/logo',
-            { responseType: 'blob' }
-        );
+        const response = await axios.get('/proxy/logo', { responseType: 'blob' });
         const objectUrl = URL.createObjectURL(response.data);
 
         return await new Promise<number[]>((resolve) => {
@@ -290,7 +301,7 @@ const buildLogoBytes = async (): Promise<number[]> => {
             img.src = objectUrl;
         });
     } catch {
-        return []; // skip logo if fetch fails
+        return [];
     }
 };
 
@@ -301,13 +312,13 @@ const printDetailReceiptInline = async (detailId: number) => {
         const encoder = new TextEncoder();
         const enc = (text: string) => bytes.push(...encoder.encode(text));
 
-        bytes.push(0x1B, 0x40); // init
+        bytes.push(0x1B, 0x40);
         bytes.push(...await buildLogoBytes());
-        bytes.push(0x1B, 0x61, 0x01); // center
+        bytes.push(0x1B, 0x61, 0x01);
         enc('\n');
         enc((detail.transaction?.cafe?.name || 'CAFE') + '\n');
         enc(PRINT_LINE + '\n');
-        bytes.push(0x1B, 0x61, 0x00); // left
+        bytes.push(0x1B, 0x61, 0x00);
         enc('No: #' + detail.transaction?.id + '\n');
         enc('Cust: ' + (detail.transaction?.cust_name || '-') + '\n');
         if (detail.transaction?.table) enc('Table: ' + detail.transaction.table.name + '\n');
@@ -322,10 +333,10 @@ const printDetailReceiptInline = async (detailId: number) => {
         }
         if (detail.description) enc(detail.description + '\n');
         enc(PRINT_LINE + '\n');
-        bytes.push(0x1B, 0x61, 0x01); // center
+        bytes.push(0x1B, 0x61, 0x01);
         enc('Terima kasih\n');
-        bytes.push(0x1B, 0x64, 0x05); // feed 5 lines
-        bytes.push(0x1D, 0x56, 0x41, 0x00); // cut
+        bytes.push(0x1B, 0x64, 0x05);
+        bytes.push(0x1D, 0x56, 0x41, 0x00);
         sendToRawBT(bytes);
     } catch (e: any) {
         console.error(e);
@@ -352,14 +363,14 @@ const printSelectedDetailReceiptsInline = async () => {
         const encoder = new TextEncoder();
         const enc = (text: string) => bytes.push(...encoder.encode(text));
 
-        bytes.push(0x1B, 0x40); // init
+        bytes.push(0x1B, 0x40);
         bytes.push(...await buildLogoBytes());
-        bytes.push(0x1B, 0x61, 0x01); // center
+        bytes.push(0x1B, 0x61, 0x01);
         enc('\n');
         enc((details[0]?.transaction?.cafe?.name || 'CAFE') + '\n');
         enc('OPEN BILL - BULK ITEM\n');
         enc(PRINT_LINE + '\n');
-        bytes.push(0x1B, 0x61, 0x00); // left
+        bytes.push(0x1B, 0x61, 0x00);
         details.forEach((detail, index) => {
             enc((index + 1) + '. ' + (detail.menu?.name || '-') + '\n');
             enc('No: #' + (detail.transaction?.id || '-') + '\n');
@@ -375,10 +386,10 @@ const printSelectedDetailReceiptsInline = async () => {
             if (detail.description) enc(detail.description + '\n');
             enc(PRINT_LINE + '\n');
         });
-        bytes.push(0x1B, 0x61, 0x01); // center
+        bytes.push(0x1B, 0x61, 0x01);
         enc('Terima kasih\n');
-        bytes.push(0x1B, 0x64, 0x05); // feed
-        bytes.push(0x1D, 0x56, 0x41, 0x00); // cut
+        bytes.push(0x1B, 0x64, 0x05);
+        bytes.push(0x1D, 0x56, 0x41, 0x00);
         sendToRawBT(bytes);
     } catch (e: any) {
         console.error(e);
@@ -395,16 +406,16 @@ const printReceiptInline = async (id: number) => {
         const encoder = new TextEncoder();
         const enc = (text: string) => bytes.push(...encoder.encode(text));
 
-        bytes.push(0x1B, 0x40); // init
+        bytes.push(0x1B, 0x40);
         bytes.push(...await buildLogoBytes());
-        bytes.push(0x1B, 0x61, 0x01); // center
-        bytes.push(0x1B, 0x45, 0x01); // bold on
+        bytes.push(0x1B, 0x61, 0x01);
+        bytes.push(0x1B, 0x45, 0x01);
         enc('\n');
         enc((trx.cafe?.name || 'CAFE') + '\n');
-        bytes.push(0x1B, 0x45, 0x00); // bold off
+        bytes.push(0x1B, 0x45, 0x00);
         if (trx.cafe?.address) enc(trx.cafe.address + '\n');
         enc(PRINT_LINE + '\n');
-        bytes.push(0x1B, 0x61, 0x00); // left
+        bytes.push(0x1B, 0x61, 0x00);
         enc(printPadRight('No', '#' + trx.id) + '\n');
         enc(printPadRight('Tgl', fmtDate(trx.updated_at)) + '\n');
         enc(printPadRight('Cust', trx.cust_name || '-') + '\n');
@@ -427,18 +438,18 @@ const printReceiptInline = async (id: number) => {
         enc(printPadRight('Subtotal', printNumber(Number(trx.price))) + '\n');
         enc(printPadRight('Fee', printNumber(Number(trx.fee))) + '\n');
         enc(PRINT_LINE + '\n');
-        bytes.push(0x1B, 0x45, 0x01); // bold on
+        bytes.push(0x1B, 0x45, 0x01);
         if (trx.promo_id) {
             const promo = Number(trx.price) + Number(trx.fee) - Number(trx.total_price);
             enc(printPadRight('Discount', '-' + printNumber(Number(promo))) + '\n');
         }
         enc(printPadRight('TOTAL', printNumber(Number(trx.total_price))) + '\n');
-        bytes.push(0x1B, 0x45, 0x00); // bold off
+        bytes.push(0x1B, 0x45, 0x00);
         enc(PRINT_LINE + '\n');
-        bytes.push(0x1B, 0x61, 0x01); // center
+        bytes.push(0x1B, 0x61, 0x01);
         enc('Terima kasih\n');
-        bytes.push(0x1B, 0x64, 0x05); // feed 5 lines
-        bytes.push(0x1D, 0x56, 0x41, 0x00); // cut
+        bytes.push(0x1B, 0x64, 0x05);
+        bytes.push(0x1D, 0x56, 0x41, 0x00);
         sendToRawBT(bytes);
     } catch (e: any) {
         console.error(e);
@@ -456,26 +467,49 @@ onMounted(() => {
             preserveState: true,
             preserveScroll: true,
             onSuccess: () => {
-                const newPendingIds = new Set(props.pendingTransactions.map(t => t.id));
-                const newInOrderIds = new Set(props.inOrderTransactions.map(t => t.id));
-                const newOpenBillIds = new Set((props.openBillPendingTransactions || []).map((t: any) => t.id));
+                const newPendingIds     = new Set(props.pendingTransactions.map(t => t.id));
+                const newInOrderIds     = new Set(props.inOrderTransactions.map(t => t.id));
+                const newOpenBillIds    = new Set((props.openBillPendingTransactions || []).map((t: any) => t.id));
                 const newOpenBillDetailIds = new Set((props.openBillPendingDetails || []).map((d: any) => d.id));
 
-                // New pending manual transactions
+                // ── Pending baru (manual atau QRIS belum dikonfirmasi) ──────
                 const newPending = props.pendingTransactions.filter(t => !prevPendingIds.has(t.id));
                 if (newPending.length > 0) {
                     playBeep();
                     newPending.forEach(t => {
-                        const table = t.table?.name;
+                        const table    = t.table?.name;
+                        const isQris   = t.payment_type?.toLowerCase() === 'qris';
+                        const payLabel = isQris ? ' via QRIS' : '';
                         const msg = table
-                            ? `Pesanan baru masuk dari meja ${table}`
-                            : `Pesanan baru masuk`;
+                            ? `Pesanan baru masuk dari meja ${table}${payLabel}`
+                            : `Pesanan baru masuk${payLabel}`;
                         notyf.success(msg);
                         speak(msg);
                     });
                 }
 
-                // New open bill pending transactions
+                // ── In order baru (termasuk QRIS yang baru dikonfirmasi kasir) ──
+                const newInOrder = props.inOrderTransactions.filter(t => !prevInOrderIds.has(t.id));
+                if (newInOrder.length > 0) {
+                    newInOrder.forEach(t => {
+                        const isQris = t.payment_type?.toLowerCase() === 'qris';
+                        if (isQris) {
+                            // Beep khusus QRIS — 3 nada naik
+                            playBeepQris();
+                            const table = t.table?.name;
+                            const msg   = table
+                                ? `Pesanan QRIS dari meja ${table} masuk antrian`
+                                : `Pesanan QRIS masuk antrian`;
+                            notyf.success(msg);
+                            speak(msg);
+                        } else {
+                            playBeep();
+                            notyf.success('Data in order baru terdeteksi');
+                        }
+                    });
+                }
+
+                // ── Open bill pending baru ─────────────────────────────────
                 const newOpenBill = (props.openBillPendingTransactions || []).filter((t: any) => !prevOpenBillIds.has(t.id));
                 if (newOpenBill.length > 0) {
                     playBeep();
@@ -489,14 +523,14 @@ onMounted(() => {
                     });
                 }
 
-                // New open bill detail items (tambah menu di open bill)
+                // ── Open bill detail baru (tambah menu) ───────────────────
                 const newOpenBillDetails = (props.openBillPendingDetails || []).filter((d: any) => !prevOpenBillDetailIds.has(d.id));
                 if (newOpenBillDetails.length > 0) {
                     playBeep();
                     newOpenBillDetails.forEach((d: any) => {
                         const table = d.transaction?.table?.name;
-                        const menu = d.menu?.name;
-                        const msg = table && menu
+                        const menu  = d.menu?.name;
+                        const msg   = table && menu
                             ? `Menu baru dari meja ${table}, ${menu}`
                             : table
                                 ? `Menu baru dari meja ${table}`
@@ -506,13 +540,9 @@ onMounted(() => {
                     });
                 }
 
-                if ([...newInOrderIds].some(id => !prevInOrderIds.has(id))) {
-                    notyf.success('Data in order baru terdeteksi');
-                }
-
-                prevPendingIds = newPendingIds;
-                prevInOrderIds = newInOrderIds;
-                prevOpenBillIds = newOpenBillIds;
+                prevPendingIds        = newPendingIds;
+                prevInOrderIds        = newInOrderIds;
+                prevOpenBillIds       = newOpenBillIds;
                 prevOpenBillDetailIds = newOpenBillDetailIds;
             },
         });
@@ -642,7 +672,6 @@ onUnmounted(() => {
                                     <td class="px-6 py-4">{{ d.transaction?.table?.name ?? '-' }}</td>
                                     <td class="px-6 py-4">
                                         <div class="font-medium">{{ d.menu?.name ?? '-' }}</div>
-                                        <!-- Variant biji kopi / bahan selectable -->
                                         <div v-if="d.selected_variants && d.selected_variants.length > 0" class="flex flex-wrap gap-1 mt-1">
                                             <span
                                                 v-for="sv in d.selected_variants"
@@ -674,10 +703,9 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-
-                <!-- Pending Manual Transactions -->
+                <!-- Pending Manual & QRIS Transactions -->
                 <div class="space-y-3">
-                    <h2 class="text-base font-semibold">Pending Manual Transactions</h2>
+                    <h2 class="text-base font-semibold">Pending Transactions</h2>
 
                     <!-- QR Code Search -->
                     <form @submit.prevent="searchByQRCode" class="flex items-center gap-2 mb-2">
@@ -703,6 +731,7 @@ onUnmounted(() => {
                                     <th class="px-6 py-4 text-left font-medium">Cafe</th>
                                     <th class="px-6 py-4 text-left font-medium">Customer Name</th>
                                     <th class="px-6 py-4 text-left font-medium">Total Price</th>
+                                    <th class="px-6 py-4 text-left font-medium">Payment</th>
                                     <th class="px-6 py-4 text-right font-medium">Aksi</th>
                                 </tr>
                             </thead>
@@ -712,7 +741,14 @@ onUnmounted(() => {
                                         <td class="px-6 py-4">1</td>
                                         <td class="px-6 py-4 font-medium">{{ qrResult.cafe?.name ?? '-' }}</td>
                                         <td class="px-6 py-4">{{ qrResult.cust_name ?? '-' }}</td>
-                                        <td class="px-6 py-4 font-medium">{{ formatCurrency(qrResult.total_price) }}
+                                        <td class="px-6 py-4 font-medium">{{ formatCurrency(qrResult.total_price) }}</td>
+                                        <td class="px-6 py-4">
+                                            <span :class="qrResult.payment_type === 'qris'
+                                                ? 'bg-orange-100 text-orange-600 border border-orange-300'
+                                                : 'bg-gray-100 text-gray-600 border border-gray-300'"
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase">
+                                                {{ qrResult.payment_type }}
+                                            </span>
                                         </td>
                                         <td class="px-6 py-4 text-right">
                                             <Link :href="`/transaction/cashier/${qrResult.id}`"
@@ -729,6 +765,14 @@ onUnmounted(() => {
                                         <td class="px-6 py-4 font-medium">{{ trx.cafe?.name ?? '-' }}</td>
                                         <td class="px-6 py-4">{{ trx.cust_name ?? '-' }}</td>
                                         <td class="px-6 py-4 font-medium">{{ formatCurrency(trx.total_price) }}</td>
+                                        <td class="px-6 py-4">
+                                            <span :class="trx.payment_type === 'qris'
+                                                ? 'bg-orange-100 text-orange-600 border border-orange-300'
+                                                : 'bg-gray-100 text-gray-600 border border-gray-300'"
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase">
+                                                {{ trx.payment_type }}
+                                            </span>
+                                        </td>
                                         <td class="px-6 py-4 text-right">
                                             <Link :href="`/transaction/cashier/${trx.id}`"
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
@@ -737,7 +781,7 @@ onUnmounted(() => {
                                         </td>
                                     </tr>
                                     <tr v-if="pendingTransactions.length === 0">
-                                        <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">
+                                        <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">
                                             Tidak ada transaksi pending.
                                         </td>
                                     </tr>
@@ -757,6 +801,7 @@ onUnmounted(() => {
                                     <th class="px-6 py-4 text-left font-medium">No</th>
                                     <th class="px-6 py-4 text-left font-medium">Customer Name</th>
                                     <th class="px-6 py-4 text-left font-medium">Table</th>
+                                    <th class="px-6 py-4 text-left font-medium">Payment</th>
                                     <th class="px-6 py-4 text-right font-medium">Aksi</th>
                                 </tr>
                             </thead>
@@ -766,6 +811,14 @@ onUnmounted(() => {
                                     <td class="px-6 py-4">{{ index + 1 }}</td>
                                     <td class="px-6 py-4 font-medium">{{ trx.cust_name ?? '-' }}</td>
                                     <td class="px-6 py-4">{{ trx.table?.name ?? '-' }}</td>
+                                    <td class="px-6 py-4">
+                                        <span :class="trx.payment_type === 'qris'
+                                            ? 'bg-orange-100 text-orange-600 border border-orange-300'
+                                            : 'bg-gray-100 text-gray-600 border border-gray-300'"
+                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase">
+                                            {{ trx.payment_type }}
+                                        </span>
+                                    </td>
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex justify-end items-center gap-2">
                                             <button @click="printReceiptInline(trx.id)" type="button"
@@ -780,7 +833,7 @@ onUnmounted(() => {
                                     </td>
                                 </tr>
                                 <tr v-if="inOrderTransactions.length === 0">
-                                    <td colspan="4" class="px-6 py-10 text-center text-muted-foreground">
+                                    <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">
                                         Tidak ada transaksi in order.
                                     </td>
                                 </tr>
