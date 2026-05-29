@@ -32,9 +32,9 @@ class CashierController extends Controller
             $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
         }
 
-        // Pending manual & QRIS transactions (non open-bill)
+        // Pending manual transactions (non open-bill)
         $pendingQuery = Transaction::where('status', 'pending')
-            ->whereIn('payment_type', ['manual', 'qris'])
+            ->where('payment_type', 'manual')
             ->where('is_open_bill', 0)
             ->with(['cafe', 'table']);
 
@@ -275,7 +275,7 @@ class CashierController extends Controller
     {
         $transaction = Transaction::where('unique_code', $qr_code)
             ->where('status', 'pending')
-            ->whereIn('payment_type', ['manual', 'qris'])
+            ->where('payment_type', 'manual')
             ->with(['cafe', 'table'])
             ->first();
 
@@ -291,7 +291,7 @@ class CashierController extends Controller
         $transaction = Transaction::where(function ($q) {
             $q->where(function ($q2) {
                 $q2->where('status', 'pending')
-                   ->whereIn('payment_type', ['manual', 'qris']);
+                   ->where('payment_type', 'manual');
             })->orWhereIn('status', ['in_order', 'success']);
         })
             ->with(['cafe', 'table', 'details.menu.category'])
@@ -317,7 +317,7 @@ class CashierController extends Controller
     public function makeSuccess($id)
     {
         $transaction = Transaction::where('status', 'pending')
-            ->whereIn('payment_type', ['manual', 'qris'])
+            ->where('payment_type', 'manual')
             ->findOrFail($id);
 
         // pendingAction memotong stok & TransactionService::makeSuccess set ke in_order
@@ -332,7 +332,7 @@ class CashierController extends Controller
     public function makeFailed($id)
     {
         $transaction = Transaction::where('status', 'pending')
-            ->whereIn('payment_type', ['manual', 'qris'])
+            ->where('payment_type', 'manual')
             ->findOrFail($id);
 
         TransactionService::makeFailed($transaction);

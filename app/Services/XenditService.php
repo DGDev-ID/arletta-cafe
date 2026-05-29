@@ -117,7 +117,7 @@ class XenditService
             case 'COMPLETED':
             case 'PAID':
                 $transaction->update([
-                    'status' => 'success',
+                    'status' => 'in_order',
                     'paid_at' => now(),
                 ]);
                 break;
