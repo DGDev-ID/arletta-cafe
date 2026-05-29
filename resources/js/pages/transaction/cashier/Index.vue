@@ -71,6 +71,13 @@ interface Transaction {
     table: { id: number; name: string } | null;
 }
 
+interface SelectedVariant {
+    material_id: number;
+    variant_id: number;
+    material_name?: string | null;
+    variant_name?: string | null;
+}
+
 interface TransactionDetailItem {
     id: number;
     transaction: {
@@ -85,6 +92,7 @@ interface TransactionDetailItem {
     price: string;
     description?: string | null;
     status?: string | null;
+    selected_variants?: SelectedVariant[] | null;
 }
 
 
@@ -304,6 +312,12 @@ const printDetailReceiptInline = async (detailId: number) => {
         enc(PRINT_LINE + '\n');
         enc((detail.menu?.name || '-') + '\n');
         enc(detail.amount + ' x ' + printNumber(Number(detail.price)) + '\n');
+        if (detail.selected_variants && detail.selected_variants.length > 0) {
+            detail.selected_variants.forEach((sv: any) => {
+                const label = sv.material_name ? sv.material_name + ': ' + (sv.variant_name || '-') : (sv.variant_name || '-');
+                enc('  [' + label + ']\n');
+            });
+        }
         if (detail.description) enc(detail.description + '\n');
         enc(PRINT_LINE + '\n');
         bytes.push(0x1B, 0x61, 0x01); // center
@@ -350,6 +364,12 @@ const printSelectedDetailReceiptsInline = async () => {
             enc('Cust: ' + (detail.transaction?.cust_name || '-') + '\n');
             if (detail.transaction?.table?.name) enc('Table: ' + detail.transaction.table.name + '\n');
             enc(detail.amount + ' x ' + printNumber(Number(detail.price)) + '\n');
+            if (detail.selected_variants && detail.selected_variants.length > 0) {
+                detail.selected_variants.forEach((sv: any) => {
+                    const label = sv.material_name ? sv.material_name + ': ' + (sv.variant_name || '-') : (sv.variant_name || '-');
+                    enc('  [' + label + ']\n');
+                });
+            }
             if (detail.description) enc(detail.description + '\n');
             enc(PRINT_LINE + '\n');
         });
@@ -610,7 +630,18 @@ onUnmounted(() => {
                                     <td class="px-6 py-4">{{ d.transaction?.table?.name ?? '-' }}</td>
                                     <td class="px-6 py-4">
                                         <div class="font-medium">{{ d.menu?.name ?? '-' }}</div>
-                                        <div class="text-xs text-muted-foreground">{{ d.description ?? '-' }}</div>
+                                        <!-- Variant biji kopi / bahan selectable -->
+                                        <div v-if="d.selected_variants && d.selected_variants.length > 0" class="flex flex-wrap gap-1 mt-1">
+                                            <span
+                                                v-for="sv in d.selected_variants"
+                                                :key="sv.variant_id"
+                                                class="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-full"
+                                            >
+                                                <span class="text-[7px]">●</span>
+                                                {{ sv.material_name ? sv.material_name + ': ' : '' }}{{ sv.variant_name ?? `#${sv.variant_id}` }}
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-muted-foreground mt-0.5">{{ d.description ?? '-' }}</div>
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex justify-end items-center gap-2">
