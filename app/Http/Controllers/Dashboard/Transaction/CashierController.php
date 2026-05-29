@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Dashboard\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\MaterialInboundOutbound;
+use App\Models\MaterialVariant;
 use App\Models\MCafe;
+use App\Models\MMaterial;
 use App\Models\Transaction;
 use App\Services\TransactionService;
 use App\Models\TransactionDetail;
@@ -76,12 +78,18 @@ class CashierController extends Controller
             }
         })->with(['transaction.cafe', 'transaction.table', 'menu']);
 
+        // Enrich selected_variants in open bill details
+        $openBillPendingDetails = $openBillDetailsQuery->latest()->get();
+        $openBillPendingDetails->each(function ($detail) {
+            $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
+        });
+
         return Inertia::render('transaction/cashier/Index', [
             'pendingTransactions' => $pendingQuery->latest()->get(),
             'openBillPendingTransactions' => $openBillQuery->latest()->get(),
             'inOrderTransactions' => $inOrderQuery->latest()->get(),
             'successTransactions' => $successQuery->latest()->get(),
-            'openBillPendingDetails' => $openBillDetailsQuery->latest()->get(),
+            'openBillPendingDetails' => $openBillPendingDetails,
             'cafes' => $cafes,
             'filters' => [
                 'cafe_id' => $cafeId ?? '',
@@ -241,7 +249,41 @@ class CashierController extends Controller
     {
         $detail = TransactionDetail::with(['transaction.cafe', 'transaction.table', 'menu'])->findOrFail($id);
 
+        // Enrich selected_variants with names from DB
+        $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
+
         return response()->json($detail);
+    }
+
+    /**
+     * Enrich selected_variants array with material_name and variant_name
+     * from the database, resolving entries that only have IDs.
+     */
+    private function enrichSelectedVariants(array $variants): array
+    {
+        if (empty($variants)) return $variants;
+
+        // Collect variant_ids and material_ids that need lookup
+        $variantIds  = collect($variants)->pluck('variant_id')->filter()->unique()->values()->all();
+        $materialIds = collect($variants)->pluck('material_id')->filter()->unique()->values()->all();
+
+        $variantMap  = MaterialVariant::whereIn('id', $variantIds)->get()->keyBy('id');
+        $materialMap = MMaterial::whereIn('id', $materialIds)->get(['id', 'name'])->keyBy('id');
+
+        return collect($variants)->map(function ($sv) use ($variantMap, $materialMap) {
+            $variantId  = $sv['variant_id']  ?? null;
+            $materialId = $sv['material_id'] ?? null;
+
+            // Fill in names if missing or empty
+            if (empty($sv['variant_name']) && $variantId && isset($variantMap[$variantId])) {
+                $sv['variant_name'] = $variantMap[$variantId]->name;
+            }
+            if (empty($sv['material_name']) && $materialId && isset($materialMap[$materialId])) {
+                $sv['material_name'] = $materialMap[$materialId]->name;
+            }
+
+            return $sv;
+        })->values()->all();
     }
 
     public function searchByQRCode($qr_code)
@@ -272,6 +314,11 @@ class CashierController extends Controller
                 'details.menu.category',
             ])
             ->findOrFail($id);
+
+        // Enrich selected_variants for each detail with names from DB
+        $transaction->details->each(function ($detail) {
+            $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
+        });
 
         return Inertia::render('transaction/cashier/Show', [
             'transaction' => $transaction,
@@ -368,6 +415,11 @@ class CashierController extends Controller
         $transaction = Transaction::whereIn('status', ['in_order', 'success'])
             ->with(['cafe:id,name,address', 'table:id,name', 'details.menu:id,name,price'])
             ->findOrFail($id);
+
+        // Enrich selected_variants for each detail with names from DB
+        $transaction->details->each(function ($detail) {
+            $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
+        });
 
         return response()->json($transaction);
     }

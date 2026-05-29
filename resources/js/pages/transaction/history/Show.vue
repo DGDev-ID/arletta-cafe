@@ -5,6 +5,13 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import { Trash2 } from 'lucide-vue-next';
 
+interface SelectedVariant {
+    material_id: number;
+    variant_id: number;
+    material_name?: string | null;
+    variant_name?: string | null;
+}
+
 interface TransactionDetail {
     id: number;
     menu: {
@@ -16,6 +23,7 @@ interface TransactionDetail {
     amount: number;
     price: string;
     description: string | null;
+    selected_variants?: SelectedVariant[] | null;
 }
 
 interface Transaction {
@@ -185,7 +193,18 @@ const voidDetail = (detailId: number, menuName: string, qty: number) => {
                                 class="border-t hover:bg-muted/40 transition">
                                 <td class="px-6 py-4">{{ index + 1 }}</td>
                                 <td class="px-6 py-4 font-medium">
-                                    {{ detail.menu?.name ?? '-' }}
+                                    <div>{{ detail.menu?.name ?? '-' }}</div>
+                                    <!-- Variant biji kopi / bahan selectable -->
+                                    <div v-if="detail.selected_variants && detail.selected_variants.length > 0" class="flex flex-wrap gap-1 mt-1">
+                                        <span
+                                            v-for="sv in detail.selected_variants"
+                                            :key="sv.variant_id"
+                                            class="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-full"
+                                        >
+                                            <span class="text-[7px]">●</span>
+                                            {{ sv.material_name ? sv.material_name + ': ' : '' }}{{ sv.variant_name ?? `#${sv.variant_id}` }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ detail.menu?.category?.name ?? '-' }}
                                 </td>

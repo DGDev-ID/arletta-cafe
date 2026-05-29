@@ -1,4 +1,5 @@
 <?php
+// app/Models/MMaterial.php
 
 namespace App\Models;
 
@@ -12,16 +13,17 @@ class MMaterial extends Model
     protected $fillable = [
         'cafe_id',
         'name',
+        'type',
         'base_unit_id',
         'stock',
         'avg_buy_price',
-        'critical_stock'
+        'critical_stock',
     ];
 
     protected function casts(): array
     {
         return [
-            'stock' => 'decimal:2',
+            'stock'         => 'decimal:2',
             'avg_buy_price' => 'decimal:2',
         ];
     }
@@ -29,20 +31,16 @@ class MMaterial extends Model
     public static function setOutOfStock($materialId): void
     {
         DB::transaction(function () use ($materialId) {
-
             $material = self::lockForUpdate()->find($materialId);
-
-            if (! $material) {
-                return;
-            }
+            if (! $material) return;
 
             MaterialInboundOutbound::create([
-                'material_id' => $material->id,
-                'type' => 'outbound',
-                'amount' => $material->stock,
-                'base_unit_id' => $material->base_unit_id,
+                'material_id'         => $material->id,
+                'type'                => 'outbound',
+                'amount'              => $material->stock,
+                'base_unit_id'        => $material->base_unit_id,
                 'transaction_detail_id' => null,
-                'inbound_buy_price' => null,
+                'inbound_buy_price'   => null,
             ]);
         });
     }
@@ -70,5 +68,10 @@ class MMaterial extends Model
     public function inboundOutbounds(): HasMany
     {
         return $this->hasMany(MaterialInboundOutbound::class, 'material_id');
+    }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(MaterialVariant::class, 'material_id');
     }
 }

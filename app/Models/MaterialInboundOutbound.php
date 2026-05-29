@@ -11,6 +11,7 @@ class MaterialInboundOutbound extends Model
 
     protected $fillable = [
         'material_id',
+        'variant_id',
         'type',
         'opening_stock',
         'amount',
@@ -44,10 +45,70 @@ class MaterialInboundOutbound extends Model
         return $this->belongsTo(TransactionDetail::class, 'transaction_detail_id');
     }
 
+    public function variant()
+    {
+        return $this->belongsTo(MaterialVariant::class, 'variant_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
-            // Lock material row for update
+            $selfBaseUnitId = $model->base_unit_id;
+            $amount = (float) $model->amount;
+            $type = $model->type;
+
+            // If variant_id present, operate on variant stock instead of parent material
+            if (!empty($model->variant_id)) {
+                $variant = \App\Models\MaterialVariant::where('id', $model->variant_id)->lockForUpdate()->first();
+                if (!$variant) {
+                    throw new \Exception('Variant material tidak ditemukan');
+                }
+
+                $material = \App\Models\MMaterial::find($model->material_id);
+                if (!$material) {
+                    throw new \Exception('Material parent tidak ditemukan');
+                }
+
+                $openingStock = (float) $variant->stock;
+                $model->opening_stock = $openingStock;
+
+                $materialBaseUnitId = $material->base_unit_id;
+
+                // Konversi satuan jika perlu (sama seperti untuk material)
+                if ($selfBaseUnitId != $materialBaseUnitId) {
+                    $converter = \App\Models\UnitMaterialConverter::where('material_id', $material->id)
+                        ->where('from_unit_id', $selfBaseUnitId)
+                        ->where('to_unit_id', $materialBaseUnitId)
+                        ->first();
+
+                    if ($converter) {
+                        $amount = $amount * $converter->multiplier;
+                    } else {
+                        $reverseConverter = \App\Models\UnitMaterialConverter::where('material_id', $material->id)
+                            ->where('from_unit_id', $materialBaseUnitId)
+                            ->where('to_unit_id', $selfBaseUnitId)
+                            ->first();
+                        if ($reverseConverter) {
+                            $amount = $amount / $reverseConverter->multiplier;
+                        } else {
+                            throw new \Exception('Konversi satuan tidak ditemukan');
+                        }
+                    }
+                }
+
+                if ($type === 'inbound') {
+                    $model->closing_stock = $openingStock + $amount;
+                    $variant->stock = $openingStock + $amount;
+                } else {
+                    $model->closing_stock = $openingStock - $amount;
+                    $variant->stock = $openingStock - $amount;
+                }
+
+                $variant->save();
+                return;
+            }
+
+            // Default: operate on parent material
             $material = \App\Models\MMaterial::where('id', $model->material_id)->lockForUpdate()->first();
             if (!$material) {
                 throw new \Exception('Material tidak ditemukan');
@@ -57,9 +118,6 @@ class MaterialInboundOutbound extends Model
             $model->opening_stock = $openingStock;
 
             $materialBaseUnitId = $material->base_unit_id;
-            $selfBaseUnitId = $model->base_unit_id;
-            $amount = (float) $model->amount;
-            $type = $model->type;
 
             // Konversi satuan jika perlu
             if ($selfBaseUnitId != $materialBaseUnitId) {
