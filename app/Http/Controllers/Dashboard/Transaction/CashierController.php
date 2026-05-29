@@ -33,8 +33,9 @@ class CashierController extends Controller
             $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
         }
 
+        // Pending manual & QRIS transactions (non open-bill)
         $pendingQuery = Transaction::where('status', 'pending')
-            ->where('payment_type', 'manual')
+            ->whereIn('payment_type', ['manual', 'qris'])
             ->where('is_open_bill', 0)
             ->with(['cafe', 'table']);
 
@@ -85,13 +86,13 @@ class CashierController extends Controller
         });
 
         return Inertia::render('transaction/cashier/Index', [
-            'pendingTransactions' => $pendingQuery->latest()->get(),
+            'pendingTransactions'         => $pendingQuery->latest()->get(),
             'openBillPendingTransactions' => $openBillQuery->latest()->get(),
-            'inOrderTransactions' => $inOrderQuery->latest()->get(),
-            'successTransactions' => $successQuery->latest()->get(),
-            'openBillPendingDetails' => $openBillPendingDetails,
-            'cafes' => $cafes,
-            'filters' => [
+            'inOrderTransactions'         => $inOrderQuery->latest()->get(),
+            'successTransactions'         => $successQuery->latest()->get(),
+            'openBillPendingDetails'      => $openBillPendingDetails,
+            'cafes'                       => $cafes,
+            'filters'                     => [
                 'cafe_id' => $cafeId ?? '',
             ],
         ]);
@@ -177,7 +178,7 @@ class CashierController extends Controller
             $newTotal = $priceAfterDiscount + $newFee;
 
             // Recalculate profit margin: net outbound cost minus reversal inbounds
-            $detailIds      = $transaction->details()->pluck('id')->all();
+            $detailIds       = $transaction->details()->pluck('id')->all();
             $netMaterialCost = 0;
 
             if (!empty($detailIds)) {
@@ -216,7 +217,7 @@ class CashierController extends Controller
 
         $transaction = $detail->transaction;
 
-        if (!$transaction || $transaction->status !== 'pending' || (int)$transaction->is_open_bill !== 1) {
+        if (!$transaction || $transaction->status !== 'pending' || (int) $transaction->is_open_bill !== 1) {
             return redirect()->route('transaction.cashier.index')->with('error', 'Transaksi tidak valid untuk aksi ini.');
         }
 
@@ -232,13 +233,15 @@ class CashierController extends Controller
         $newPrice = $transaction->details()->where('status', 'success')->sum('price');
         $cafe = MCafe::find($transaction->cafe_id);
         $ppn = $cafe->ppn_fee > 0 ? ($newPrice * ($cafe->ppn_fee / 100)) : 0;
-        $paymentTypeFee = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris' ? ($newPrice * ($cafe->qris_fee / 100)) : 0;
-        $newFee = $ppn + $paymentTypeFee;
+        $paymentTypeFee = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris'
+            ? ($newPrice * ($cafe->qris_fee / 100))
+            : 0;
+        $newFee   = $ppn + $paymentTypeFee;
         $newTotal = $newPrice + $newFee;
 
         $transaction->update([
-            'price' => $newPrice,
-            'fee' => $newFee,
+            'price'       => $newPrice,
+            'fee'         => $newFee,
             'total_price' => $newTotal,
         ]);
 
@@ -290,7 +293,7 @@ class CashierController extends Controller
     {
         $transaction = Transaction::where('unique_code', $qr_code)
             ->where('status', 'pending')
-            ->where('payment_type', 'manual')
+            ->whereIn('payment_type', ['manual', 'qris'])
             ->with(['cafe', 'table'])
             ->first();
 
@@ -305,7 +308,8 @@ class CashierController extends Controller
     {
         $transaction = Transaction::where(function ($q) {
             $q->where(function ($q2) {
-                $q2->where('status', 'pending')->where('payment_type', 'manual');
+                $q2->where('status', 'pending')
+                   ->whereIn('payment_type', ['manual', 'qris']);
             })->orWhereIn('status', ['in_order', 'success']);
         })
             ->with([
@@ -327,7 +331,10 @@ class CashierController extends Controller
 
     public function makeSuccess($id)
     {
-        $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')->findOrFail($id);
+        $transaction = Transaction::where('status', 'pending')
+            ->whereIn('payment_type', ['manual', 'qris'])
+            ->findOrFail($id);
+
         TransactionService::makeSuccess($transaction);
 
         return redirect()
@@ -337,7 +344,10 @@ class CashierController extends Controller
 
     public function makeFailed($id)
     {
-        $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')->findOrFail($id);
+        $transaction = Transaction::where('status', 'pending')
+            ->whereIn('payment_type', ['manual', 'qris'])
+            ->findOrFail($id);
+
         TransactionService::makeFailed($transaction);
 
         return redirect()
@@ -359,7 +369,7 @@ class CashierController extends Controller
     {
         $request->validate([
             'transaction_id' => 'required|exists:transactions,id',
-            'promo_code' => 'required|string',
+            'promo_code'     => 'required|string',
         ]);
 
         $transaction = Transaction::where('id', $request->transaction_id)
@@ -379,7 +389,7 @@ class CashierController extends Controller
             return redirect()->back()->with('error', 'Kode promo tidak valid atau tidak aktif.');
         }
 
-        $price = $transaction->price;
+        $price          = $transaction->price;
         $discountAmount = 0;
 
         if ($promo->type === 'discount_percent') {
@@ -394,16 +404,18 @@ class CashierController extends Controller
 
         $priceAfterDiscount = $price - $discountAmount;
 
-        $cafe = MCafe::find($transaction->cafe_id);
-        $ppn = $cafe->ppn_fee > 0 ? ($priceAfterDiscount * ($cafe->ppn_fee / 100)) : 0;
-        $paymentTypeFee = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris' ? ($priceAfterDiscount * ($cafe->qris_fee / 100)) : 0;
-        
-        $newFee = $ppn + $paymentTypeFee;
+        $cafe           = MCafe::find($transaction->cafe_id);
+        $ppn            = $cafe->ppn_fee > 0 ? ($priceAfterDiscount * ($cafe->ppn_fee / 100)) : 0;
+        $paymentTypeFee = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris'
+            ? ($priceAfterDiscount * ($cafe->qris_fee / 100))
+            : 0;
+
+        $newFee   = $ppn + $paymentTypeFee;
         $newTotal = $priceAfterDiscount + $newFee;
 
         $transaction->update([
-            'promo_id' => $promo->id,
-            'fee' => $newFee,
+            'promo_id'    => $promo->id,
+            'fee'         => $newFee,
             'total_price' => $newTotal,
         ]);
 
