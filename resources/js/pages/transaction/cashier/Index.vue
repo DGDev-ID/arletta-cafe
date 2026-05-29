@@ -426,6 +426,10 @@ const printReceiptInline = async (id: number) => {
         enc(printPadRight('Fee', printNumber(Number(trx.fee))) + '\n');
         enc(PRINT_LINE + '\n');
         bytes.push(0x1B, 0x45, 0x01); // bold on
+        if (trx.is_promo) {
+            const promo = trx.price + trx.fee - Number(trx.total_price);
+            enc(printPadRight('Discount', '-' + printNumber(Number(promo))) + '\n');
+        }
         enc(printPadRight('TOTAL', printNumber(Number(trx.total_price))) + '\n');
         bytes.push(0x1B, 0x45, 0x00); // bold off
         enc(PRINT_LINE + '\n');
