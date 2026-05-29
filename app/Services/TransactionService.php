@@ -74,6 +74,7 @@ class TransactionService
 
         $fee = $ppn + $paymentTypeFee;
         $totalPrice = $priceAfterDiscount + $fee;
+        $totalPrice = floor($totalPrice);
 
         return DB::transaction(function () use ($cafeId, $data, $price, $fee, $totalPrice, $menus, $promoId) {
             $transaction = Transaction::create([
