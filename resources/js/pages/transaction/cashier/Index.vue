@@ -429,7 +429,7 @@ const printReceiptInline = async (id: number) => {
         enc(PRINT_LINE + '\n');
         bytes.push(0x1B, 0x45, 0x01); // bold on
         if (trx.promo_id) {
-            const promo = trx.price + trx.fee - Number(trx.total_price);
+            const promo = Number(trx.price) + Number(trx.fee) - Number(trx.total_price);
             enc(printPadRight('Discount', '-' + printNumber(Number(promo))) + '\n');
         }
         enc(printPadRight('TOTAL', printNumber(Number(trx.total_price))) + '\n');
