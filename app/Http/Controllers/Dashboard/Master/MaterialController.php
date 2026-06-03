@@ -17,7 +17,7 @@ class MaterialController extends Controller
         $search = $request->query('search');
         $stockStatus = $request->query('stock_status');
         
-        $query = MMaterial::with('cafe', 'baseUnit');
+        $query = MMaterial::with('cafe', 'baseUnit', 'variants');
         if ($cafeId) {
             $query->where('cafe_id', $cafeId);
         }
