@@ -58,7 +58,6 @@ class MaterialController extends Controller
             'variants'       => 'nullable|array',
             'variants.*.id'  => 'nullable|exists:material_variants,id',
             'variants.*.name'=> 'required_if:type,selectable|string|max:255',
-            'variants.*.stock'=> 'required_if:type,selectable|numeric|min:0',
             'variants.*.minimum_stock'=> 'nullable|numeric|min:0',
         ]);
 
@@ -76,7 +75,7 @@ class MaterialController extends Controller
             foreach ($validated['variants'] as $variantData) {
                 $material->variants()->create([
                     'name'          => $variantData['name'],
-                    'stock'         => $variantData['stock'] ?? 0,
+                    'stock'         => 0, // stok dikelola via inbound/outbound
                     'minimum_stock' => $variantData['minimum_stock'] ?? 0,
                 ]);
             }
@@ -92,7 +91,7 @@ class MaterialController extends Controller
         $material = MMaterial::with('cafe', 'baseUnit')->findOrFail($id);
 
         $logs = $material->inboundOutbounds()
-            ->with('baseUnit', 'transactionDetail.menu')
+            ->with('baseUnit', 'transactionDetail.menu', 'variant')
             ->orderByDesc('id')
             ->paginate(10);
 
@@ -126,7 +125,6 @@ class MaterialController extends Controller
             'variants'       => 'nullable|array',
             'variants.*.id'  => 'nullable|exists:material_variants,id',
             'variants.*.name'=> 'required_if:type,selectable|string|max:255',
-            'variants.*.stock'=> 'required_if:type,selectable|numeric|min:0',
             'variants.*.minimum_stock'=> 'nullable|numeric|min:0',
         ]);
 
@@ -147,7 +145,7 @@ class MaterialController extends Controller
                         if ($variant) {
                             $variant->update([
                                 'name'          => $variantData['name'],
-                                'stock'         => $variantData['stock'] ?? 0,
+                                // stock TIDAK diubah di sini — dikelola via inbound/outbound
                                 'minimum_stock' => $variantData['minimum_stock'] ?? 0,
                             ]);
                             $existingVariantIds[] = $variant->id;
@@ -155,7 +153,7 @@ class MaterialController extends Controller
                     } else {
                         $newVariant = $material->variants()->create([
                             'name'          => $variantData['name'],
-                            'stock'         => $variantData['stock'] ?? 0,
+                            'stock'         => 0, // stok dikelola via inbound/outbound
                             'minimum_stock' => $variantData['minimum_stock'] ?? 0,
                         ]);
                         $existingVariantIds[] = $newVariant->id;

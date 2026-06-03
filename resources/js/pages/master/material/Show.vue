@@ -29,6 +29,7 @@ interface InboundOutbound {
         amount: string;
     } | null;
     description: string | null;
+    variant: { name: string } | null;
 }
 
 const props = defineProps<{
@@ -148,13 +149,18 @@ function setOutOfStock(id: number) {
                                     {{ index + 1 + (logs.current_page - 1) * logs.per_page }}
                                 </td>
                                 <td class="px-6 py-3">
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                                        :class="log.type === 'inbound'
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-red-100 text-red-700'">
-                                        {{ log.type === 'inbound' ? 'Inbound' : 'Outbound' }}
-                                    </span>
+                                    <div class="flex flex-col gap-1 items-start">
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                            :class="log.type === 'inbound'
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-red-100 text-red-700'">
+                                            {{ log.type === 'inbound' ? 'Inbound' : 'Outbound' }}
+                                        </span>
+                                        <span v-if="log.variant" class="text-xs text-muted-foreground whitespace-nowrap">
+                                            Variant: {{ log.variant.name }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-3">{{ log.opening_stock }}</td>
                                 <td class="px-6 py-3 font-medium">{{ log.amount }}</td>

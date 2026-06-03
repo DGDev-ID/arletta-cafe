@@ -21,7 +21,7 @@ const form = useForm({
     type: 'normal' as 'normal' | 'selectable',
     base_unit_id: '' as number | '',
     critical_stock: '' as number | '',
-    variants: [] as { id?: number | null; name: string; stock: number | ''; minimum_stock: number | '' }[],
+    variants: [] as { id?: number | null; name: string; minimum_stock: number | '' }[],
 });
 
 const submit = () => form.post('/master/material');

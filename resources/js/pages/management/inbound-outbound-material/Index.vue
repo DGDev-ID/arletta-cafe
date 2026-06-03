@@ -30,12 +30,14 @@ interface TransactionDetail {
 interface InboundOutbound {
     id: number;
     material_id: number;
+    variant_id: number | null;
     type: 'inbound' | 'outbound';
     amount: string;
     base_unit_id: number;
     inbound_buy_price: string | null;
     transaction_detail_id: number | null;
     material: Material;
+    variant: { id: number; name: string } | null;
     base_unit: { id: number; name: string };
     transaction_detail: TransactionDetail | null;
 }
@@ -186,6 +188,9 @@ const formatCurrency = (val: string | number) => {
                                 </td>
                                 <td class="px-6 py-4 font-medium">
                                     {{ row.material.name }}
+                                    <span v-if="row.variant" class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                        {{ row.variant.name }}
+                                    </span>
                                     <span class="text-muted-foreground text-xs">({{ row.material.cafe.name }})</span>
                                 </td>
                                 <td class="px-6 py-4">
