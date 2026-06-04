@@ -19,6 +19,11 @@ class MMenu extends Model
         'menu_category_id',
     ];
 
+    public function getNameAttribute($value)
+    {
+        return preg_replace('/\s*\[(FOOD|BEVERAGE)\]$/', '', $value);
+    }
+
     protected function casts(): array
     {
         return [
