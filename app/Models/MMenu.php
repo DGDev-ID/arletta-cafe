@@ -24,6 +24,21 @@ class MMenu extends Model
         return preg_replace('/\s*\[(FOOD|BEVERAGE)\]$/', '', $value);
     }
 
+    public function getMenuTypeAttribute()
+    {
+        $originalName = $this->attributes['name'] ?? '';
+
+        if (preg_match('/\[FOOD\]$/', $originalName)) {
+            return 'FOOD';
+        }
+        
+        if (preg_match('/\[BEVERAGE\]$/', $originalName)) {
+            return 'BEVERAGE';
+        }
+
+        return 'UNCATEGORIZED';
+    }
+
     protected function casts(): array
     {
         return [
