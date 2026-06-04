@@ -852,10 +852,8 @@ onUnmounted(() => {
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex justify-end items-center gap-2">
                                             <DropdownMenu>
-                                                <DropdownMenuTrigger as-child>
-                                                    <button type="button" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition">
-                                                        <Printer :size="14" /> Cetak Struk <ChevronDown :size="14" />
-                                                    </button>
+                                                <DropdownMenuTrigger class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition outline-none">
+                                                    <Printer :size="14" /> Cetak Struk <ChevronDown :size="14" />
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem @click="printReceiptInline(trx.id, 'all')">Semua menu</DropdownMenuItem>
@@ -902,10 +900,8 @@ onUnmounted(() => {
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex justify-end items-center gap-2">
                                             <DropdownMenu>
-                                                <DropdownMenuTrigger as-child>
-                                                    <button type="button" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition">
-                                                        <Printer :size="14" /> Cetak Struk <ChevronDown :size="14" />
-                                                    </button>
+                                                <DropdownMenuTrigger class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition outline-none">
+                                                    <Printer :size="14" /> Cetak Struk <ChevronDown :size="14" />
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem @click="printReceiptInline(trx.id, 'all')">Semua menu</DropdownMenuItem>
