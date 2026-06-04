@@ -321,7 +321,7 @@ class CashierController extends Controller
             ->findOrFail($id);
 
         // pendingAction memotong stok & TransactionService::makeSuccess set ke in_order
-        TransactionService::pendingAction($transaction);
+        // TransactionService::pendingAction($transaction);
         TransactionService::makeSuccess($transaction);
 
         return redirect()
