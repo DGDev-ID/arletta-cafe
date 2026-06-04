@@ -18,6 +18,7 @@ class MMenu extends Model
         'status',
         'menu_category_id',
     ];
+    protected $appends = ['menu_type'];
 
     public function getNameAttribute($value)
     {
