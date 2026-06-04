@@ -3,7 +3,8 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
-import { Eye, CheckCircle, Printer } from 'lucide-vue-next';
+import { Eye, CheckCircle, Printer, ChevronDown } from 'lucide-vue-next';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { Notyf } from 'notyf';
 import axios from 'axios';
@@ -397,10 +398,20 @@ const printSelectedDetailReceiptsInline = async () => {
     }
 };
 
-const printReceiptInline = async (id: number) => {
+const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVERAGE' = 'all') => {
     try {
         const { data: trx } = await axios.get(`/transaction/cashier/${id}/receipt-data`);
         const fmtDate = (val: string) => new Date(val).toLocaleString('id-ID');
+
+        let detailsToPrint = trx.details;
+        if (filterType !== 'all') {
+            detailsToPrint = trx.details.filter((d: any) => d.menu?.menu_type === filterType);
+        }
+
+        if (detailsToPrint.length === 0) {
+            notyf.error(`Tidak ada item dengan tipe ${filterType}`);
+            return;
+        }
 
         const bytes: number[] = [];
         const encoder = new TextEncoder();
@@ -414,6 +425,15 @@ const printReceiptInline = async (id: number) => {
         enc((trx.cafe?.name || 'CAFE') + '\n');
         bytes.push(0x1B, 0x45, 0x00);
         if (trx.cafe?.address) enc(trx.cafe.address + '\n');
+        
+        if (filterType === 'FOOD') {
+            enc(PRINT_LINE + '\n');
+            enc('--- ONLY FOOD ---\n');
+        } else if (filterType === 'BEVERAGE') {
+            enc(PRINT_LINE + '\n');
+            enc('--- ONLY BEVERAGE ---\n');
+        }
+        
         enc(PRINT_LINE + '\n');
         bytes.push(0x1B, 0x61, 0x00);
         enc(printPadRight('No', '#' + trx.id) + '\n');
@@ -422,7 +442,7 @@ const printReceiptInline = async (id: number) => {
         if (trx.table) enc(printPadRight('Table', trx.table.name) + '\n');
         enc(printPadRight('Pay', trx.payment_type) + '\n');
         enc(PRINT_LINE + '\n');
-        trx.details.forEach((d: any) => {
+        detailsToPrint.forEach((d: any) => {
             enc((d.menu?.name || '-').substring(0, PRINT_WIDTH) + '\n');
             const qtyPrice = `${d.amount}x${printNumber(Number(d.menu?.price ?? 0))}`;
             enc(printPadRight(qtyPrice, printNumber(Number(d.price))) + '\n');
@@ -435,15 +455,25 @@ const printReceiptInline = async (id: number) => {
             if (d.description) enc(' ' + d.description + '\n');
         });
         enc(PRINT_LINE + '\n');
-        enc(printPadRight('Subtotal', printNumber(Number(trx.price))) + '\n');
-        enc(printPadRight('Fee', printNumber(Number(trx.fee))) + '\n');
-        enc(PRINT_LINE + '\n');
-        bytes.push(0x1B, 0x45, 0x01);
-        if (trx.promo_id) {
-            const promo = Number(trx.price) + Number(trx.fee) - Number(trx.total_price);
-            enc(printPadRight('Discount', '-' + printNumber(Number(promo))) + '\n');
+        
+        if (filterType === 'all') {
+            enc(printPadRight('Subtotal', printNumber(Number(trx.price))) + '\n');
+            enc(printPadRight('Fee', printNumber(Number(trx.fee))) + '\n');
+            enc(PRINT_LINE + '\n');
+            bytes.push(0x1B, 0x45, 0x01);
+            if (trx.promo_id) {
+                const promo = Number(trx.price) + Number(trx.fee) - Number(trx.total_price);
+                enc(printPadRight('Discount', '-' + printNumber(Number(promo))) + '\n');
+            }
+            enc(printPadRight('TOTAL', printNumber(Number(trx.total_price))) + '\n');
+        } else {
+            const partialSubtotal = detailsToPrint.reduce((acc: number, d: any) => acc + Number(d.price), 0);
+            enc(printPadRight('Subtotal', printNumber(partialSubtotal)) + '\n');
+            enc(PRINT_LINE + '\n');
+            bytes.push(0x1B, 0x45, 0x01);
+            enc(printPadRight('TOTAL', printNumber(partialSubtotal)) + '\n');
         }
-        enc(printPadRight('TOTAL', printNumber(Number(trx.total_price))) + '\n');
+        
         bytes.push(0x1B, 0x45, 0x00);
         enc(PRINT_LINE + '\n');
         bytes.push(0x1B, 0x61, 0x01);
@@ -821,10 +851,18 @@ onUnmounted(() => {
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex justify-end items-center gap-2">
-                                            <button @click="printReceiptInline(trx.id)" type="button"
-                                                class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition">
-                                                <Printer :size="14" /> Cetak Struk
-                                            </button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger as-child>
+                                                    <button type="button" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition">
+                                                        <Printer :size="14" /> Cetak Struk <ChevronDown :size="14" />
+                                                    </button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem @click="printReceiptInline(trx.id, 'all')">Semua menu</DropdownMenuItem>
+                                                    <DropdownMenuItem @click="printReceiptInline(trx.id, 'FOOD')">Only food</DropdownMenuItem>
+                                                    <DropdownMenuItem @click="printReceiptInline(trx.id, 'BEVERAGE')">Only beverage</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                             <button @click="makeSuccessInOrder(trx.id)" type="button"
                                                 class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 text-green-600 text-xs font-medium hover:bg-green-500 hover:text-white transition">
                                                 <CheckCircle :size="14" /> Selesai
@@ -863,10 +901,18 @@ onUnmounted(() => {
                                     <td class="px-6 py-4">{{ trx.table?.name ?? '-' }}</td>
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex justify-end items-center gap-2">
-                                            <button @click="printReceiptInline(trx.id)" type="button"
-                                                class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition">
-                                                <Printer :size="14" /> Cetak Struk
-                                            </button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger as-child>
+                                                    <button type="button" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-600 text-xs font-medium hover:bg-violet-500 hover:text-white transition">
+                                                        <Printer :size="14" /> Cetak Struk <ChevronDown :size="14" />
+                                                    </button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem @click="printReceiptInline(trx.id, 'all')">Semua menu</DropdownMenuItem>
+                                                    <DropdownMenuItem @click="printReceiptInline(trx.id, 'FOOD')">Only food</DropdownMenuItem>
+                                                    <DropdownMenuItem @click="printReceiptInline(trx.id, 'BEVERAGE')">Only beverage</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                             <Link :href="`/transaction/cashier/${trx.id}`"
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
                                                 <Eye :size="14" /> Detail
