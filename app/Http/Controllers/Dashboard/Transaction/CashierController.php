@@ -412,7 +412,7 @@ class CashierController extends Controller
     public function receiptData($id)
     {
         $transaction = Transaction::whereIn('status', ['in_order', 'success'])
-            ->with(['cafe:id,name,address', 'table:id,name', 'details.menu:id,name,price'])
+            ->with(['cafe:id,name,address', 'table:id,name', 'details.menu:id,name,price,menu_type'])
             ->findOrFail($id);
 
         $transaction->details->each(function ($detail) {
