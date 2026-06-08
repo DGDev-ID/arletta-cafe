@@ -294,7 +294,7 @@ class CashierController extends Controller
                    ->where('payment_type', 'manual');
             })->orWhereIn('status', ['in_order', 'success']);
         })
-            ->with(['cafe', 'table', 'details.menu.category'])
+            ->with(['cafe', 'table', 'details.menu.category', 'details.menu.menuCombos.childMenu'])
             ->findOrFail($id);
 
         $transaction->details->each(function ($detail) {

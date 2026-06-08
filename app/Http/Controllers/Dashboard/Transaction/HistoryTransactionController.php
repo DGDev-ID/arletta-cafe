@@ -63,6 +63,7 @@ class HistoryTransactionController extends Controller
                 'table',
                 'details.menu.category',
                 'details.menu.promo',
+                'details.menu.menuCombos.childMenu',
             ])
             ->findOrFail($id);
 
