@@ -62,6 +62,13 @@ class MenuController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('start_time') && strlen($request->start_time) === 5) {
+            $request->merge(['start_time' => $request->start_time . ':00']);
+        }
+        if ($request->has('end_time') && strlen($request->end_time) === 5) {
+            $request->merge(['end_time' => $request->end_time . ':00']);
+        }
+
         $rules = [
             'cafe_id'                                       => 'required|exists:m_cafes,id',
             'menu_category_id'                              => 'nullable|exists:m_menu_categories,id',
@@ -71,8 +78,8 @@ class MenuController extends Controller
             'price'                                         => 'required|numeric|min:0',
             'has_promo'                                     => 'boolean',
             'is_combo'                                      => 'boolean',
-            'start_time'                                    => 'nullable|date_format:H:i|date_format:H:i:s', // Frontend might send H:i
-            'end_time'                                      => 'nullable|date_format:H:i|date_format:H:i:s',
+            'start_time'                                    => 'nullable|date_format:H:i:s',
+            'end_time'                                      => 'nullable|date_format:H:i:s',
         ];
 
         if ($request->boolean('is_combo')) {
@@ -184,6 +191,13 @@ class MenuController extends Controller
     {
         $menu = MMenu::findOrFail($id);
 
+        if ($request->has('start_time') && strlen($request->start_time) === 5) {
+            $request->merge(['start_time' => $request->start_time . ':00']);
+        }
+        if ($request->has('end_time') && strlen($request->end_time) === 5) {
+            $request->merge(['end_time' => $request->end_time . ':00']);
+        }
+
         $rules = [
             'cafe_id'                                       => 'required|exists:m_cafes,id',
             'menu_category_id'                              => 'nullable|exists:m_menu_categories,id',
@@ -193,8 +207,8 @@ class MenuController extends Controller
             'price'                                         => 'required|numeric|min:0',
             'has_promo'                                     => 'boolean',
             'is_combo'                                      => 'boolean',
-            'start_time'                                    => 'nullable|date_format:H:i|date_format:H:i:s',
-            'end_time'                                      => 'nullable|date_format:H:i|date_format:H:i:s',
+            'start_time'                                    => 'nullable|date_format:H:i:s',
+            'end_time'                                      => 'nullable|date_format:H:i:s',
         ];
 
         if ($request->boolean('is_combo')) {
