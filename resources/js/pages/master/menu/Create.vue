@@ -19,6 +19,7 @@ defineProps<{
     units: UnitOption[];
     converters: ConverterOption[];
     semiFinishedMaterials: SfmOption[];
+    menus: { id: number; cafe_id: number; name: string; }[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -36,8 +37,12 @@ const form = useForm({
     has_promo: false,
     promo_type: '',
     promo_discount_amount: '' as number | '',
+    is_combo: false,
+    start_time: null as string | null,
+    end_time: null as string | null,
     materials: [] as { material_id: number | ''; amount: number | ''; unit_id: number | '' }[],
     semi_finished_materials: [] as { semi_finished_material_id: number | ''; multiplier: number | '' }[],
+    combo_menus: [] as { menu_id: number | ''; amount: number | '' }[],
 });
 
 const submit = () => {
@@ -70,6 +75,7 @@ const submit = () => {
                         :units="units"
                         :converters="converters"
                         :semi-finished-materials="semiFinishedMaterials"
+                        :menus="menus"
                         submit-label="Simpan Menu"
                         @submit="submit"
                     />

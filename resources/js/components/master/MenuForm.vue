@@ -61,9 +61,13 @@ interface MenuFormData {
     price: number | '';
     has_promo: boolean;
     promo_type: string;
+    is_combo: boolean;
+    start_time: string | null;
+    end_time: string | null;
     promo_discount_amount: number | '';
     materials: MenuMaterialRow[];
     semi_finished_materials: MenuSfmRow[];
+    combo_menus: { menu_id: number | ''; amount: number | '' }[];
     errors: Record<string, string>;
     processing: boolean;
 }
@@ -76,6 +80,7 @@ const props = defineProps<{
     units: UnitOption[];
     converters: ConverterOption[];
     semiFinishedMaterials: SfmOption[];
+    menus?: { id: number; cafe_id: number; name: string; }[];
     existingImgUrl?: string | null;
     submitLabel?: string;
     backHref?: string;
@@ -100,6 +105,11 @@ const filteredSfms = computed(() => {
     return props.semiFinishedMaterials.filter(s => s.cafe_id === props.form.cafe_id);
 });
 
+const filteredMenus = computed(() => {
+    if (!props.form.cafe_id || !props.menus) return [];
+    return props.menus.filter(m => m.cafe_id === props.form.cafe_id);
+});
+
 const cafeOptions = computed(() => props.cafes.map(c => ({ value: c.id, label: c.name })));
 const categoryOptions = computed(() => {
     const defaultOpt = [{ value: null, label: 'Tanpa Kategori' }];
@@ -108,6 +118,7 @@ const categoryOptions = computed(() => {
 const filteredMaterialOptions = computed(() => filteredMaterials.value.map(m => ({ value: m.id, label: m.name })));
 const unitOptions = computed(() => props.units.map(u => ({ value: u.id, label: u.name })));
 const filteredSfmOptions = computed(() => filteredSfms.value.map(s => ({ value: s.id, label: `${s.name} (${s.unit?.name ?? '-'})` })));
+const menuOptions = computed(() => filteredMenus.value.map(m => ({ value: m.id, label: m.name })));
 
 const promoTypeOptions = [
     { value: 'discount_percent', label: 'Diskon Persen (%)' },
@@ -117,6 +128,7 @@ const promoTypeOptions = [
 watch(() => props.form.cafe_id, () => {
     props.form.materials = [];
     props.form.semi_finished_materials = [];
+    props.form.combo_menus = [];
     props.form.menu_category_id = null;
 });
 
@@ -163,6 +175,17 @@ function addSfm() {
 
 function removeSfm(index: number) {
     props.form.semi_finished_materials.splice(index, 1);
+}
+
+function addComboMenu() {
+    props.form.combo_menus.push({
+        menu_id: '',
+        amount: 1,
+    });
+}
+
+function removeComboMenu(index: number) {
+    props.form.combo_menus.splice(index, 1);
 }
 
 function onMaterialChange(index: number) {
@@ -283,6 +306,33 @@ function getConversionError(row: MenuMaterialRow): string | null {
                     class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                 <InputError :message="form.errors.price" />
             </div>
+
+            <!-- Combo Toggle -->
+            <div class="flex items-center gap-3">
+                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Menu Paket (Combo)</h3>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" v-model="form.is_combo" class="sr-only peer" />
+                    <div
+                        class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary">
+                    </div>
+                </label>
+            </div>
+
+            <div v-if="form.is_combo" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid gap-2">
+                    <label for="start-time" class="text-sm font-medium leading-none">Waktu Mulai Tersedia</label>
+                    <input id="start-time" v-model="form.start_time" type="time"
+                        class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                    <InputError :message="form.errors.start_time" />
+                    <p class="text-xs text-muted-foreground">Kosongkan jika tersedia setiap saat.</p>
+                </div>
+                <div class="grid gap-2">
+                    <label for="end-time" class="text-sm font-medium leading-none">Waktu Berakhir Tersedia</label>
+                    <input id="end-time" v-model="form.end_time" type="time"
+                        class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                    <InputError :message="form.errors.end_time" />
+                </div>
+            </div>
         </div>
 
         <!-- Promo Section -->
@@ -318,7 +368,7 @@ function getConversionError(row: MenuMaterialRow): string | null {
         </div>
 
         <!-- Menu Materials (Resep) Section -->
-        <div class="space-y-4">
+        <div v-if="!form.is_combo" class="space-y-4">
             <div class="flex items-center justify-between">
                 <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Resep (Material Menu)
                 </h3>
@@ -388,7 +438,7 @@ function getConversionError(row: MenuMaterialRow): string | null {
         </div>
 
         <!-- Production Section -->
-        <div class="space-y-4">
+        <div v-if="!form.is_combo" class="space-y-4">
             <div class="flex items-center justify-between">
                 <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Production
                 </h3>
@@ -435,6 +485,57 @@ function getConversionError(row: MenuMaterialRow): string | null {
                                 class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                             <p class="text-xs text-muted-foreground">1 = satu porsi resep, 2 = dua porsi, dst.</p>
                             <InputError :message="form.errors[`semi_finished_materials.${index}.multiplier`]" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Combo Menus Section -->
+        <div v-if="form.is_combo" class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Menu dalam Paket
+                </h3>
+                <button type="button" @click="addComboMenu" :disabled="!form.cafe_id"
+                    class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium text-muted-foreground hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Plus :size="14" /> Tambah Menu
+                </button>
+            </div>
+
+            <p v-if="!form.cafe_id" class="text-sm text-muted-foreground italic">
+                Pilih cafe terlebih dahulu untuk menambahkan menu.
+            </p>
+
+            <div v-if="form.combo_menus.length > 0" class="space-y-4">
+                <div v-for="(row, index) in form.combo_menus" :key="index"
+                    class="rounded-xl border p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-muted-foreground">Menu #{{ index + 1 }}</span>
+                        <button type="button" @click="removeComboMenu(index)"
+                            class="cursor-pointer inline-flex items-center justify-center w-7 h-7 rounded-md bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition">
+                            <Trash2 :size="14" />
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid gap-2">
+                            <label class="text-sm font-medium leading-none">Menu</label>
+                            <SearchableSelect
+                                v-model="row.menu_id"
+                                :options="menuOptions"
+                                placeholder="Pilih Menu"
+                                required
+                            />
+                            <InputError
+                                :message="form.errors[`combo_menus.${index}.menu_id`]" />
+                        </div>
+
+                        <div class="grid gap-2">
+                            <label class="text-sm font-medium leading-none">Jumlah Menu</label>
+                            <input v-model="row.amount" type="number" min="1" step="1" required
+                                placeholder="1"
+                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                            <InputError :message="form.errors[`combo_menus.${index}.amount`]" />
                         </div>
                     </div>
                 </div>

@@ -116,6 +116,8 @@ public static function pendingAction(Transaction $transaction)
     $transaction->load([
         'details.menu.menuMaterials.material.variants',
         'details.menu.menuSemiFinishedMaterials.semiFinishedMaterial.details.material',
+        'details.menu.menuCombos.childMenu.menuMaterials.material.variants',
+        'details.menu.menuCombos.childMenu.menuSemiFinishedMaterials.semiFinishedMaterial.details.material',
     ]);
 
     // selected_variants dari payload disimpan di transaction_details
@@ -130,79 +132,41 @@ public static function pendingAction(Transaction $transaction)
         $selectedVariants = collect($detail->selected_variants ?? [])
             ->keyBy('material_id'); // material_id -> variant_id
 
-        foreach ($detail->menu->menuMaterials as $menuMaterial) {
-            $material     = $menuMaterial->material;
-            $recipeUnitId = $menuMaterial->unit_id;
-            $baseUnitId   = $material->base_unit_id;
-            $amountNeeded = $menuMaterial->amount * $detail->amount;
-
-            if ($recipeUnitId !== $baseUnitId) {
-                $converter = UnitMaterialConverter::where('material_id', $material->id)
-                    ->where(function ($query) use ($recipeUnitId, $baseUnitId) {
-                        $query->where([
-                            ['from_unit_id', $recipeUnitId],
-                            ['to_unit_id', $baseUnitId]
-                        ])->orWhere([
-                            ['from_unit_id', $baseUnitId],
-                            ['to_unit_id', $recipeUnitId]
-                        ]);
-                    })->first();
-
-                if (!$converter) {
-                    throw new \Exception("Unit converter not found for material: {$material->name}");
-                }
-
-                $amountNeeded = ($converter->from_unit_id == $recipeUnitId)
-                    ? $amountNeeded * $converter->multiplier
-                    : $amountNeeded / $converter->multiplier;
-            }
-
-            if ($material->type === 'selectable') {
-                // Kurangi stok variant, bukan parent
-                $variantData = $selectedVariants->get($material->id);
-                if (!$variantData) {
-                    throw new \Exception("Variant belum dipilih untuk material: {$material->name}");
-                }
-                $variantId = $variantData['variant_id'];
-                $variantRequirements[$variantId] = ($variantRequirements[$variantId] ?? 0) + $amountNeeded;
-
-                $detailMaterialMap[] = [
-                    'transaction_detail_id' => $detail->id,
-                    'material_id'           => $material->id,
-                    'variant_id'            => $variantId,
-                    'amount'                => $amountNeeded,
-                    'base_unit_id'          => $baseUnitId,
-                    'is_variant'            => true,
-                ];
-            } else {
-                $materialRequirements[$material->id] =
-                    ($materialRequirements[$material->id] ?? 0) + $amountNeeded;
-
-                $detailMaterialMap[] = [
-                    'transaction_detail_id' => $detail->id,
-                    'material_id'           => $material->id,
-                    'variant_id'            => null,
-                    'amount'                => $amountNeeded,
-                    'base_unit_id'          => $baseUnitId,
-                    'is_variant'            => false,
+        $menusToProcess = [];
+        if ($detail->menu->is_combo) {
+            foreach ($detail->menu->menuCombos as $combo) {
+                $menusToProcess[] = [
+                    'menu' => $combo->childMenu,
+                    'multiplier' => $detail->amount * $combo->amount
                 ];
             }
+        } else {
+            $menusToProcess[] = [
+                'menu' => $detail->menu,
+                'multiplier' => $detail->amount
+            ];
         }
 
-        // SemiFinishedMaterial — asumsi tidak selectable (bisa dikembangkan)
-        foreach ($detail->menu->menuSemiFinishedMaterials as $menuSfm) {
-            $multiplier = (float) $menuSfm->multiplier;
-            foreach ($menuSfm->semiFinishedMaterial->details as $sfmDetail) {
-                $material     = $sfmDetail->material;
-                $recipeUnitId = $sfmDetail->unit_id;
+        foreach ($menusToProcess as $menuData) {
+            $currentMenu = $menuData['menu'];
+            $currentMultiplier = $menuData['multiplier'];
+
+            foreach ($currentMenu->menuMaterials as $menuMaterial) {
+                $material     = $menuMaterial->material;
+                $recipeUnitId = $menuMaterial->unit_id;
                 $baseUnitId   = $material->base_unit_id;
-                $amountNeeded = $sfmDetail->amount * $multiplier * $detail->amount;
+                $amountNeeded = $menuMaterial->amount * $currentMultiplier;
 
                 if ($recipeUnitId !== $baseUnitId) {
                     $converter = UnitMaterialConverter::where('material_id', $material->id)
                         ->where(function ($query) use ($recipeUnitId, $baseUnitId) {
-                            $query->where([['from_unit_id', $recipeUnitId], ['to_unit_id', $baseUnitId]])
-                                  ->orWhere([['from_unit_id', $baseUnitId], ['to_unit_id', $recipeUnitId]]);
+                            $query->where([
+                                ['from_unit_id', $recipeUnitId],
+                                ['to_unit_id', $baseUnitId]
+                            ])->orWhere([
+                                ['from_unit_id', $baseUnitId],
+                                ['to_unit_id', $recipeUnitId]
+                            ]);
                         })->first();
 
                     if (!$converter) {
@@ -214,17 +178,75 @@ public static function pendingAction(Transaction $transaction)
                         : $amountNeeded / $converter->multiplier;
                 }
 
-                $materialRequirements[$material->id] =
-                    ($materialRequirements[$material->id] ?? 0) + $amountNeeded;
+                if ($material->type === 'selectable') {
+                    // Kurangi stok variant, bukan parent
+                    $variantData = $selectedVariants->get($material->id);
+                    if (!$variantData) {
+                        throw new \Exception("Variant belum dipilih untuk material: {$material->name}");
+                    }
+                    $variantId = $variantData['variant_id'];
+                    $variantRequirements[$variantId] = ($variantRequirements[$variantId] ?? 0) + $amountNeeded;
 
-                $detailMaterialMap[] = [
-                    'transaction_detail_id' => $detail->id,
-                    'material_id'           => $material->id,
-                    'variant_id'            => null,
-                    'amount'                => $amountNeeded,
-                    'base_unit_id'          => $baseUnitId,
-                    'is_variant'            => false,
-                ];
+                    $detailMaterialMap[] = [
+                        'transaction_detail_id' => $detail->id,
+                        'material_id'           => $material->id,
+                        'variant_id'            => $variantId,
+                        'amount'                => $amountNeeded,
+                        'base_unit_id'          => $baseUnitId,
+                        'is_variant'            => true,
+                    ];
+                } else {
+                    $materialRequirements[$material->id] =
+                        ($materialRequirements[$material->id] ?? 0) + $amountNeeded;
+
+                    $detailMaterialMap[] = [
+                        'transaction_detail_id' => $detail->id,
+                        'material_id'           => $material->id,
+                        'variant_id'            => null,
+                        'amount'                => $amountNeeded,
+                        'base_unit_id'          => $baseUnitId,
+                        'is_variant'            => false,
+                    ];
+                }
+            }
+
+            // SemiFinishedMaterial — asumsi tidak selectable (bisa dikembangkan)
+            foreach ($currentMenu->menuSemiFinishedMaterials as $menuSfm) {
+                $multiplier = (float) $menuSfm->multiplier;
+                foreach ($menuSfm->semiFinishedMaterial->details as $sfmDetail) {
+                    $material     = $sfmDetail->material;
+                    $recipeUnitId = $sfmDetail->unit_id;
+                    $baseUnitId   = $material->base_unit_id;
+                    $amountNeeded = $sfmDetail->amount * $multiplier * $currentMultiplier;
+
+                    if ($recipeUnitId !== $baseUnitId) {
+                        $converter = UnitMaterialConverter::where('material_id', $material->id)
+                            ->where(function ($query) use ($recipeUnitId, $baseUnitId) {
+                                $query->where([['from_unit_id', $recipeUnitId], ['to_unit_id', $baseUnitId]])
+                                      ->orWhere([['from_unit_id', $baseUnitId], ['to_unit_id', $recipeUnitId]]);
+                            })->first();
+
+                        if (!$converter) {
+                            throw new \Exception("Unit converter not found for material: {$material->name}");
+                        }
+
+                        $amountNeeded = ($converter->from_unit_id == $recipeUnitId)
+                            ? $amountNeeded * $converter->multiplier
+                            : $amountNeeded / $converter->multiplier;
+                    }
+
+                    $materialRequirements[$material->id] =
+                        ($materialRequirements[$material->id] ?? 0) + $amountNeeded;
+
+                    $detailMaterialMap[] = [
+                        'transaction_detail_id' => $detail->id,
+                        'material_id'           => $material->id,
+                        'variant_id'            => null,
+                        'amount'                => $amountNeeded,
+                        'base_unit_id'          => $baseUnitId,
+                        'is_variant'            => false,
+                    ];
+                }
             }
         }
     }

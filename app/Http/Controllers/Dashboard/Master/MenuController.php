@@ -56,6 +56,7 @@ class MenuController extends Controller
             'units'                 => MUnit::select('id', 'name')->get(),
             'converters'            => UnitMaterialConverter::select('material_id', 'from_unit_id', 'to_unit_id')->get(),
             'semiFinishedMaterials' => SemiFinishedMaterial::with('unit')->select('id', 'cafe_id', 'name', 'base_unit_id')->get(),
+            'menus'                 => MMenu::where('is_combo', false)->select('id', 'cafe_id', 'name')->get(),
         ]);
     }
 
@@ -69,14 +70,24 @@ class MenuController extends Controller
             'image'                                         => 'nullable|image|max:5120',
             'price'                                         => 'required|numeric|min:0',
             'has_promo'                                     => 'boolean',
-            'materials'                                     => 'nullable|array',
-            'materials.*.material_id'                       => 'required|exists:m_materials,id',
-            'materials.*.amount'                            => 'required|numeric|min:0.01',
-            'materials.*.unit_id'                            => 'required|exists:m_units,id',
-            'semi_finished_materials'                        => 'nullable|array',
-            'semi_finished_materials.*.semi_finished_material_id' => 'required|exists:semi_finished_materials,id',
-            'semi_finished_materials.*.multiplier'           => 'required|numeric|min:0.01',
+            'is_combo'                                      => 'boolean',
+            'start_time'                                    => 'nullable|date_format:H:i|date_format:H:i:s', // Frontend might send H:i
+            'end_time'                                      => 'nullable|date_format:H:i|date_format:H:i:s',
         ];
+
+        if ($request->boolean('is_combo')) {
+            $rules['combo_menus'] = 'required|array|min:1';
+            $rules['combo_menus.*.menu_id'] = 'required|exists:m_menus,id';
+            $rules['combo_menus.*.amount'] = 'required|integer|min:1';
+        } else {
+            $rules['materials']                                     = 'nullable|array';
+            $rules['materials.*.material_id']                       = 'required|exists:m_materials,id';
+            $rules['materials.*.amount']                            = 'required|numeric|min:0.01';
+            $rules['materials.*.unit_id']                            = 'required|exists:m_units,id';
+            $rules['semi_finished_materials']                        = 'nullable|array';
+            $rules['semi_finished_materials.*.semi_finished_material_id'] = 'required|exists:semi_finished_materials,id';
+            $rules['semi_finished_materials.*.multiplier']           = 'required|numeric|min:0.01';
+        }
 
         if ($request->boolean('has_promo')) {
             $rules['promo_type'] = 'required|in:discount_percent,discount_amount';
@@ -101,6 +112,9 @@ class MenuController extends Controller
                 'description'      => $validated['description'] ?? null,
                 'img_url'          => $imgUrl,
                 'price'            => $validated['price'],
+                'is_combo'         => $request->boolean('is_combo'),
+                'start_time'       => isset($validated['start_time']) ? (strlen($validated['start_time']) == 5 ? $validated['start_time'].':00' : $validated['start_time']) : null,
+                'end_time'         => isset($validated['end_time']) ? (strlen($validated['end_time']) == 5 ? $validated['end_time'].':00' : $validated['end_time']) : null,
             ]);
 
             if ($request->boolean('has_promo')) {
@@ -111,24 +125,36 @@ class MenuController extends Controller
                 ]);
             }
 
-            if (!empty($validated['materials'])) {
-                foreach ($validated['materials'] as $mat) {
-                    MenuMaterial::create([
-                        'menu_id'     => $menu->id,
-                        'material_id' => $mat['material_id'],
-                        'amount'      => $mat['amount'],
-                        'unit_id'     => $mat['unit_id'],
-                    ]);
+            if ($request->boolean('is_combo')) {
+                if (!empty($validated['combo_menus'])) {
+                    foreach ($validated['combo_menus'] as $combo) {
+                        \App\Models\MenuCombo::create([
+                            'menu_id' => $menu->id,
+                            'combo_menu_id' => $combo['menu_id'],
+                            'amount' => $combo['amount'],
+                        ]);
+                    }
                 }
-            }
+            } else {
+                if (!empty($validated['materials'])) {
+                    foreach ($validated['materials'] as $mat) {
+                        MenuMaterial::create([
+                            'menu_id'     => $menu->id,
+                            'material_id' => $mat['material_id'],
+                            'amount'      => $mat['amount'],
+                            'unit_id'     => $mat['unit_id'],
+                        ]);
+                    }
+                }
 
-            if (!empty($validated['semi_finished_materials'])) {
-                foreach ($validated['semi_finished_materials'] as $sfm) {
-                    MenuSemiFinishedMaterial::create([
-                        'menu_id'                    => $menu->id,
-                        'semi_finished_material_id'  => $sfm['semi_finished_material_id'],
-                        'multiplier'                 => $sfm['multiplier'],
-                    ]);
+                if (!empty($validated['semi_finished_materials'])) {
+                    foreach ($validated['semi_finished_materials'] as $sfm) {
+                        MenuSemiFinishedMaterial::create([
+                            'menu_id'                    => $menu->id,
+                            'semi_finished_material_id'  => $sfm['semi_finished_material_id'],
+                            'multiplier'                 => $sfm['multiplier'],
+                        ]);
+                    }
                 }
             }
         });
@@ -140,7 +166,7 @@ class MenuController extends Controller
 
     public function edit($id)
     {
-        $data = MMenu::with(['promo', 'menuMaterials', 'menuSemiFinishedMaterials'])->findOrFail($id);
+        $data = MMenu::with(['promo', 'menuMaterials', 'menuSemiFinishedMaterials', 'menuCombos'])->findOrFail($id);
 
         return inertia('master/menu/Edit', [
             'data'                  => $data,
@@ -150,6 +176,7 @@ class MenuController extends Controller
             'units'                 => MUnit::select('id', 'name')->get(),
             'converters'            => UnitMaterialConverter::select('material_id', 'from_unit_id', 'to_unit_id')->get(),
             'semiFinishedMaterials' => SemiFinishedMaterial::with('unit')->select('id', 'cafe_id', 'name', 'base_unit_id')->get(),
+            'menus'                 => MMenu::where('is_combo', false)->select('id', 'cafe_id', 'name')->get(),
         ]);
     }
 
@@ -165,14 +192,24 @@ class MenuController extends Controller
             'image'                                         => 'nullable|image|max:5120',
             'price'                                         => 'required|numeric|min:0',
             'has_promo'                                     => 'boolean',
-            'materials'                                     => 'nullable|array',
-            'materials.*.material_id'                       => 'required|exists:m_materials,id',
-            'materials.*.amount'                            => 'required|numeric|min:0.01',
-            'materials.*.unit_id'                            => 'required|exists:m_units,id',
-            'semi_finished_materials'                        => 'nullable|array',
-            'semi_finished_materials.*.semi_finished_material_id' => 'required|exists:semi_finished_materials,id',
-            'semi_finished_materials.*.multiplier'           => 'required|numeric|min:0.01',
+            'is_combo'                                      => 'boolean',
+            'start_time'                                    => 'nullable|date_format:H:i|date_format:H:i:s',
+            'end_time'                                      => 'nullable|date_format:H:i|date_format:H:i:s',
         ];
+
+        if ($request->boolean('is_combo')) {
+            $rules['combo_menus'] = 'required|array|min:1';
+            $rules['combo_menus.*.menu_id'] = 'required|exists:m_menus,id';
+            $rules['combo_menus.*.amount'] = 'required|integer|min:1';
+        } else {
+            $rules['materials']                                     = 'nullable|array';
+            $rules['materials.*.material_id']                       = 'required|exists:m_materials,id';
+            $rules['materials.*.amount']                            = 'required|numeric|min:0.01';
+            $rules['materials.*.unit_id']                            = 'required|exists:m_units,id';
+            $rules['semi_finished_materials']                        = 'nullable|array';
+            $rules['semi_finished_materials.*.semi_finished_material_id'] = 'required|exists:semi_finished_materials,id';
+            $rules['semi_finished_materials.*.multiplier']           = 'required|numeric|min:0.01';
+        }
 
         if ($request->boolean('has_promo')) {
             $rules['promo_type'] = 'required|in:discount_percent,discount_amount';
@@ -197,6 +234,9 @@ class MenuController extends Controller
                 'description'      => $validated['description'] ?? null,
                 'img_url'          => $imgUrl,
                 'price'            => $validated['price'],
+                'is_combo'         => $request->boolean('is_combo'),
+                'start_time'       => isset($validated['start_time']) ? (strlen($validated['start_time']) == 5 ? $validated['start_time'].':00' : $validated['start_time']) : null,
+                'end_time'         => isset($validated['end_time']) ? (strlen($validated['end_time']) == 5 ? $validated['end_time'].':00' : $validated['end_time']) : null,
             ]);
 
             $menu->promo()->delete();
@@ -209,25 +249,39 @@ class MenuController extends Controller
             }
 
             $menu->menuMaterials()->delete();
-            if (!empty($validated['materials'])) {
-                foreach ($validated['materials'] as $mat) {
-                    MenuMaterial::create([
-                        'menu_id'     => $menu->id,
-                        'material_id' => $mat['material_id'],
-                        'amount'      => $mat['amount'],
-                        'unit_id'     => $mat['unit_id'],
-                    ]);
-                }
-            }
-
             $menu->menuSemiFinishedMaterials()->delete();
-            if (!empty($validated['semi_finished_materials'])) {
-                foreach ($validated['semi_finished_materials'] as $sfm) {
-                    MenuSemiFinishedMaterial::create([
-                        'menu_id'                    => $menu->id,
-                        'semi_finished_material_id'  => $sfm['semi_finished_material_id'],
-                        'multiplier'                 => $sfm['multiplier'],
-                    ]);
+            $menu->menuCombos()->delete();
+
+            if ($request->boolean('is_combo')) {
+                if (!empty($validated['combo_menus'])) {
+                    foreach ($validated['combo_menus'] as $combo) {
+                        \App\Models\MenuCombo::create([
+                            'menu_id' => $menu->id,
+                            'combo_menu_id' => $combo['menu_id'],
+                            'amount' => $combo['amount'],
+                        ]);
+                    }
+                }
+            } else {
+                if (!empty($validated['materials'])) {
+                    foreach ($validated['materials'] as $mat) {
+                        MenuMaterial::create([
+                            'menu_id'     => $menu->id,
+                            'material_id' => $mat['material_id'],
+                            'amount'      => $mat['amount'],
+                            'unit_id'     => $mat['unit_id'],
+                        ]);
+                    }
+                }
+
+                if (!empty($validated['semi_finished_materials'])) {
+                    foreach ($validated['semi_finished_materials'] as $sfm) {
+                        MenuSemiFinishedMaterial::create([
+                            'menu_id'                    => $menu->id,
+                            'semi_finished_material_id'  => $sfm['semi_finished_material_id'],
+                            'multiplier'                 => $sfm['multiplier'],
+                        ]);
+                    }
                 }
             }
         });

@@ -16,6 +16,9 @@ class MMenu extends Model
         'img_url',
         'price',
         'status',
+        'is_combo',
+        'start_time',
+        'end_time',
         'menu_category_id',
     ];
     protected $appends = ['menu_type'];
@@ -44,6 +47,7 @@ class MMenu extends Model
     {
         return [
             'price' => 'decimal:2',
+            'is_combo' => 'boolean',
         ];
     }
 
@@ -75,5 +79,10 @@ class MMenu extends Model
     public function menuSemiFinishedMaterials(): HasMany
     {
         return $this->hasMany(MenuSemiFinishedMaterial::class, 'menu_id');
+    }
+
+    public function menuCombos(): HasMany
+    {
+        return $this->hasMany(MenuCombo::class, 'menu_id');
     }
 }
