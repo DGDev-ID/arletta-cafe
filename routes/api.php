@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CheckPromoCodeController;
 use App\Http\Controllers\Api\MakeFailedOpenBillController;
 use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\PaymentWebhookController;
+use App\Http\Controllers\Api\PayOpenbillQrisController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Dashboard\PublicController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,8 @@ use Illuminate\Support\Facades\Route;
     Route::post('/make-transaction', TransactionController::class);
     Route::post('/payment-webhook', PaymentWebhookController::class);
     Route::get('/transaction/{transaction}/status', CheckTransactionStatusController::class);
+
+    Route::post('/pay-openbill-qris', PayOpenbillQrisController::class);
 
     Route::post('/check-promo-code', CheckPromoCodeController::class);
 // });

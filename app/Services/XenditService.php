@@ -21,6 +21,9 @@ class XenditService
         
         try {
             $minutesToExpire = 5;
+            if ($transaction->is_openbill) {
+                $minutesToExpire = 20;
+            }
             $expiredAt = now()->addMinutes($minutesToExpire);
 
             $result = Http::withBasicAuth(
