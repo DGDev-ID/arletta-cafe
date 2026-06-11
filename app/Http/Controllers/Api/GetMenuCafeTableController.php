@@ -40,8 +40,10 @@ class GetMenuCafeTableController extends ApiBaseController
             $menuCategories = MMenuCategory::with([
                 'menus.menuMaterials.material.variants',
                 'menus.menuSemiFinishedMaterials.semiFinishedMaterial.details',
+                'menus.menuCombos.childMenu.menuMaterials.material.variants',
                 'children.menus.menuMaterials.material.variants',
                 'children.menus.menuSemiFinishedMaterials.semiFinishedMaterial.details',
+                'children.menus.menuCombos.childMenu.menuMaterials.material.variants',
             ])
                 ->where('cafe_id', $cafe->id)
                 ->whereNull('parent_id')
@@ -80,24 +82,45 @@ class GetMenuCafeTableController extends ApiBaseController
                 ->first();
             
             $transformMenu = function ($menu) {
-    $selectableMaterials = $menu->menuMaterials
-        ->filter(fn($mm) => $mm->material->type === 'selectable')
-        ->map(fn($mm) => [
-            'material_id'   => $mm->material->id,
-            'material_name' => $mm->material->name,
-            'variants'      => $mm->material->variants
-                ->map(fn($v) => [
-                    'id'            => $v->id,
-                    'material_id'   => $v->material_id,
-                    'name'          => $v->name,
-                    'stock'         => $v->stock,
-                    'minimum_stock' => $v->minimum_stock,
-                ])->values(),
-        ])->values();
-
-    $menu->selectable_materials = $selectableMaterials;
-    return $menu;
-};
+                if ($menu->is_combo) {
+                    $selectableMaterials = collect();
+                    foreach ($menu->menuCombos as $combo) {
+                        $childSelectables = $combo->childMenu->menuMaterials
+                            ->filter(fn($mm) => $mm->material->type === 'selectable')
+                            ->map(fn($mm) => [
+                                'material_id'   => $mm->material->id,
+                                'material_name' => $mm->material->name,
+                                'variants'      => $mm->material->variants
+                                    ->map(fn($v) => [
+                                        'id'            => $v->id,
+                                        'material_id'   => $v->material_id,
+                                        'name'          => $v->name,
+                                        'stock'         => $v->stock,
+                                        'minimum_stock' => $v->minimum_stock,
+                                    ])->values(),
+                            ]);
+                        $selectableMaterials = $selectableMaterials->merge($childSelectables);
+                    }
+                    $menu->selectable_materials = $selectableMaterials->unique('material_id')->values();
+                } else {
+                    $selectableMaterials = $menu->menuMaterials
+                        ->filter(fn($mm) => $mm->material->type === 'selectable')
+                        ->map(fn($mm) => [
+                            'material_id'   => $mm->material->id,
+                            'material_name' => $mm->material->name,
+                            'variants'      => $mm->material->variants
+                                ->map(fn($v) => [
+                                    'id'            => $v->id,
+                                    'material_id'   => $v->material_id,
+                                    'name'          => $v->name,
+                                    'stock'         => $v->stock,
+                                    'minimum_stock' => $v->minimum_stock,
+                                ])->values(),
+                        ])->values();
+                    $menu->selectable_materials = $selectableMaterials;
+                }
+                return $menu;
+            };
 
 $menuCategories->each(function ($category) use ($transformMenu) {
     $category->menus->each($transformMenu);
@@ -135,7 +158,7 @@ $menuCategories->each(function ($category) use ($transformMenu) {
             $hasSfm = $menu->menuSemiFinishedMaterials->isNotEmpty();
 
             // Menu tanpa resep material → selalu tampil
-            if (!$hasMaterials && !$hasSfm) {
+            if (!$hasMaterials && !$hasSfm && !$menu->is_combo) {
                 return true;
             }
 

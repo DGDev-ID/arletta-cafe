@@ -6,6 +6,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Log;
+use App\Services\TransactionService;
 
 class MakeFailedTransactionIfExpired implements ShouldQueue
 {
@@ -36,8 +37,6 @@ class MakeFailedTransactionIfExpired implements ShouldQueue
         Log::info('Transaction is still pending, marking as failed', [
             'transaction_id' => $this->transactionId,
         ]);
-        $transaction->update([
-            'status' => 'failed',
-        ]);
+        TransactionService::makeFailed($transaction);
     }
 }

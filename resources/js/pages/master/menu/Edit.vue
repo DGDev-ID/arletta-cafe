@@ -22,6 +22,9 @@ const props = defineProps<{
         img_url: string | null;
         price: number;
         status: string;
+        is_combo: boolean;
+        start_time: string | null;
+        end_time: string | null;
         promo: {
             type: string;
             discount_amount: number;
@@ -35,6 +38,10 @@ const props = defineProps<{
             semi_finished_material_id: number;
             multiplier: number;
         }[];
+        menu_combos: {
+            combo_menu_id: number;
+            amount: number;
+        }[];
     };
     cafes: CafeOption[];
     categories: CategoryOption[];
@@ -42,6 +49,7 @@ const props = defineProps<{
     units: UnitOption[];
     converters: ConverterOption[];
     semiFinishedMaterials: SfmOption[];
+    menus: { id: number; cafe_id: number; name: string; }[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -59,6 +67,9 @@ const form = useForm({
     has_promo: !!props.data.promo,
     promo_type: props.data.promo?.type ?? '',
     promo_discount_amount: (props.data.promo?.discount_amount ?? '') as number | '',
+    is_combo: props.data.is_combo,
+    start_time: props.data.start_time ? props.data.start_time.substring(0, 5) : null,
+    end_time: props.data.end_time ? props.data.end_time.substring(0, 5) : null,
     materials: props.data.menu_materials.map(mm => ({
         material_id: mm.material_id as number | '',
         amount: mm.amount as number | '',
@@ -67,6 +78,10 @@ const form = useForm({
     semi_finished_materials: (props.data.menu_semi_finished_materials ?? []).map(sfm => ({
         semi_finished_material_id: sfm.semi_finished_material_id as number | '',
         multiplier: sfm.multiplier as number | '',
+    })),
+    combo_menus: (props.data.menu_combos ?? []).map(mc => ({
+        menu_id: mc.combo_menu_id as number | '',
+        amount: mc.amount as number | '',
     })),
 });
 
@@ -100,6 +115,7 @@ const submit = () => {
                         :units="units"
                         :converters="converters"
                         :semi-finished-materials="semiFinishedMaterials"
+                        :menus="menus"
                         :existing-img-url="data.img_url"
                         submit-label="Simpan Perubahan"
                         @submit="submit"

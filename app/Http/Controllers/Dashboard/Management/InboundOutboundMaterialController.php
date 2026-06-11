@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard\Management;
 
 use App\Http\Controllers\Controller;
 use App\Models\MaterialInboundOutbound;
+use App\Models\MaterialVariant;
 use App\Models\MCafe;
 use App\Models\MMaterial;
 use App\Models\MUnit;
@@ -25,6 +26,7 @@ class InboundOutboundMaterialController extends Controller
             'material.cafe',
             'baseUnit',
             'transactionDetail.menu',
+            'variant',
         ]);
 
         if ($cafeId) {
@@ -77,12 +79,22 @@ class InboundOutboundMaterialController extends Controller
     public function getMaterialsByCafe(Request $request)
     {
         $materials = MMaterial::where('cafe_id', $request->cafe_id)
-            ->with('baseUnit')
-            ->select('id', 'name', 'base_unit_id')
+            ->with(['baseUnit', 'variants'])
+            ->select('id', 'name', 'base_unit_id', 'type')
             ->orderBy('name')
             ->get();
 
         return response()->json($materials);
+    }
+
+    public function getVariantsByMaterial(Request $request)
+    {
+        $variants = MaterialVariant::where('material_id', $request->material_id)
+            ->select('id', 'name', 'stock')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json($variants);
     }
 
     public function checkUnitConverter(Request $request)
@@ -105,9 +117,10 @@ class InboundOutboundMaterialController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'material_id' => 'required|exists:m_materials,id',
-            'amount' => 'required|numeric|min:0.01',
-            'base_unit_id' => 'required|exists:m_units,id',
+            'material_id'       => 'required|exists:m_materials,id',
+            'variant_id'        => 'nullable|exists:material_variants,id',
+            'amount'            => 'required|numeric|min:0.01',
+            'base_unit_id'      => 'required|exists:m_units,id',
             'inbound_buy_price' => 'required|numeric|min:0',
         ]);
 
@@ -118,23 +131,21 @@ class InboundOutboundMaterialController extends Controller
                 ->firstOrFail();
 
             $inboundUnitId = (int) $request->base_unit_id;
-            $amount = (float) $request->amount;
-
-            $convertedAmount = $this->convertToBaseUnit($material, $inboundUnitId, $amount);
 
             MaterialInboundOutbound::create([
-                'material_id' => $material->id,
-                'type' => 'inbound',
-                'amount' => $request->amount,
-                'base_unit_id' => $inboundUnitId,
+                'material_id'       => $material->id,
+                'variant_id'        => $request->variant_id ?: null,
+                'type'              => 'inbound',
+                'amount'            => $request->amount,
+                'base_unit_id'      => $inboundUnitId,
                 'inbound_buy_price' => $request->inbound_buy_price,
             ]);
 
-            // $material->stock = (float) $material->stock + $convertedAmount;
-
-            $material->avg_buy_price = $this->calculateAvgBuyPrice($material);
-
-            $material->save();
+            // avg_buy_price hanya di-update untuk parent material (bukan variant)
+            if (!$request->variant_id) {
+                $material->avg_buy_price = $this->calculateAvgBuyPrice($material);
+                $material->save();
+            }
         });
 
         return redirect('/management/inbound-outbound-material')
@@ -155,10 +166,11 @@ class InboundOutboundMaterialController extends Controller
     public function storeOutbound(Request $request)
     {
         $request->validate([
-            'material_id' => 'required|exists:m_materials,id',
-            'amount' => 'required|numeric|min:0.01',
+            'material_id'  => 'required|exists:m_materials,id',
+            'variant_id'   => 'nullable|exists:material_variants,id',
+            'amount'       => 'required|numeric|min:0.01',
             'base_unit_id' => 'required|exists:m_units,id',
-            'description' => 'required|string',
+            'description'  => 'required|string',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -168,14 +180,14 @@ class InboundOutboundMaterialController extends Controller
                 ->firstOrFail();
 
             $outboundUnitId = (int) $request->base_unit_id;
-            $amount = (float) $request->amount;
 
             MaterialInboundOutbound::create([
-                'material_id' => $material->id,
-                'type' => 'outbound',
-                'amount' => $request->amount,
+                'material_id'  => $material->id,
+                'variant_id'   => $request->variant_id ?: null,
+                'type'         => 'outbound',
+                'amount'       => $request->amount,
                 'base_unit_id' => $outboundUnitId,
-                'description' => "spoil - " . $request->description,
+                'description'  => 'spoil - ' . $request->description,
             ]);
         });
 
@@ -185,7 +197,7 @@ class InboundOutboundMaterialController extends Controller
 
     public function edit($id)
     {
-        $inboundOutbound = MaterialInboundOutbound::with('material.cafe')->findOrFail($id);
+        $inboundOutbound = MaterialInboundOutbound::with('material.cafe', 'variant')->findOrFail($id);
 
         if ($inboundOutbound->transaction_detail_id !== null) {
             return redirect('/management/inbound-outbound-material')
@@ -223,11 +235,26 @@ class InboundOutboundMaterialController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $variant = null;
+            if ($inboundOutbound->variant_id) {
+                $variant = MaterialVariant::where('id', $inboundOutbound->variant_id)->lockForUpdate()->firstOrFail();
+            }
+
             $oldAmountConverted = $this->convertToBaseUnit($material, $inboundOutbound->base_unit_id, $inboundOutbound->amount);
-            if ($inboundOutbound->type === 'inbound') {
-                $material->stock = (float)$material->stock - $oldAmountConverted;
+            
+            // Revert old stock
+            if ($variant) {
+                if ($inboundOutbound->type === 'inbound') {
+                    $variant->stock = (float)$variant->stock - $oldAmountConverted;
+                } else {
+                    $variant->stock = (float)$variant->stock + $oldAmountConverted;
+                }
             } else {
-                $material->stock = (float)$material->stock + $oldAmountConverted;
+                if ($inboundOutbound->type === 'inbound') {
+                    $material->stock = (float)$material->stock - $oldAmountConverted;
+                } else {
+                    $material->stock = (float)$material->stock + $oldAmountConverted;
+                }
             }
 
             $newAmountConverted = $this->convertToBaseUnit($material, $request->base_unit_id, $request->amount);
@@ -249,17 +276,26 @@ class InboundOutboundMaterialController extends Controller
 
             $inboundOutbound->save();
 
-            if ($inboundOutbound->type === 'inbound') {
-                $material->stock = (float)$material->stock + $newAmountConverted;
+            // Apply new stock
+            if ($variant) {
+                if ($inboundOutbound->type === 'inbound') {
+                    $variant->stock = (float)$variant->stock + $newAmountConverted;
+                } else {
+                    $variant->stock = (float)$variant->stock - $newAmountConverted;
+                }
+                $variant->save();
             } else {
-                $material->stock = (float)$material->stock - $newAmountConverted;
+                if ($inboundOutbound->type === 'inbound') {
+                    $material->stock = (float)$material->stock + $newAmountConverted;
+                } else {
+                    $material->stock = (float)$material->stock - $newAmountConverted;
+                }
+                
+                if ($inboundOutbound->type === 'inbound') {
+                    $material->avg_buy_price = $this->calculateAvgBuyPrice($material);
+                }
+                $material->save();
             }
-
-            if ($inboundOutbound->type === 'inbound') {
-                $material->avg_buy_price = $this->calculateAvgBuyPrice($material);
-            }
-
-            $material->save();
         });
 
         return redirect('/management/inbound-outbound-material')

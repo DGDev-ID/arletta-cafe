@@ -21,6 +21,9 @@ class XenditService
         
         try {
             $minutesToExpire = 5;
+            if ($transaction->is_openbill) {
+                $minutesToExpire = 20;
+            }
             $expiredAt = now()->addMinutes($minutesToExpire);
 
             $result = Http::withBasicAuth(
@@ -117,7 +120,7 @@ class XenditService
             case 'COMPLETED':
             case 'PAID':
                 $transaction->update([
-                    'status' => 'success',
+                    'status' => 'in_order',
                     'paid_at' => now(),
                 ]);
                 break;
@@ -153,7 +156,7 @@ class XenditService
         Log::info('Xendit Webhook Processed', [
             'reference_id' => $referenceId,
             'status' => $status,
-            'payment_id' => $paymentId
+            // 'payment_id' => $paymentId
         ]);
 
         return true;

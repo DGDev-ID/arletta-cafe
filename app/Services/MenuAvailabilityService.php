@@ -12,6 +12,22 @@ class MenuAvailabilityService
 {
     public function checkAvailableMenu(MMenu $menu, int $quantity, array $selectedVariants = []): bool
     {
+        if ($menu->is_combo && $menu->start_time && $menu->end_time) {
+            $currentTime = now()->format('H:i:s');
+            if ($currentTime < $menu->start_time || $currentTime > $menu->end_time) {
+                return false;
+            }
+        }
+
+        if ($menu->is_combo) {
+            foreach ($menu->menuCombos as $combo) {
+                if (!$this->checkAvailableMenu($combo->childMenu, $quantity * $combo->amount, $selectedVariants)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         // --- Cek MenuMaterial (raw material langsung) ---
         $menuMaterials = MenuMaterial::where('menu_id', $menu->id)->get();
 
@@ -126,81 +142,108 @@ class MenuAvailabilityService
             $menu     = $item['menu'];
             $quantity = $item['quantity'];
 
-            // --- Aggregate dari MenuMaterial ---
-            $menuMaterials = MenuMaterial::where('menu_id', $menu->id)->get();
-
-            foreach ($menuMaterials as $menuMaterial) {
-                $material = MMaterial::find($menuMaterial->material_id);
-
-                if (!$material) {
+            if ($menu->is_combo && $menu->start_time && $menu->end_time) {
+                $currentTime = now()->format('H:i:s');
+                if ($currentTime < $menu->start_time || $currentTime > $menu->end_time) {
                     return [$menu->name];
-                }
-
-                $convertedAmount = $this->convertToBase(
-                    $material,
-                    $menuMaterial->amount,
-                    $menuMaterial->unit_id
-                );
-
-                if ($convertedAmount === null) {
-                    return false;
-                }
-
-                $needed = $convertedAmount * $quantity;
-
-                if ($material->type === 'selectable') {
-                    // Aggregate per-variant if selection provided
-                    $selectedVariants = $item['selected_variants'] ?? [];
-                    $variantEntry = collect($selectedVariants)->first(fn($v) => $v['material_id'] == $material->id);
-                    if (!$variantEntry) {
-                        // No selected variant — mark unavailable
-                        $materialToMenuNames[$material->id][] = $menu->name;
-                        $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed; // fallback to parent check later
-                    } else {
-                        $variantId = $variantEntry['variant_id'];
-                        $variantNeeds[$variantId] = ($variantNeeds[$variantId] ?? 0) + $needed;
-                        $materialToMenuNames[$material->id][] = $menu->name;
-                    }
-                } else {
-                    $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed;
-                    $materialToMenuNames[$material->id][] = $menu->name;
                 }
             }
 
-            // --- Aggregate dari MenuSemiFinishedMaterial ---
-            $menuSfms = MenuSemiFinishedMaterial::where('menu_id', $menu->id)
-                ->with('semiFinishedMaterial.details')
-                ->get();
+            $menusToProcess = [];
+            if ($menu->is_combo) {
+                foreach ($menu->menuCombos as $combo) {
+                    $menusToProcess[] = [
+                        'menu' => $combo->childMenu,
+                        'multiplier' => $quantity * $combo->amount
+                    ];
+                }
+            } else {
+                $menusToProcess[] = [
+                    'menu' => $menu,
+                    'multiplier' => $quantity
+                ];
+            }
 
-            foreach ($menuSfms as $menuSfm) {
-                $multiplier = (float) $menuSfm->multiplier;
+            foreach ($menusToProcess as $menuData) {
+                $currentMenu = $menuData['menu'];
+                $currentQuantity = $menuData['multiplier'];
 
-                foreach ($menuSfm->semiFinishedMaterial->details as $detail) {
-                    $material = MMaterial::find($detail->material_id);
+                // --- Aggregate dari MenuMaterial ---
+                $menuMaterials = MenuMaterial::where('menu_id', $currentMenu->id)->get();
+
+                foreach ($menuMaterials as $menuMaterial) {
+                    $material = MMaterial::find($menuMaterial->material_id);
 
                     if (!$material) {
                         return [$menu->name];
                     }
 
-                    if ($material->base_unit_id !== $detail->unit_id) {
-                        $converter = UnitMaterialConverter::where('material_id', $material->id)
-                            ->where('from_unit_id', $detail->unit_id)
-                            ->where('to_unit_id', $material->base_unit_id)
-                            ->first();
+                    $convertedAmount = $this->convertToBase(
+                        $material,
+                        $menuMaterial->amount,
+                        $menuMaterial->unit_id
+                    );
 
-                        if (!$converter) {
+                    if ($convertedAmount === null) {
+                        return false;
+                    }
+
+                    $needed = $convertedAmount * $currentQuantity;
+
+                    if ($material->type === 'selectable') {
+                        // Aggregate per-variant if selection provided
+                        $selectedVariants = $item['selected_variants'] ?? [];
+                        $variantEntry = collect($selectedVariants)->first(fn($v) => $v['material_id'] == $material->id);
+                        if (!$variantEntry) {
+                            // No selected variant — mark unavailable
+                            $materialToMenuNames[$material->id][] = $menu->name;
+                            $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed; // fallback to parent check later
+                        } else {
+                            $variantId = $variantEntry['variant_id'];
+                            $variantNeeds[$variantId] = ($variantNeeds[$variantId] ?? 0) + $needed;
+                            $materialToMenuNames[$material->id][] = $menu->name;
+                        }
+                    } else {
+                        $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed;
+                        $materialToMenuNames[$material->id][] = $menu->name;
+                    }
+                }
+
+                // --- Aggregate dari MenuSemiFinishedMaterial ---
+                $menuSfms = MenuSemiFinishedMaterial::where('menu_id', $currentMenu->id)
+                    ->with('semiFinishedMaterial.details')
+                    ->get();
+
+                foreach ($menuSfms as $menuSfm) {
+                    $multiplier = (float) $menuSfm->multiplier;
+
+                    foreach ($menuSfm->semiFinishedMaterial->details as $detail) {
+                        $material = MMaterial::find($detail->material_id);
+
+                        if (!$material) {
                             return [$menu->name];
                         }
 
-                        $convertedAmount = (float) $detail->amount * (float) $converter->multiplier;
-                    } else {
-                        $convertedAmount = (float) $detail->amount;
+                        if ($material->base_unit_id !== $detail->unit_id) {
+                            $converter = UnitMaterialConverter::where('material_id', $material->id)
+                                ->where('from_unit_id', $detail->unit_id)
+                                ->where('to_unit_id', $material->base_unit_id)
+                                ->first();
+
+                            if (!$converter) {
+                                return [$menu->name];
+                            }
+
+                            $convertedAmount = (float) $detail->amount * (float) $converter->multiplier;
+                        } else {
+                            $convertedAmount = (float) $detail->amount;
+                        }
+
+                        $needed = $convertedAmount * $multiplier * $currentQuantity;
+
+                        $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed;
+                        $materialToMenuNames[$material->id][] = $menu->name;
                     }
-
-                    $needed = $convertedAmount * $multiplier * $quantity;
-
-                    $aggregatedNeeds[$material->id] = ($aggregatedNeeds[$material->id] ?? 0) + $needed;
-                    $materialToMenuNames[$material->id][] = $menu->name;
                 }
             }
         }

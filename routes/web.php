@@ -187,6 +187,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('inbound-outbound-material/materials-by-cafe', [InboundOutboundMaterialController::class, 'getMaterialsByCafe'])
             ->name('inbound-outbound-material.materials-by-cafe')
             ->middleware('can:management.inbound-outbound-material');
+        Route::get('inbound-outbound-material/variants-by-material', [InboundOutboundMaterialController::class, 'getVariantsByMaterial'])
+            ->name('inbound-outbound-material.variants-by-material')
+            ->middleware('can:management.inbound-outbound-material');
         Route::get('inbound-outbound-material/check-unit-converter', [InboundOutboundMaterialController::class, 'checkUnitConverter'])
             ->name('inbound-outbound-material.check-unit-converter')
             ->middleware('can:management.inbound-outbound-material');

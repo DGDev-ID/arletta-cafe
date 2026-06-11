@@ -61,7 +61,7 @@ class CafePromoController extends Controller
             'type' => 'required|in:discount_percent,discount_amount',
             'value' => 'required|numeric|min:0',
         ]);
-        $validator['promo_code'] = strtoupper($validator['promo_code']);
+        // $validator['promo_code'] = strtoupper($validator['promo_code']);
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();

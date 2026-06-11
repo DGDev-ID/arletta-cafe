@@ -22,8 +22,10 @@ interface Unit {
 interface MaterialOption {
     id: number;
     name: string;
+    type: 'normal' | 'selectable';
     base_unit_id: number;
     base_unit: Unit;
+    variants?: { id: number; name: string; stock: number }[];
 }
 
 const props = defineProps<{
@@ -43,10 +45,18 @@ const checkingUnit = ref(false);
 
 const form = useForm({
     material_id: '' as number | '',
+    variant_id: '' as number | '',
     amount: '' as number | '',
     base_unit_id: '' as number | '',
     inbound_buy_price: '' as number | '',
 });
+
+const selectedMaterial = computed(() => materials.value.find(m => m.id === form.material_id));
+const isSelectable = computed(() => selectedMaterial.value?.type === 'selectable');
+const variantOptions = computed(() => (selectedMaterial.value?.variants ?? []).map(v => ({
+    value: v.id,
+    label: `${v.name} (Stok: ${v.stock})`,
+})));
 
 const cafeOptions = computed(() => props.cafes.map(c => ({ value: c.id, label: c.name })));
 const materialOptions = computed(() => materials.value.map(m => ({ value: m.id, label: `${m.name} (Base: ${m.base_unit.name})` })));
@@ -70,6 +80,7 @@ watch(selectedCafe, async (cafeId) => {
 // Reset unit when material changes
 watch(() => form.material_id, () => {
     form.base_unit_id = '';
+    form.variant_id = '';
     unitValid.value = null;
 });
 
@@ -144,6 +155,20 @@ const submit = () => {
                                 required
                             />
                             <InputError :message="form.errors.material_id" />
+                        </div>
+
+                        <!-- Variant (hanya untuk selectable material) -->
+                        <div v-if="isSelectable" class="grid gap-2">
+                            <label class="text-sm font-medium leading-none">
+                                Variant <span class="text-red-500">*</span>
+                            </label>
+                            <SearchableSelect
+                                v-model="form.variant_id"
+                                :options="variantOptions"
+                                placeholder="Pilih Variant"
+                                required
+                            />
+                            <InputError :message="form.errors.variant_id" />
                         </div>
 
                         <!-- Amount -->

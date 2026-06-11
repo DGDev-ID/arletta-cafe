@@ -63,6 +63,7 @@ class HistoryTransactionController extends Controller
                 'table',
                 'details.menu.category',
                 'details.menu.promo',
+                'details.menu.menuCombos.childMenu',
             ])
             ->findOrFail($id);
 
@@ -285,6 +286,7 @@ class HistoryTransactionController extends Controller
 
                 MaterialInboundOutbound::create([
                     'material_id'           => $outbound->material_id,
+                    'variant_id'            => $outbound->variant_id ?? null,
                     'type'                  => 'inbound',
                     'amount'                => $reverseAmount,
                     'base_unit_id'          => $outbound->base_unit_id,

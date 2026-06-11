@@ -10,7 +10,6 @@ interface UnitOption { id: number; name: string; }
 interface VariantItem {
     id?: number | null;
     name: string;
-    stock: number | '';
     minimum_stock: number | '';
 }
 
@@ -46,7 +45,7 @@ watch(() => props.form.type, (val) => {
 });
 
 function addVariant() {
-    props.form.variants.push({ id: null, name: '', stock: 0, minimum_stock: 0 });
+    props.form.variants.push({ id: null, name: '', minimum_stock: 0 });
 }
 
 function removeVariant(index: number) {
@@ -182,34 +181,19 @@ function removeVariant(index: number) {
                         <InputError :message="form.errors[`variants.${index}.name`]" />
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <!-- Stok -->
-                        <div class="grid gap-1.5">
-                            <label class="text-xs font-medium">Stok <span class="text-red-500">*</span></label>
-                            <input
-                                v-model="variant.stock"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                            />
-                            <InputError :message="form.errors[`variants.${index}.stock`]" />
-                        </div>
-
-                        <!-- Minimum Stok -->
-                        <div class="grid gap-1.5">
-                            <label class="text-xs font-medium">Stok Minimum</label>
-                            <input
-                                v-model="variant.minimum_stock"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                            />
-                            <InputError :message="form.errors[`variants.${index}.minimum_stock`]" />
-                        </div>
+                    <!-- Minimum Stok -->
+                    <div class="grid gap-1.5">
+                        <label class="text-xs font-medium">Stok Minimum</label>
+                        <input
+                            v-model="variant.minimum_stock"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0"
+                            class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        <p class="text-xs text-muted-foreground">Stok diisi melalui menu Purchase (Inbound).</p>
+                        <InputError :message="form.errors[`variants.${index}.minimum_stock`]" />
                     </div>
                 </div>
             </div>

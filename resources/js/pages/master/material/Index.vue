@@ -133,15 +133,32 @@ const searchMaterial = () => applyFilters();
                                 </td>
 
                                 <!-- Stock -->
-                                <td class="px-6 py-4 font-medium">
-                                    <span :class="Number(material.stock) <= Number(material.critical_stock) && Number(material.critical_stock) > 0 ? 'text-red-600 font-bold' : ''">
-                                        {{ material.stock }}
-                                    </span>
+                                <td class="px-6 py-4 font-medium min-w-[220px]">
+                                    <template v-if="material.type === 'selectable' && material.variants && material.variants.length > 0">
+                                        <select class="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                            <option v-for="variant in material.variants" :key="variant.id" :value="variant.id">
+                                                {{ variant.name }} - Stok: {{ variant.stock }}
+                                            </option>
+                                        </select>
+                                    </template>
+                                    <template v-else-if="material.type === 'selectable'">
+                                        <span class="text-muted-foreground text-xs italic">Belum ada variant</span>
+                                    </template>
+                                    <template v-else>
+                                        <span :class="Number(material.stock) <= Number(material.critical_stock) && Number(material.critical_stock) > 0 ? 'text-red-600 font-bold' : ''">
+                                            {{ material.stock }}
+                                        </span>
+                                    </template>
                                 </td>
 
                                 <!-- Critical Stock -->
                                 <td class="px-6 py-4 text-muted-foreground">
-                                    {{ material.critical_stock }}
+                                    <template v-if="material.type === 'selectable'">
+                                        -
+                                    </template>
+                                    <template v-else>
+                                        {{ material.critical_stock }}
+                                    </template>
                                 </td>
 
                                 <!-- Average Purchase Price -->

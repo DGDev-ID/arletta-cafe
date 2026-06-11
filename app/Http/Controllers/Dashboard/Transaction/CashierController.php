@@ -29,10 +29,10 @@ class CashierController extends Controller
             $allowedCafeIds = \App\Models\CafeCashier::where('user_id', $user->id)->pluck('cafe_id');
             $cafes = MCafe::whereIn('id', $allowedCafeIds)->select('id', 'name')->orderBy('name')->get();
         } else {
-            // Super Admin or Backoffice
             $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
         }
 
+        // Pending manual transactions (non open-bill)
         $pendingQuery = Transaction::where('status', 'pending')
             ->where('payment_type', 'manual')
             ->where('is_open_bill', 0)
@@ -58,7 +58,6 @@ class CashierController extends Controller
         }
 
         if ($cafeId) {
-            // Ensure requested cafeId is allowed if restrictions apply
             if ($allowedCafeIds === null || $allowedCafeIds->contains($cafeId)) {
                 $pendingQuery->where('cafe_id', $cafeId);
                 $inOrderQuery->where('cafe_id', $cafeId);
@@ -67,7 +66,6 @@ class CashierController extends Controller
             }
         }
 
-        // Transaction details that belong to open-bill & pending transactions
         $openBillDetailsQuery = TransactionDetail::whereHas('transaction', function ($q) use ($allowedCafeIds, $cafeId) {
             $q->where('status', 'pending')->where('is_open_bill', 1);
             if ($allowedCafeIds !== null) {
@@ -78,20 +76,19 @@ class CashierController extends Controller
             }
         })->with(['transaction.cafe', 'transaction.table', 'menu']);
 
-        // Enrich selected_variants in open bill details
         $openBillPendingDetails = $openBillDetailsQuery->latest()->get();
         $openBillPendingDetails->each(function ($detail) {
             $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
         });
 
         return Inertia::render('transaction/cashier/Index', [
-            'pendingTransactions' => $pendingQuery->latest()->get(),
+            'pendingTransactions'         => $pendingQuery->latest()->get(),
             'openBillPendingTransactions' => $openBillQuery->latest()->get(),
-            'inOrderTransactions' => $inOrderQuery->latest()->get(),
-            'successTransactions' => $successQuery->latest()->get(),
-            'openBillPendingDetails' => $openBillPendingDetails,
-            'cafes' => $cafes,
-            'filters' => [
+            'inOrderTransactions'         => $inOrderQuery->latest()->get(),
+            'successTransactions'         => $successQuery->latest()->get(),
+            'openBillPendingDetails'      => $openBillPendingDetails,
+            'cafes'                       => $cafes,
+            'filters'                     => [
                 'cafe_id' => $cafeId ?? '',
             ],
         ]);
@@ -113,8 +110,6 @@ class CashierController extends Controller
         DB::transaction(function () use ($detail, $transaction) {
             $originalAmount = $detail->amount;
 
-            // Reverse 1-unit worth of material outbounds for this detail.
-            // per-unit reversal = (remaining unreversed outbound) / current_detail_amount
             $outbounds = MaterialInboundOutbound::where('type', 'outbound')
                 ->where('transaction_detail_id', $detail->id)
                 ->lockForUpdate()
@@ -141,7 +136,6 @@ class CashierController extends Controller
                 ]);
             }
 
-            // Delete or reduce the detail row
             if ($originalAmount <= 1) {
                 $detail->delete();
             } else {
@@ -151,7 +145,6 @@ class CashierController extends Controller
                 $detail->save();
             }
 
-            // Recalculate transaction totals (re-apply promo if any)
             $transaction->refresh();
             $newPrice = $transaction->details()->sum('price');
             $cafe     = MCafe::find($transaction->cafe_id);
@@ -176,8 +169,7 @@ class CashierController extends Controller
             $newFee   = $ppn + $paymentTypeFee;
             $newTotal = $priceAfterDiscount + $newFee;
 
-            // Recalculate profit margin: net outbound cost minus reversal inbounds
-            $detailIds      = $transaction->details()->pluck('id')->all();
+            $detailIds       = $transaction->details()->pluck('id')->all();
             $netMaterialCost = 0;
 
             if (!empty($detailIds)) {
@@ -216,7 +208,7 @@ class CashierController extends Controller
 
         $transaction = $detail->transaction;
 
-        if (!$transaction || $transaction->status !== 'pending' || (int)$transaction->is_open_bill !== 1) {
+        if (!$transaction || $transaction->status !== 'pending' || (int) $transaction->is_open_bill !== 1) {
             return redirect()->route('transaction.cashier.index')->with('error', 'Transaksi tidak valid untuk aksi ini.');
         }
 
@@ -224,21 +216,21 @@ class CashierController extends Controller
             return redirect()->route('transaction.cashier.index')->with('info', 'Detail sudah diselesaikan.');
         }
 
-        // set detail success
         $detail->status = 'success';
         $detail->save();
 
-        // recalc transaction totals based on success details
         $newPrice = $transaction->details()->where('status', 'success')->sum('price');
         $cafe = MCafe::find($transaction->cafe_id);
         $ppn = $cafe->ppn_fee > 0 ? ($newPrice * ($cafe->ppn_fee / 100)) : 0;
-        $paymentTypeFee = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris' ? ($newPrice * ($cafe->qris_fee / 100)) : 0;
-        $newFee = $ppn + $paymentTypeFee;
+        $paymentTypeFee = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris'
+            ? ($newPrice * ($cafe->qris_fee / 100))
+            : 0;
+        $newFee   = $ppn + $paymentTypeFee;
         $newTotal = $newPrice + $newFee;
 
         $transaction->update([
-            'price' => $newPrice,
-            'fee' => $newFee,
+            'price'       => $newPrice,
+            'fee'         => $newFee,
             'total_price' => $newTotal,
         ]);
 
@@ -249,21 +241,15 @@ class CashierController extends Controller
     {
         $detail = TransactionDetail::with(['transaction.cafe', 'transaction.table', 'menu'])->findOrFail($id);
 
-        // Enrich selected_variants with names from DB
         $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
 
         return response()->json($detail);
     }
 
-    /**
-     * Enrich selected_variants array with material_name and variant_name
-     * from the database, resolving entries that only have IDs.
-     */
     private function enrichSelectedVariants(array $variants): array
     {
         if (empty($variants)) return $variants;
 
-        // Collect variant_ids and material_ids that need lookup
         $variantIds  = collect($variants)->pluck('variant_id')->filter()->unique()->values()->all();
         $materialIds = collect($variants)->pluck('material_id')->filter()->unique()->values()->all();
 
@@ -274,7 +260,6 @@ class CashierController extends Controller
             $variantId  = $sv['variant_id']  ?? null;
             $materialId = $sv['material_id'] ?? null;
 
-            // Fill in names if missing or empty
             if (empty($sv['variant_name']) && $variantId && isset($variantMap[$variantId])) {
                 $sv['variant_name'] = $variantMap[$variantId]->name;
             }
@@ -305,17 +290,13 @@ class CashierController extends Controller
     {
         $transaction = Transaction::where(function ($q) {
             $q->where(function ($q2) {
-                $q2->where('status', 'pending')->where('payment_type', 'manual');
+                $q2->where('status', 'pending')
+                   ->where('payment_type', 'manual');
             })->orWhereIn('status', ['in_order', 'success']);
         })
-            ->with([
-                'cafe',
-                'table',
-                'details.menu.category',
-            ])
+            ->with(['cafe', 'table', 'details.menu.category', 'details.menu.menuCombos.childMenu'])
             ->findOrFail($id);
 
-        // Enrich selected_variants for each detail with names from DB
         $transaction->details->each(function ($detail) {
             $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
         });
@@ -325,9 +306,22 @@ class CashierController extends Controller
         ]);
     }
 
+    /**
+     * Approve pending transaction → in_order.
+     *
+     * Alur:
+     *  - Manual : kasir approve → pendingAction (potong stok) → status in_order
+     *  - QRIS   : kasir konfirmasi pembayaran sudah diterima → status in_order
+     *             (stok dipotong sama seperti manual via pendingAction)
+     */
     public function makeSuccess($id)
     {
-        $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')->findOrFail($id);
+        $transaction = Transaction::where('status', 'pending')
+            ->where('payment_type', 'manual')
+            ->findOrFail($id);
+
+        // pendingAction memotong stok & TransactionService::makeSuccess set ke in_order
+        // TransactionService::pendingAction($transaction);
         TransactionService::makeSuccess($transaction);
 
         return redirect()
@@ -337,7 +331,10 @@ class CashierController extends Controller
 
     public function makeFailed($id)
     {
-        $transaction = Transaction::where('status', 'pending')->where('payment_type', 'manual')->findOrFail($id);
+        $transaction = Transaction::where('status', 'pending')
+            ->where('payment_type', 'manual')
+            ->findOrFail($id);
+
         TransactionService::makeFailed($transaction);
 
         return redirect()
@@ -359,7 +356,7 @@ class CashierController extends Controller
     {
         $request->validate([
             'transaction_id' => 'required|exists:transactions,id',
-            'promo_code' => 'required|string',
+            'promo_code'     => 'required|string',
         ]);
 
         $transaction = Transaction::where('id', $request->transaction_id)
@@ -379,7 +376,7 @@ class CashierController extends Controller
             return redirect()->back()->with('error', 'Kode promo tidak valid atau tidak aktif.');
         }
 
-        $price = $transaction->price;
+        $price          = $transaction->price;
         $discountAmount = 0;
 
         if ($promo->type === 'discount_percent') {
@@ -394,16 +391,18 @@ class CashierController extends Controller
 
         $priceAfterDiscount = $price - $discountAmount;
 
-        $cafe = MCafe::find($transaction->cafe_id);
-        $ppn = $cafe->ppn_fee > 0 ? ($priceAfterDiscount * ($cafe->ppn_fee / 100)) : 0;
-        $paymentTypeFee = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris' ? ($priceAfterDiscount * ($cafe->qris_fee / 100)) : 0;
-        
-        $newFee = $ppn + $paymentTypeFee;
+        $cafe           = MCafe::find($transaction->cafe_id);
+        $ppn            = $cafe->ppn_fee > 0 ? ($priceAfterDiscount * ($cafe->ppn_fee / 100)) : 0;
+        $paymentTypeFee = $cafe->qris_fee > 0 && $transaction->payment_type === 'qris'
+            ? ($priceAfterDiscount * ($cafe->qris_fee / 100))
+            : 0;
+
+        $newFee   = $ppn + $paymentTypeFee;
         $newTotal = $priceAfterDiscount + $newFee;
 
         $transaction->update([
-            'promo_id' => $promo->id,
-            'fee' => $newFee,
+            'promo_id'    => $promo->id,
+            'fee'         => $newFee,
             'total_price' => $newTotal,
         ]);
 
@@ -416,7 +415,6 @@ class CashierController extends Controller
             ->with(['cafe:id,name,address', 'table:id,name', 'details.menu:id,name,price'])
             ->findOrFail($id);
 
-        // Enrich selected_variants for each detail with names from DB
         $transaction->details->each(function ($detail) {
             $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
         });

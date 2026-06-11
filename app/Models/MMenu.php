@@ -16,13 +16,38 @@ class MMenu extends Model
         'img_url',
         'price',
         'status',
+        'is_combo',
+        'start_time',
+        'end_time',
         'menu_category_id',
     ];
+    protected $appends = ['menu_type'];
+
+    public function getNameAttribute($value)
+    {
+        return preg_replace('/\s*\[(FOOD|BEVERAGE)\]$/', '', $value);
+    }
+
+    public function getMenuTypeAttribute()
+    {
+        $originalName = $this->attributes['name'] ?? '';
+
+        if (preg_match('/\[FOOD\]$/', $originalName)) {
+            return 'FOOD';
+        }
+        
+        if (preg_match('/\[BEVERAGE\]$/', $originalName)) {
+            return 'BEVERAGE';
+        }
+
+        return 'UNCATEGORIZED';
+    }
 
     protected function casts(): array
     {
         return [
             'price' => 'decimal:2',
+            'is_combo' => 'boolean',
         ];
     }
 
@@ -54,5 +79,10 @@ class MMenu extends Model
     public function menuSemiFinishedMaterials(): HasMany
     {
         return $this->hasMany(MenuSemiFinishedMaterial::class, 'menu_id');
+    }
+
+    public function menuCombos(): HasMany
+    {
+        return $this->hasMany(MenuCombo::class, 'menu_id');
     }
 }

@@ -7,7 +7,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 
 interface CafeOption { id: number; name: string; }
 interface UnitOption { id: number; name: string; }
-interface VariantItem { id?: number | null; name: string; stock: number | ''; minimum_stock: number | ''; }
+interface VariantItem { id?: number | null; name: string; minimum_stock: number | ''; }
 
 const props = defineProps<{
     data: {
@@ -19,6 +19,7 @@ const props = defineProps<{
         critical_stock: number | null;
         variants: VariantItem[];
     };
+    // NOTE: variant stock dikelola melalui Purchase (Inbound/Outbound), bukan di sini
     cafes: CafeOption[];
     units: UnitOption[];
 }>();
@@ -37,7 +38,6 @@ const form = useForm({
     variants: (props.data.variants ?? []).map(v => ({
         id: v.id ?? null,
         name: v.name,
-        stock: v.stock,
         minimum_stock: v.minimum_stock,
     })),
 });
