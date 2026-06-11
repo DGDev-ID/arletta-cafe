@@ -50,9 +50,7 @@ const submit = () => {
                     <span class="text-sm font-semibold uppercase tracking-widest text-amber-300/90">Arletta Cafe</span>
                 </div>
 
-                <h1 class="mb-3 text-4xl font-bold leading-tight tracking-tight drop-shadow-lg">
-                    Dashboard<br />Management System
-                </h1>
+                <h1 class="mb-3 text-4xl font-bold leading-tight tracking-tight drop-shadow-lg">Dashboard<br />Management System</h1>
                 <p class="max-w-sm text-sm leading-relaxed text-white/70">
                     Kelola operasional cafe dengan mudah dan efisien melalui dashboard yang terintegrasi.
                 </p>
@@ -71,7 +69,10 @@ const submit = () => {
             <!-- Dot pattern background -->
             <div
                 class="absolute inset-0 bg-background"
-                style="background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.25) 1.5px, transparent 1.5px); background-size: 28px 28px;"
+                style="
+                    background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.25) 1.5px, transparent 1.5px);
+                    background-size: 28px 28px;
+                "
             />
             <!-- Subtle vignette so center content pops -->
             <div class="absolute inset-0 bg-gradient-to-br from-background/70 via-transparent to-background/70" />
@@ -90,7 +91,7 @@ const submit = () => {
                 <div class="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-2xl shadow-black/10 backdrop-blur-sm dark:shadow-black/40">
                     <!-- Header -->
                     <div class="mb-8 text-center">
-                        <img src="/logo.png" alt="Arletta Cafe" class="w-14 h-14 mx-auto mb-3" />
+                        <img src="/logo_v2.png" alt="Arletta Cafe" class="mx-auto mb-3 h-14 w-14" />
                         <h2 class="text-2xl font-bold tracking-tight text-foreground">Selamat Datang</h2>
                         <p class="mt-1 text-sm text-muted-foreground">Masukkan kredensial Anda untuk masuk</p>
                     </div>
