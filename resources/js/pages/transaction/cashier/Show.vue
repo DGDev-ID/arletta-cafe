@@ -123,9 +123,9 @@ const applyPromo = () => {
 
                 <!-- Header -->
                 <div class="flex items-center justify-between"
-                    v-if="transaction.status === 'pending' && transaction.payment_type === 'manual'">
+                    v-if="transaction.status === 'pending' && ['manual', 'debit'].includes(transaction.payment_type)">
                     <Heading variant="small" :title="`Transaction #${transaction.id}`"
-                        description="Detail transaksi pending manual." />
+                        description="Detail transaksi pending (Manual/Debit)." />
                     <div class="flex items-center gap-2">
                         <button v-if="!hideFailedForOpenBill" @click="makeFailed" type="button"
                             class="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition bg-red-100 text-red-600 hover:bg-red-500 hover:text-white">
