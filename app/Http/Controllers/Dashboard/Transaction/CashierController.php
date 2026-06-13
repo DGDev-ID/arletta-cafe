@@ -99,7 +99,7 @@ class CashierController extends Controller
         $detail = TransactionDetail::with(['transaction', 'menu'])->findOrFail($id);
         $transaction = $detail->transaction;
 
-        if (!$transaction || $transaction->status !== 'pending' || $transaction->payment_type !== 'manual') {
+        if (!$transaction || $transaction->status !== 'pending' || !in_array($transaction->payment_type, ['manual', 'debit'])) {
             return redirect()->back()->with('error', 'Transaksi tidak valid untuk aksi ini.');
         }
 
@@ -317,7 +317,7 @@ class CashierController extends Controller
     public function makeSuccess($id)
     {
         $transaction = Transaction::where('status', 'pending')
-            ->where('payment_type', 'manual')
+            ->whereIn('payment_type', ['manual', 'debit'])
             ->findOrFail($id);
 
         // pendingAction memotong stok & TransactionService::makeSuccess set ke in_order
@@ -332,7 +332,7 @@ class CashierController extends Controller
     public function makeFailed($id)
     {
         $transaction = Transaction::where('status', 'pending')
-            ->where('payment_type', 'manual')
+            ->whereIn('payment_type', ['manual', 'debit'])
             ->findOrFail($id);
 
         TransactionService::makeFailed($transaction);
