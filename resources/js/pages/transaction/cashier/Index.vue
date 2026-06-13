@@ -309,6 +309,15 @@ const buildLogoBytes = async (): Promise<number[]> => {
 const printDetailReceiptInline = async (detailId: number) => {
     try {
         const { data: detail } = await axios.get(`/transaction/cashier/detail/${detailId}/receipt-data`);
+
+        if (window.innerWidth >= 1024) {
+            const res = await axios.post('http://localhost:3000/print', detail);
+            if (res.status === 200 || res.status === 207) {
+                notyf.success('Print sukses');
+            }
+            return;
+        }
+
         const bytes: number[] = [];
         const encoder = new TextEncoder();
         const enc = (text: string) => bytes.push(...encoder.encode(text));
@@ -360,6 +369,14 @@ const printSelectedDetailReceiptsInline = async () => {
             })
         );
 
+        if (window.innerWidth >= 1024) {
+            const res = await axios.post('http://localhost:3000/print', details);
+            if (res.status === 200 || res.status === 207) {
+                notyf.success('Print bulk sukses');
+            }
+            return;
+        }
+
         const bytes: number[] = [];
         const encoder = new TextEncoder();
         const enc = (text: string) => bytes.push(...encoder.encode(text));
@@ -401,6 +418,15 @@ const printSelectedDetailReceiptsInline = async () => {
 const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVERAGE' = 'all') => {
     try {
         const { data: trx } = await axios.get(`/transaction/cashier/${id}/receipt-data`);
+
+        if (window.innerWidth >= 1024) {
+            const res = await axios.post('http://localhost:3000/print', trx);
+            if (res.status === 200 || res.status === 207) {
+                notyf.success('Print sukses');
+            }
+            return;
+        }
+
         const fmtDate = (val: string) => new Date(val).toLocaleString('id-ID');
 
         let detailsToPrint = trx.details;
