@@ -173,6 +173,7 @@ const formatDate = (val: string) => {
                                     class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
                                     <option value="">Semua Tipe</option>
                                     <option value="manual">Cash</option>
+                                    <option value="debit">Debit Card</option>
                                     <option value="qris">QRIS</option>
                                 </select>
                             </div>
@@ -230,7 +231,7 @@ const formatDate = (val: string) => {
                                 <td class="px-6 py-4">
                                     <span
                                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
-                                        :class="trx.payment_type === 'manual' ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'">
+                                        :class="trx.payment_type === 'qris' ? 'bg-orange-100 text-orange-700' : trx.payment_type === 'debit' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'">
                                         {{ trx.payment_type }}
                                     </span>
                                 </td>

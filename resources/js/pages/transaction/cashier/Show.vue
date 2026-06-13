@@ -172,7 +172,7 @@ const applyPromo = () => {
                             <p>
                                 <span
                                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
-                                    :class="transaction.payment_type === 'cash' ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'">
+                                    :class="transaction.payment_type === 'qris' ? 'bg-orange-100 text-orange-700' : transaction.payment_type === 'debit' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'">
                                     {{ transaction.payment_type }}
                                 </span>
                             </p>

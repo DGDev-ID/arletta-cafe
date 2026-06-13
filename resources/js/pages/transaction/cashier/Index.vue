@@ -775,6 +775,8 @@ onUnmounted(() => {
                                         <td class="px-6 py-4">
                                             <span :class="qrResult.payment_type === 'qris'
                                                 ? 'bg-orange-100 text-orange-600 border border-orange-300'
+                                                : qrResult.payment_type === 'debit'
+                                                ? 'bg-blue-100 text-blue-600 border border-blue-300'
                                                 : 'bg-gray-100 text-gray-600 border border-gray-300'"
                                                 class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase">
                                                 {{ qrResult.payment_type }}
@@ -798,6 +800,8 @@ onUnmounted(() => {
                                         <td class="px-6 py-4">
                                             <span :class="trx.payment_type === 'qris'
                                                 ? 'bg-orange-100 text-orange-600 border border-orange-300'
+                                                : trx.payment_type === 'debit'
+                                                ? 'bg-blue-100 text-blue-600 border border-blue-300'
                                                 : 'bg-gray-100 text-gray-600 border border-gray-300'"
                                                 class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase">
                                                 {{ trx.payment_type }}
@@ -844,6 +848,8 @@ onUnmounted(() => {
                                     <td class="px-6 py-4">
                                         <span :class="trx.payment_type === 'qris'
                                             ? 'bg-orange-100 text-orange-600 border border-orange-300'
+                                            : trx.payment_type === 'debit'
+                                            ? 'bg-blue-100 text-blue-600 border border-blue-300'
                                             : 'bg-gray-100 text-gray-600 border border-gray-300'"
                                             class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase">
                                             {{ trx.payment_type }}

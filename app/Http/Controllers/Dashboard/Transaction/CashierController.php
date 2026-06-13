@@ -32,9 +32,9 @@ class CashierController extends Controller
             $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
         }
 
-        // Pending manual transactions (non open-bill)
+        // Pending manual and debit transactions (non open-bill)
         $pendingQuery = Transaction::where('status', 'pending')
-            ->where('payment_type', 'manual')
+            ->whereIn('payment_type', ['manual', 'debit'])
             ->where('is_open_bill', 0)
             ->with(['cafe', 'table']);
 
@@ -275,7 +275,7 @@ class CashierController extends Controller
     {
         $transaction = Transaction::where('unique_code', $qr_code)
             ->where('status', 'pending')
-            ->where('payment_type', 'manual')
+            ->whereIn('payment_type', ['manual', 'debit'])
             ->with(['cafe', 'table'])
             ->first();
 
@@ -291,7 +291,7 @@ class CashierController extends Controller
         $transaction = Transaction::where(function ($q) {
             $q->where(function ($q2) {
                 $q2->where('status', 'pending')
-                   ->where('payment_type', 'manual');
+                   ->whereIn('payment_type', ['manual', 'debit']);
             })->orWhereIn('status', ['in_order', 'success']);
         })
             ->with(['cafe', 'table', 'details.menu.category', 'details.menu.menuCombos.childMenu', 'details.menu.menuComboGroups.options.childMenu'])

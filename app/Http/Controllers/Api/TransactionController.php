@@ -60,7 +60,7 @@ class TransactionController extends ApiBaseController
                 $dataSend['expired_at'] = $qrResult['expires_at'];
             }
 
-            if ($transaction->payment_type === 'manual') {
+            if (in_array($transaction->payment_type, ['manual', 'debit'])) {
                 $dataSend['qr_code'] = $transaction->unique_code;
             }
 
