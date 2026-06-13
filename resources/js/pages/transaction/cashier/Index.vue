@@ -235,13 +235,24 @@ watch(
 const PRINT_WIDTH = 48;
 const PRINT_LINE = '-'.repeat(PRINT_WIDTH);
 
+// const shouldUseLocalPrint = () => {
+//     const ua = navigator.userAgent;
+//     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|HarmonyOS/i.test(ua);
+//     // Handle iPadOS desktop mode
+//     const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    
+//     return !isMobile && !isIPadOS;
+// };
+
 const shouldUseLocalPrint = () => {
     const ua = navigator.userAgent;
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|HarmonyOS/i.test(ua);
-    // Handle iPadOS desktop mode
     const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
     
-    return !isMobile && !isIPadOS;
+    // Tangkap tablet Android/Huawei yang lolos regex UA
+    const isTabletOrTouch = navigator.maxTouchPoints > 0 && !window.matchMedia('(pointer: fine)').matches;
+
+    return !isMobile && !isIPadOS && !isTabletOrTouch;
 };
 
 const printPadRight = (left: string, right: string): string => {
