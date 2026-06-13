@@ -347,8 +347,15 @@ class MenuController extends Controller
             }
         });
 
+        $cafeId = request('cafe_id');
+        if ($cafeId == '') {
+            return redirect()
+                ->route('master.menu.index', ['page' => request('page')])
+                ->with('success', 'Menu berhasil diperbarui.');
+        }
+
         return redirect()
-            ->route('master.menu.index', ['page' => request('page'), 'cafe_id' => request('cafe_id')])
+            ->route('master.menu.index', ['page' => request('page'), 'cafe_id' => $cafeId])
             ->with('success', 'Menu berhasil diperbarui.');
     }
 
