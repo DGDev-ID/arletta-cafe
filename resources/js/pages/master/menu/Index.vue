@@ -140,7 +140,7 @@ const formatPrice = (price: string | number) => {
 
                                 <!-- Menu Name -->
                                 <td class="px-6 py-4 font-medium">
-                                    {{ menu.name }} {{ menu.menu_type }}
+                                    {{ menu.name }} [{{ menu.menu_type }}]
                                 </td>
 
                                 <!-- Description -->
