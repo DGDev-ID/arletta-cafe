@@ -235,20 +235,13 @@ watch(
 const PRINT_WIDTH = 48;
 const PRINT_LINE = '-'.repeat(PRINT_WIDTH);
 
-// const shouldUseLocalPrint = () => {
-//     const ua = navigator.userAgent;
-//     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|HarmonyOS/i.test(ua);
-//     // Handle iPadOS desktop mode
-//     const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-    
-//     return window.innerWidth >= 1024 && !isMobile && !isIPadOS;
-// };
 const shouldUseLocalPrint = () => {
     const ua = navigator.userAgent;
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|HarmonyOS/i.test(ua);
+    // Handle iPadOS desktop mode
     const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
     
-    return !isMobile && !isIPadOS; // ← hapus syarat innerWidth
+    return window.innerWidth >= 1024 && !isMobile && !isIPadOS;
 };
 
 const printPadRight = (left: string, right: string): string => {
@@ -326,7 +319,7 @@ const printDetailReceiptInline = async (detailId: number) => {
     try {
         const { data: detail } = await axios.get(`/transaction/cashier/detail/${detailId}/receipt-data`);
 
-        if (!shouldUseLocalPrint()) {
+        if (shouldUseLocalPrint()) {
             const res = await axios.post('http://localhost:3000/print', detail);
             if (res.status === 200 || res.status === 207) {
                 notyf.success('Print sukses');
@@ -385,7 +378,7 @@ const printSelectedDetailReceiptsInline = async () => {
             })
         );
 
-        if (!shouldUseLocalPrint()) {
+        if (shouldUseLocalPrint()) {
             const res = await axios.post('http://localhost:3000/print', details);
             if (res.status === 200 || res.status === 207) {
                 notyf.success('Print bulk sukses');
@@ -435,7 +428,7 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
     try {
         const { data: trx } = await axios.get(`/transaction/cashier/${id}/receipt-data`);
 
-        if (!shouldUseLocalPrint()) {
+        if (shouldUseLocalPrint()) {
             const res = await axios.post('http://localhost:3000/print', trx);
             if (res.status === 200 || res.status === 207) {
                 notyf.success('Print sukses');
