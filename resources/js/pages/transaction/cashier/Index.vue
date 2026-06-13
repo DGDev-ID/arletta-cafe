@@ -235,24 +235,16 @@ watch(
 const PRINT_WIDTH = 48;
 const PRINT_LINE = '-'.repeat(PRINT_WIDTH);
 
-// const shouldUseLocalPrint = () => {
-//     const ua = navigator.userAgent;
-//     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|HarmonyOS/i.test(ua);
-//     // Handle iPadOS desktop mode
-//     const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-    
-//     return !isMobile && !isIPadOS;
-// };
+// ── Print Mode Toggle (manual) ────────────────────────────────────────────
+// true  = print via RawBT (mobile/tablet)
+// false = print via API localhost:3000 (desktop)
+const isMobile = ref<boolean>(
+    localStorage.getItem('cashier_is_mobile') === 'true'
+);
 
-const shouldUseLocalPrint = () => {
-    const ua = navigator.userAgent;
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|HarmonyOS/i.test(ua);
-    const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-    
-    // Tangkap tablet Android/Huawei yang lolos regex UA
-    const isTabletOrTouch = navigator.maxTouchPoints > 0 && !window.matchMedia('(pointer: fine)').matches;
-
-    return !isMobile && !isIPadOS && !isTabletOrTouch;
+const toggleIsMobile = () => {
+    isMobile.value = !isMobile.value;
+    localStorage.setItem('cashier_is_mobile', String(isMobile.value));
 };
 
 const printPadRight = (left: string, right: string): string => {
@@ -330,7 +322,7 @@ const printDetailReceiptInline = async (detailId: number) => {
     try {
         const { data: detail } = await axios.get(`/transaction/cashier/detail/${detailId}/receipt-data`);
 
-        if (shouldUseLocalPrint()) {
+        if (!isMobile.value) {
             const res = await axios.post('http://localhost:3000/print', detail);
             if (res.status === 200 || res.status === 207) {
                 notyf.success('Print sukses');
@@ -389,7 +381,7 @@ const printSelectedDetailReceiptsInline = async () => {
             })
         );
 
-        if (shouldUseLocalPrint()) {
+        if (!isMobile.value) {
             const res = await axios.post('http://localhost:3000/print', details);
             if (res.status === 200 || res.status === 207) {
                 notyf.success('Print bulk sukses');
@@ -439,7 +431,7 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
     try {
         const { data: trx } = await axios.get(`/transaction/cashier/${id}/receipt-data`);
 
-        if (shouldUseLocalPrint()) {
+        if (!isMobile.value) {
             const res = await axios.post('http://localhost:3000/print', trx);
             if (res.status === 200 || res.status === 207) {
                 notyf.success('Print sukses');
@@ -654,6 +646,29 @@ onUnmounted(() => {
                     <span class="text-base">🔊</span>
                     <span>Notifikasi audio aktif — akan berbunyi saat ada pesanan baru.</span>
                 </div>
+
+                <!-- Print Mode Toggle -->
+                <button
+                    type="button"
+                    @click="toggleIsMobile"
+                    :class="isMobile
+                        ? 'bg-indigo-50 border-indigo-300 text-indigo-700 hover:bg-indigo-100'
+                        : 'bg-slate-50 border-slate-300 text-slate-600 hover:bg-slate-100'"
+                    class="flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm font-medium transition select-none cursor-pointer"
+                >
+                    <!-- Toggle track -->
+                    <span
+                        :class="isMobile ? 'bg-indigo-500' : 'bg-slate-300'"
+                        class="relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors"
+                    >
+                        <span
+                            :class="isMobile ? 'translate-x-4' : 'translate-x-0.5'"
+                            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+                        />
+                    </span>
+                    <span v-if="isMobile">📱 Mode Mobile — Print via RawBT</span>
+                    <span v-else>🖥️ Mode Desktop — Print via API</span>
+                </button>
 
                 <!-- Filter Cafe -->
                 <div class="flex items-end gap-3">
