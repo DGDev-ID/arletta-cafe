@@ -106,7 +106,8 @@ const form = useForm({
 const submit = () => {
     const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
     const page = urlParams.get('page');
-    form.put(page ? `/master/menu/${props.data.id}?page=${page}` : `/master/menu/${props.data.id}`);
+    const cafe_id = urlParams.get('cafe_id');
+    form.put(page ? `/master/menu/${props.data.id}?page=${page}&cafe_id=${cafe_id}` : `/master/menu/${props.data.id}?cafe_id=${cafe_id}`);
 };
 </script>
 

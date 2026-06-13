@@ -178,7 +178,8 @@ const formatPrice = (price: string | number) => {
                                         </button>
 
                                         <!-- Edit -->
-                                        <Link :href="`/master/menu/${menu.id}/edit?page=${data.current_page}`"
+                                        <Link
+                                            :href="`/master/menu/${menu.id}/edit?page=${data.current_page}&cafe_id=${selectedCafe}`"
                                             class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-yellow-100 text-yellow-600 hover:bg-yellow-500 hover:text-white transition"
                                             title="Edit Menu">
                                             <Pencil :size="16" />
