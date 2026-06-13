@@ -241,7 +241,7 @@ const shouldUseLocalPrint = () => {
     // Handle iPadOS desktop mode
     const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
     
-    return window.innerWidth >= 1024 && !isMobile && !isIPadOS;
+    return !isMobile && !isIPadOS;
 };
 
 const printPadRight = (left: string, right: string): string => {
