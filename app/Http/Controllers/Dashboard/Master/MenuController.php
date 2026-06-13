@@ -83,9 +83,11 @@ class MenuController extends Controller
         ];
 
         if ($request->boolean('is_combo')) {
-            $rules['combo_menus'] = 'required|array|min:1';
-            $rules['combo_menus.*.menu_id'] = 'required|exists:m_menus,id';
-            $rules['combo_menus.*.amount'] = 'required|integer|min:1';
+            $rules['combo_groups'] = 'required|array|min:1';
+            $rules['combo_groups.*.label'] = 'required|string|max:255';
+            $rules['combo_groups.*.options'] = 'required|array|min:1';
+            $rules['combo_groups.*.options.*.menu_id'] = 'required|exists:m_menus,id';
+            $rules['combo_groups.*.options.*.amount'] = 'required|integer|min:1';
         } else {
             $rules['materials']                                     = 'nullable|array';
             $rules['materials.*.material_id']                       = 'required|exists:m_materials,id';
@@ -133,13 +135,21 @@ class MenuController extends Controller
             }
 
             if ($request->boolean('is_combo')) {
-                if (!empty($validated['combo_menus'])) {
-                    foreach ($validated['combo_menus'] as $combo) {
-                        \App\Models\MenuCombo::create([
-                            'menu_id' => $menu->id,
-                            'combo_menu_id' => $combo['menu_id'],
-                            'amount' => $combo['amount'],
+                if (!empty($validated['combo_groups'])) {
+                    foreach ($validated['combo_groups'] as $sortOrder => $group) {
+                        $comboGroup = \App\Models\MenuComboGroup::create([
+                            'menu_id'    => $menu->id,
+                            'label'      => $group['label'],
+                            'sort_order' => $sortOrder,
                         ]);
+                        foreach ($group['options'] as $option) {
+                            \App\Models\MenuCombo::create([
+                                'menu_id'       => $menu->id,
+                                'group_id'      => $comboGroup->id,
+                                'combo_menu_id' => $option['menu_id'],
+                                'amount'        => $option['amount'],
+                            ]);
+                        }
                     }
                 }
             } else {
@@ -173,7 +183,7 @@ class MenuController extends Controller
 
     public function edit($id)
     {
-        $data = MMenu::with(['promo', 'menuMaterials', 'menuSemiFinishedMaterials', 'menuCombos'])->findOrFail($id);
+        $data = MMenu::with(['promo', 'menuMaterials', 'menuSemiFinishedMaterials', 'menuCombos', 'menuComboGroups.options'])->findOrFail($id);
 
         return inertia('master/menu/Edit', [
             'data'                  => $data,
@@ -212,9 +222,11 @@ class MenuController extends Controller
         ];
 
         if ($request->boolean('is_combo')) {
-            $rules['combo_menus'] = 'required|array|min:1';
-            $rules['combo_menus.*.menu_id'] = 'required|exists:m_menus,id';
-            $rules['combo_menus.*.amount'] = 'required|integer|min:1';
+            $rules['combo_groups'] = 'required|array|min:1';
+            $rules['combo_groups.*.label'] = 'required|string|max:255';
+            $rules['combo_groups.*.options'] = 'required|array|min:1';
+            $rules['combo_groups.*.options.*.menu_id'] = 'required|exists:m_menus,id';
+            $rules['combo_groups.*.options.*.amount'] = 'required|integer|min:1';
         } else {
             $rules['materials']                                     = 'nullable|array';
             $rules['materials.*.material_id']                       = 'required|exists:m_materials,id';
@@ -265,15 +277,24 @@ class MenuController extends Controller
             $menu->menuMaterials()->delete();
             $menu->menuSemiFinishedMaterials()->delete();
             $menu->menuCombos()->delete();
+            $menu->menuComboGroups()->delete();
 
             if ($request->boolean('is_combo')) {
-                if (!empty($validated['combo_menus'])) {
-                    foreach ($validated['combo_menus'] as $combo) {
-                        \App\Models\MenuCombo::create([
-                            'menu_id' => $menu->id,
-                            'combo_menu_id' => $combo['menu_id'],
-                            'amount' => $combo['amount'],
+                if (!empty($validated['combo_groups'])) {
+                    foreach ($validated['combo_groups'] as $sortOrder => $group) {
+                        $comboGroup = \App\Models\MenuComboGroup::create([
+                            'menu_id'    => $menu->id,
+                            'label'      => $group['label'],
+                            'sort_order' => $sortOrder,
                         ]);
+                        foreach ($group['options'] as $option) {
+                            \App\Models\MenuCombo::create([
+                                'menu_id'       => $menu->id,
+                                'group_id'      => $comboGroup->id,
+                                'combo_menu_id' => $option['menu_id'],
+                                'amount'        => $option['amount'],
+                            ]);
+                        }
                     }
                 }
             } else {

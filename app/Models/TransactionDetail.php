@@ -16,12 +16,14 @@ class TransactionDetail extends Model
         'description',
         'status',
         'selected_variants',
+        'selected_combo_options',
     ];
 
     protected function casts(): array
     {
         return [
             'selected_variants' => 'array',
+            'selected_combo_options' => 'array',
             'price' => 'decimal:2',
         ];
     }

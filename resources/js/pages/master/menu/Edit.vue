@@ -42,6 +42,14 @@ const props = defineProps<{
             combo_menu_id: number;
             amount: number;
         }[];
+        menu_combo_groups?: {
+            id: number;
+            label: string;
+            options: {
+                combo_menu_id: number;
+                amount: number;
+            }[];
+        }[];
     };
     cafes: CafeOption[];
     categories: CategoryOption[];
@@ -79,9 +87,12 @@ const form = useForm({
         semi_finished_material_id: sfm.semi_finished_material_id as number | '',
         multiplier: sfm.multiplier as number | '',
     })),
-    combo_menus: (props.data.menu_combos ?? []).map(mc => ({
-        menu_id: mc.combo_menu_id as number | '',
-        amount: mc.amount as number | '',
+    combo_groups: (props.data.menu_combo_groups ?? []).map(group => ({
+        label: group.label,
+        options: group.options.map(opt => ({
+            menu_id: opt.combo_menu_id as number | '',
+            amount: opt.amount as number | '',
+        })),
     })),
 });
 

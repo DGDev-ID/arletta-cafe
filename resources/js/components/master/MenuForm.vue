@@ -67,7 +67,7 @@ interface MenuFormData {
     promo_discount_amount: number | '';
     materials: MenuMaterialRow[];
     semi_finished_materials: MenuSfmRow[];
-    combo_menus: { menu_id: number | ''; amount: number | '' }[];
+    combo_groups: { label: string; options: { menu_id: number | ''; amount: number | '' }[] }[];
     errors: Record<string, string>;
     processing: boolean;
 }
@@ -128,7 +128,7 @@ const promoTypeOptions = [
 watch(() => props.form.cafe_id, () => {
     props.form.materials = [];
     props.form.semi_finished_materials = [];
-    props.form.combo_menus = [];
+    props.form.combo_groups = [];
     props.form.menu_category_id = null;
 });
 
@@ -177,15 +177,26 @@ function removeSfm(index: number) {
     props.form.semi_finished_materials.splice(index, 1);
 }
 
-function addComboMenu() {
-    props.form.combo_menus.push({
+function addComboGroup() {
+    props.form.combo_groups.push({
+        label: '',
+        options: [{ menu_id: '', amount: 1 }],
+    });
+}
+
+function removeComboGroup(index: number) {
+    props.form.combo_groups.splice(index, 1);
+}
+
+function addComboOption(groupIndex: number) {
+    props.form.combo_groups[groupIndex].options.push({
         menu_id: '',
         amount: 1,
     });
 }
 
-function removeComboMenu(index: number) {
-    props.form.combo_menus.splice(index, 1);
+function removeComboOption(groupIndex: number, optionIndex: number) {
+    props.form.combo_groups[groupIndex].options.splice(optionIndex, 1);
 }
 
 function onMaterialChange(index: number) {
@@ -491,14 +502,14 @@ function getConversionError(row: MenuMaterialRow): string | null {
             </div>
         </div>
 
-        <!-- Combo Menus Section -->
+        <!-- Combo Groups Section -->
         <div v-if="form.is_combo" class="space-y-4">
             <div class="flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Menu dalam Paket
+                <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Grup Pilihan Combo
                 </h3>
-                <button type="button" @click="addComboMenu" :disabled="!form.cafe_id"
+                <button type="button" @click="addComboGroup" :disabled="!form.cafe_id"
                     class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium text-muted-foreground hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed">
-                    <Plus :size="14" /> Tambah Menu
+                    <Plus :size="14" /> Tambah Grup
                 </button>
             </div>
 
@@ -506,36 +517,72 @@ function getConversionError(row: MenuMaterialRow): string | null {
                 Pilih cafe terlebih dahulu untuk menambahkan menu.
             </p>
 
-            <div v-if="form.combo_menus.length > 0" class="space-y-4">
-                <div v-for="(row, index) in form.combo_menus" :key="index"
-                    class="rounded-xl border p-4 space-y-3">
+            <p v-else-if="form.combo_groups.length === 0" class="text-sm text-muted-foreground italic">
+                Belum ada grup. Tambahkan grup untuk menentukan pilihan dalam paket combo ini.
+            </p>
+
+            <div v-if="form.combo_groups.length > 0" class="space-y-6">
+                <div v-for="(group, gIndex) in form.combo_groups" :key="gIndex"
+                    class="rounded-2xl border-2 border-dashed border-primary/30 p-5 space-y-4 bg-primary/[0.02]">
+
+                    <!-- Group Header -->
                     <div class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-muted-foreground">Menu #{{ index + 1 }}</span>
-                        <button type="button" @click="removeComboMenu(index)"
+                        <span class="text-sm font-semibold text-primary">Grup #{{ gIndex + 1 }}</span>
+                        <button type="button" @click="removeComboGroup(gIndex)"
                             class="cursor-pointer inline-flex items-center justify-center w-7 h-7 rounded-md bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition">
                             <Trash2 :size="14" />
                         </button>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="grid gap-2">
-                            <label class="text-sm font-medium leading-none">Menu</label>
-                            <SearchableSelect
-                                v-model="row.menu_id"
-                                :options="menuOptions"
-                                placeholder="Pilih Menu"
-                                required
-                            />
-                            <InputError
-                                :message="form.errors[`combo_menus.${index}.menu_id`]" />
+                    <!-- Group Label -->
+                    <div class="grid gap-2">
+                        <label class="text-sm font-medium leading-none">Label Grup <span class="text-red-500">*</span></label>
+                        <input v-model="group.label" required placeholder="Contoh: Pilih Minuman, Pilih Lauk, dll."
+                            class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                        <InputError :message="form.errors[`combo_groups.${gIndex}.label`]" />
+                    </div>
+
+                    <!-- Options in this group -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pilihan Menu</span>
+                            <button type="button" @click="addComboOption(gIndex)"
+                                class="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium text-muted-foreground hover:bg-muted transition">
+                                <Plus :size="12" /> Tambah Pilihan
+                            </button>
                         </div>
 
-                        <div class="grid gap-2">
-                            <label class="text-sm font-medium leading-none">Jumlah Menu</label>
-                            <input v-model="row.amount" type="number" min="1" step="1" required
-                                placeholder="1"
-                                class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
-                            <InputError :message="form.errors[`combo_menus.${index}.amount`]" />
+                        <div v-for="(option, oIndex) in group.options" :key="oIndex"
+                            class="rounded-xl border p-3 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-medium text-muted-foreground">Pilihan #{{ oIndex + 1 }}</span>
+                                <button v-if="group.options.length > 1" type="button" @click="removeComboOption(gIndex, oIndex)"
+                                    class="cursor-pointer inline-flex items-center justify-center w-6 h-6 rounded-md bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition">
+                                    <X :size="12" />
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="grid gap-1">
+                                    <label class="text-sm font-medium leading-none">Menu</label>
+                                    <SearchableSelect
+                                        v-model="option.menu_id"
+                                        :options="menuOptions"
+                                        placeholder="Pilih Menu"
+                                        required
+                                    />
+                                    <InputError
+                                        :message="form.errors[`combo_groups.${gIndex}.options.${oIndex}.menu_id`]" />
+                                </div>
+
+                                <div class="grid gap-1">
+                                    <label class="text-sm font-medium leading-none">Jumlah</label>
+                                    <input v-model="option.amount" type="number" min="1" step="1" required
+                                        placeholder="1"
+                                        class="w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                                    <InputError :message="form.errors[`combo_groups.${gIndex}.options.${oIndex}.amount`]" />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

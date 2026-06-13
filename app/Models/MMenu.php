@@ -85,4 +85,9 @@ class MMenu extends Model
     {
         return $this->hasMany(MenuCombo::class, 'menu_id');
     }
+
+    public function menuComboGroups(): HasMany
+    {
+        return $this->hasMany(MenuComboGroup::class, 'menu_id')->orderBy('sort_order');
+    }
 }

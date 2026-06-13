@@ -22,12 +22,14 @@ interface TransactionDetail {
         category: { id: number; name: string } | null;
         is_combo?: boolean | number;
         menu_combos?: { id: number; child_menu?: { id: number; name: string }; amount: number }[];
+        menu_combo_groups?: { id: number; label: string; options: { id: number; child_menu?: { id: number; name: string }; amount: number }[] }[];
     } | null;
     amount: number;
     price: string;
     description: string | null;
     status?: string | null;
     selected_variants?: SelectedVariant[] | null;
+    selected_combo_options?: { group_id: number; menu_id: number; group_label?: string; menu_name?: string }[] | null;
 }
 
 interface Transaction {
@@ -246,6 +248,17 @@ const applyPromo = () => {
                                                 <span>{{ combo.child_menu?.name }} <span class="text-gray-400">({{ combo.amount }}x)</span></span>
                                             </li>
                                         </ul>
+                                    </div>
+                                    <!-- Pilihan Combo Pelanggan -->
+                                    <div v-if="detail.selected_combo_options && detail.selected_combo_options.length > 0" class="flex flex-wrap gap-1 mt-1.5">
+                                        <span
+                                            v-for="co in detail.selected_combo_options"
+                                            :key="co.group_id"
+                                            class="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-full"
+                                        >
+                                            <span class="text-[7px]">●</span>
+                                            {{ co.group_label ? co.group_label + ': ' : '' }}{{ co.menu_name ?? `#${co.menu_id}` }}
+                                        </span>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ detail.menu?.category?.name ?? '-' }}

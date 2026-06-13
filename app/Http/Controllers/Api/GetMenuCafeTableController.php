@@ -41,9 +41,11 @@ class GetMenuCafeTableController extends ApiBaseController
                 'menus.menuMaterials.material.variants',
                 'menus.menuSemiFinishedMaterials.semiFinishedMaterial.details',
                 'menus.menuCombos.childMenu.menuMaterials.material.variants',
+                'menus.menuComboGroups.options.childMenu.menuMaterials.material.variants',
                 'children.menus.menuMaterials.material.variants',
                 'children.menus.menuSemiFinishedMaterials.semiFinishedMaterial.details',
                 'children.menus.menuCombos.childMenu.menuMaterials.material.variants',
+                'children.menus.menuComboGroups.options.childMenu.menuMaterials.material.variants',
             ])
                 ->where('cafe_id', $cafe->id)
                 ->whereNull('parent_id')
@@ -102,6 +104,27 @@ class GetMenuCafeTableController extends ApiBaseController
                         $selectableMaterials = $selectableMaterials->merge($childSelectables);
                     }
                     $menu->selectable_materials = $selectableMaterials->unique('material_id')->values();
+
+                    // Build combo_groups for frontend
+                    $comboGroups = [];
+                    foreach ($menu->menuComboGroups as $group) {
+                        $options = $group->options->map(function ($option) {
+                            $child = $option->childMenu;
+                            return [
+                                'menu_id'  => $child->id,
+                                'name'     => $child->name,
+                                'img_url'  => $child->img_url,
+                                'amount'   => $option->amount,
+                            ];
+                        })->values();
+
+                        $comboGroups[] = [
+                            'id'      => $group->id,
+                            'label'   => $group->label,
+                            'options' => $options,
+                        ];
+                    }
+                    $menu->combo_groups = $comboGroups;
                 } else {
                     $selectableMaterials = $menu->menuMaterials
                         ->filter(fn($mm) => $mm->material->type === 'selectable')

@@ -9,6 +9,7 @@ class MenuCombo extends Model
 {
     protected $fillable = [
         'menu_id',
+        'group_id',
         'combo_menu_id',
         'amount',
     ];
@@ -16,6 +17,11 @@ class MenuCombo extends Model
     public function menu(): BelongsTo
     {
         return $this->belongsTo(MMenu::class, 'menu_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(MenuComboGroup::class, 'group_id');
     }
 
     public function childMenu(): BelongsTo

@@ -97,6 +97,7 @@ class TransactionService
                     'price' => $menu->price * $detail['amount'],
                     'description' => $detail['description'] ?? null,
                     'selected_variants' => $detail['selected_variants'] ?? null,
+                    'selected_combo_options' => $detail['selected_combo_options'] ?? null,
                 ]);
             }
 
