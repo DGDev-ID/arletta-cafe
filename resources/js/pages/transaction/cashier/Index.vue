@@ -310,7 +310,9 @@ const printDetailReceiptInline = async (detailId: number) => {
     try {
         const { data: detail } = await axios.get(`/transaction/cashier/detail/${detailId}/receipt-data`);
 
-        if (window.innerWidth >= 1024) {
+        const isDesktop = window.innerWidth >= 1024 && !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isDesktop) {
             const res = await axios.post('http://localhost:3000/print', detail);
             if (res.status === 200 || res.status === 207) {
                 notyf.success('Print sukses');
@@ -369,7 +371,9 @@ const printSelectedDetailReceiptsInline = async () => {
             })
         );
 
-        if (window.innerWidth >= 1024) {
+        const isDesktop = window.innerWidth >= 1024 && !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        if (isDesktop) {
             const res = await axios.post('http://localhost:3000/print', details);
             if (res.status === 200 || res.status === 207) {
                 notyf.success('Print bulk sukses');
@@ -419,7 +423,9 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
     try {
         const { data: trx } = await axios.get(`/transaction/cashier/${id}/receipt-data`);
 
-        if (window.innerWidth >= 1024) {
+        const isDesktop = window.innerWidth >= 1024 && !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        if (isDesktop) {
             const res = await axios.post('http://localhost:3000/print', trx);
             if (res.status === 200 || res.status === 207) {
                 notyf.success('Print sukses');
