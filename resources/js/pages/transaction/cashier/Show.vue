@@ -239,11 +239,11 @@ const applyPromo = () => {
                                             {{ sv.material_name ? sv.material_name + ': ' : '' }}{{ sv.variant_name ?? `#${sv.variant_id}` }}
                                         </span>
                                     </div>
-                                    <!-- Daftar Menu Combo -->
-                                    <div v-if="detail.menu?.is_combo && detail.menu?.menu_combos && detail.menu.menu_combos.length > 0" class="mt-2 pl-2 border-l-2 border-gray-200 text-xs">
-                                        <div class="font-medium text-gray-500 mb-1">Isi Combo:</div>
+                                    <!-- Daftar Menu Combo (Fixed) -->
+                                    <div v-if="detail.menu?.is_combo && detail.menu?.menu_combos && detail.menu.menu_combos.some(c => !c.group_id)" class="mt-2 pl-2 border-l-2 border-gray-200 text-xs">
+                                        <div class="font-medium text-gray-500 mb-1">Menu Tetap:</div>
                                         <ul class="list-none space-y-0.5 text-gray-500">
-                                            <li v-for="combo in detail.menu.menu_combos" :key="combo.id" class="flex items-center gap-1.5">
+                                            <li v-for="combo in detail.menu.menu_combos.filter(c => !c.group_id)" :key="combo.id" class="flex items-center gap-1.5">
                                                 <span class="w-1 h-1 rounded-full bg-gray-400"></span>
                                                 <span>{{ combo.child_menu?.name }} <span class="text-gray-400">({{ combo.amount }}x)</span></span>
                                             </li>

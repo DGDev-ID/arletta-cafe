@@ -135,11 +135,30 @@ public static function pendingAction(Transaction $transaction)
 
         $menusToProcess = [];
         if ($detail->menu->is_combo) {
-            foreach ($detail->menu->menuCombos as $combo) {
+            // Process fixed combo items (group_id is null)
+            $fixedCombos = $detail->menu->menuCombos->whereNull('group_id');
+            foreach ($fixedCombos as $combo) {
                 $menusToProcess[] = [
                     'menu' => $combo->childMenu,
                     'multiplier' => $detail->amount * $combo->amount
                 ];
+            }
+
+            // Process selected combo options from groups
+            $selectedComboOptions = collect($detail->selected_combo_options ?? []);
+            foreach ($selectedComboOptions as $selectedOption) {
+                // Find the corresponding MenuCombo option to get the amount multiplier
+                $comboOption = $detail->menu->menuCombos
+                    ->where('group_id', $selectedOption['group_id'])
+                    ->where('combo_menu_id', $selectedOption['menu_id'])
+                    ->first();
+                
+                if ($comboOption && $comboOption->childMenu) {
+                    $menusToProcess[] = [
+                        'menu' => $comboOption->childMenu,
+                        'multiplier' => $detail->amount * $comboOption->amount
+                    ];
+                }
             }
         } else {
             $menusToProcess[] = [

@@ -20,12 +20,13 @@ interface TransactionDetail {
         price: string;
         category: { id: number; name: string } | null;
         is_combo?: boolean | number;
-        menu_combos?: { id: number; child_menu?: { id: number; name: string }; amount: number }[];
+        menu_combos?: { id: number; group_id?: number | null; child_menu?: { id: number; name: string }; amount: number }[];
     } | null;
     amount: number;
     price: string;
     description: string | null;
     selected_variants?: SelectedVariant[] | null;
+    selected_combo_options?: { group_id: number; menu_id: number; group_label?: string; menu_name?: string }[] | null;
 }
 
 interface Transaction {
@@ -207,15 +208,26 @@ const voidDetail = (detailId: number, menuName: string, qty: number) => {
                                             {{ sv.material_name ? sv.material_name + ': ' : '' }}{{ sv.variant_name ?? `#${sv.variant_id}` }}
                                         </span>
                                     </div>
-                                    <!-- Daftar Menu Combo -->
-                                    <div v-if="detail.menu?.is_combo && detail.menu?.menu_combos && detail.menu.menu_combos.length > 0" class="mt-2 pl-2 border-l-2 border-gray-200 text-xs">
-                                        <div class="font-medium text-gray-500 mb-1">Isi Combo:</div>
+                                    <!-- Daftar Menu Combo (Fixed) -->
+                                    <div v-if="detail.menu?.is_combo && detail.menu?.menu_combos && detail.menu.menu_combos.some(c => !c.group_id)" class="mt-2 pl-2 border-l-2 border-gray-200 text-xs">
+                                        <div class="font-medium text-gray-500 mb-1">Menu Tetap:</div>
                                         <ul class="list-none space-y-0.5 text-gray-500">
-                                            <li v-for="combo in detail.menu.menu_combos" :key="combo.id" class="flex items-center gap-1.5">
+                                            <li v-for="combo in detail.menu.menu_combos.filter(c => !c.group_id)" :key="combo.id" class="flex items-center gap-1.5">
                                                 <span class="w-1 h-1 rounded-full bg-gray-400"></span>
                                                 <span>{{ combo.child_menu?.name }} <span class="text-gray-400">({{ combo.amount }}x)</span></span>
                                             </li>
                                         </ul>
+                                    </div>
+                                    <!-- Pilihan Combo Pelanggan -->
+                                    <div v-if="detail.selected_combo_options && detail.selected_combo_options.length > 0" class="flex flex-wrap gap-1 mt-1.5">
+                                        <span
+                                            v-for="co in detail.selected_combo_options"
+                                            :key="co.group_id"
+                                            class="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-full"
+                                        >
+                                            <span class="text-[7px]">●</span>
+                                            {{ co.group_label ? co.group_label + ': ' : '' }}{{ co.menu_name ?? `#${co.menu_id}` }}
+                                        </span>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ detail.menu?.category?.name ?? '-' }}

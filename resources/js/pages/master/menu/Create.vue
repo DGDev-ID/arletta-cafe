@@ -42,6 +42,7 @@ const form = useForm({
     end_time: null as string | null,
     materials: [] as { material_id: number | ''; amount: number | ''; unit_id: number | '' }[],
     semi_finished_materials: [] as { semi_finished_material_id: number | ''; multiplier: number | '' }[],
+    combo_menus: [] as { menu_id: number | ''; amount: number | '' }[],
     combo_groups: [] as { label: string; options: { menu_id: number | ''; amount: number | '' }[] }[],
 });
 
