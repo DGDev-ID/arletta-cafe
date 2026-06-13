@@ -348,7 +348,7 @@ class MenuController extends Controller
         });
 
         return redirect()
-            ->route('master.menu.index', ['page' => request('page')])
+            ->route('master.menu.index', ['page' => request('page'), 'cafe_id' => request('cafe_id')])
             ->with('success', 'Menu berhasil diperbarui.');
     }
 
