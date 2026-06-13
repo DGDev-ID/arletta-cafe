@@ -235,13 +235,20 @@ watch(
 const PRINT_WIDTH = 48;
 const PRINT_LINE = '-'.repeat(PRINT_WIDTH);
 
+// const shouldUseLocalPrint = () => {
+//     const ua = navigator.userAgent;
+//     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|HarmonyOS/i.test(ua);
+//     // Handle iPadOS desktop mode
+//     const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    
+//     return window.innerWidth >= 1024 && !isMobile && !isIPadOS;
+// };
 const shouldUseLocalPrint = () => {
     const ua = navigator.userAgent;
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|HarmonyOS/i.test(ua);
-    // Handle iPadOS desktop mode
     const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
     
-    return window.innerWidth >= 1024 && !isMobile && !isIPadOS;
+    return !isMobile && !isIPadOS; // ← hapus syarat innerWidth
 };
 
 const printPadRight = (left: string, right: string): string => {
