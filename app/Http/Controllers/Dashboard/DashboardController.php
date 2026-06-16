@@ -18,39 +18,55 @@ class DashboardController extends Controller
     {
         $today = Carbon::today();
         $yesterday = Carbon::yesterday();
+        $cafeId = request()->filled('cafe_id') ? (int) request()->cafe_id : null;
+
+        // Base query helper with optional cafe filter
+        $txBase = fn () => Transaction::when($cafeId, fn ($q) => $q->where('cafe_id', $cafeId));
 
         // Revenue Today
-        $revenueToday = Transaction::where('status', 'success')
+        $revenueToday = $txBase()->where('status', 'success')
             ->whereDate('created_at', $today)
             ->sum('total_price');
 
-        $revenueYesterday = Transaction::where('status', 'success')
+        $revenueYesterday = $txBase()->where('status', 'success')
             ->whereDate('created_at', $yesterday)
             ->sum('total_price');
 
         // Transactions Today
-        $transactionsToday = Transaction::where('status', 'success')
+        $transactionsToday = $txBase()->where('status', 'success')
             ->whereDate('created_at', $today)
             ->count();
 
-        $transactionsYesterday = Transaction::where('status', 'success')
+        $transactionsYesterday = $txBase()->where('status', 'success')
             ->whereDate('created_at', $yesterday)
             ->count();
 
         // Active Menus
-        $activeMenus = MMenu::where('status', 'available')->count();
+        $activeMenus = MMenu::where('status', 'available')
+            ->when($cafeId, fn ($q) => $q->where('cafe_id', $cafeId))
+            ->count();
 
-        // Low Stock Materials (stok di bawah 10)
-        $lowStockCount = MMaterial::whereColumn('stock', '<', 'critical_stock')->count();
-        $outOfStockCount = MMaterial::where('stock', '<=', 0)->count();
+        // Low Stock Materials
+        $lowStockCount = MMaterial::whereColumn('stock', '<', 'critical_stock')
+            ->when($cafeId, fn ($q) => $q->where('cafe_id', $cafeId))
+            ->count();
+        $outOfStockCount = MMaterial::where('stock', '<=', 0)
+            ->when($cafeId, fn ($q) => $q->where('cafe_id', $cafeId))
+            ->count();
+
+        // Payment method stats (today)
+        $paymentStats = [
+            'qris'   => (int) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'qris')->count(),
+            'debit'  => (int) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'debit')->count(),
+            'manual' => (int) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'manual')->count(),
+        ];
 
         // Revenue last 7 days
-        $last7Days = collect(range(6, 0))->map(function ($daysAgo) {
+        $last7Days = collect(range(6, 0))->map(function ($daysAgo) use ($txBase) {
             $date = Carbon::today()->subDays($daysAgo);
-
             return [
                 'date'    => $date->format('d M'),
-                'revenue' => Transaction::where('status', 'success')
+                'revenue' => $txBase()->where('status', 'success')
                     ->whereDate('created_at', $date)
                     ->sum('total_price'),
             ];
@@ -63,7 +79,8 @@ class DashboardController extends Controller
                 DB::raw('SUM(price * amount) as total_revenue')
             )
             ->with('menu:id,name,price,cafe_id', 'menu.cafe:id,name')
-            ->whereHas('transaction', fn ($q) => $q->where('status', 'success'))
+            ->whereHas('transaction', fn ($q) => $q->where('status', 'success')
+                ->when($cafeId, fn ($q2) => $q2->where('cafe_id', $cafeId)))
             ->groupBy('menu_id')
             ->orderByDesc('total_sold')
             ->limit(5)
@@ -78,6 +95,7 @@ class DashboardController extends Controller
             ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
             ->where('transactions.status', 'success')
             ->whereDate('transactions.created_at', $today)
+            ->when($cafeId, fn ($q) => $q->where('transactions.cafe_id', $cafeId))
             ->groupBy('menu_id')
             ->orderByDesc('total_sold')
             ->get();
@@ -100,25 +118,30 @@ class DashboardController extends Controller
         // Critical stock materials
         $criticalStocks = MMaterial::with('cafe:id,name', 'baseUnit:id,name')
             ->whereColumn('stock', '<', 'critical_stock')
+            ->when($cafeId, fn ($q) => $q->where('cafe_id', $cafeId))
             ->orderBy('stock', 'asc')
             ->limit(5)
             ->get(['id', 'name', 'cafe_id', 'stock', 'base_unit_id', 'avg_buy_price']);
 
         // Recent transactions
         $recentTransactions = Transaction::with('cafe:id,name', 'table:id,name')
+            ->when($cafeId, fn ($q) => $q->where('cafe_id', $cafeId))
             ->orderByDesc('created_at')
             ->limit(10)
             ->get(['id', 'cafe_id', 'table_id', 'total_price', 'payment_type', 'status', 'created_at']);
 
         // Table occupancy
-        $totalTables = MCafeTable::count();
-        $occupiedTables = Transaction::whereIn('status', ['in_order', 'pending'])
+        $totalTables = MCafeTable::when($cafeId, fn ($q) => $q->where('cafe_id', $cafeId))->count();
+        $occupiedTables = $txBase()->whereIn('status', ['in_order', 'pending'])
             ->whereDate('created_at', $today)
             ->distinct('table_id')
             ->count('table_id');
 
+        // All cafes list (for filter)
+        $cafes = MCafe::orderBy('name')->get(['id', 'name']);
+
         // Total cafes
-        $totalCafes = MCafe::count();
+        $totalCafes = $cafes->count();
 
         // Parent categories (for filter on dashboard)
         $parentCategories = \App\Models\MMenuCategory::whereNull('parent_id')
@@ -127,23 +150,26 @@ class DashboardController extends Controller
 
         return inertia('Dashboard', [
             'stats' => [
-                'revenueToday'        => (float) $revenueToday,
-                'revenueYesterday'    => (float) $revenueYesterday,
-                'transactionsToday'   => $transactionsToday,
+                'revenueToday'          => (float) $revenueToday,
+                'revenueYesterday'      => (float) $revenueYesterday,
+                'transactionsToday'     => $transactionsToday,
                 'transactionsYesterday' => $transactionsYesterday,
-                'activeMenus'         => $activeMenus,
-                'lowStockCount'       => $lowStockCount,
-                'outOfStockCount'     => $outOfStockCount,
-                'totalTables'         => $totalTables,
-                'occupiedTables'      => $occupiedTables,
-                'totalCafes'          => $totalCafes,
+                'activeMenus'           => $activeMenus,
+                'lowStockCount'         => $lowStockCount,
+                'outOfStockCount'       => $outOfStockCount,
+                'totalTables'           => $totalTables,
+                'occupiedTables'        => $occupiedTables,
+                'totalCafes'            => $totalCafes,
+                'paymentStats'          => $paymentStats,
             ],
-            'revenueChart'        => $last7Days,
-            'topMenus'            => $topMenus,
-            'criticalStocks'      => $criticalStocks,
-            'recentTransactions'  => $recentTransactions,
-            'topMenusToday'       => $topMenusToday,
-            'parentCategories'    => $parentCategories,
+            'revenueChart'       => $last7Days,
+            'topMenus'           => $topMenus,
+            'criticalStocks'     => $criticalStocks,
+            'recentTransactions' => $recentTransactions,
+            'topMenusToday'      => $topMenusToday,
+            'parentCategories'   => $parentCategories,
+            'cafes'              => $cafes,
+            'activeCafeId'       => $cafeId,
         ]);
     }
 
@@ -157,6 +183,7 @@ class DashboardController extends Controller
     {
         $date       = $request->filled('date') ? Carbon::parse($request->date) : Carbon::today();
         $categoryId = $request->filled('category_id') ? (int) $request->category_id : null;
+        $cafeId     = $request->filled('cafe_id') ? (int) $request->cafe_id : null;
 
         $query = TransactionDetail::select(
                 'menu_id',
@@ -166,6 +193,7 @@ class DashboardController extends Controller
             ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
             ->where('transactions.status', 'success')
             ->whereDate('transactions.created_at', $date)
+            ->when($cafeId, fn ($q) => $q->where('transactions.cafe_id', $cafeId))
             ->groupBy('menu_id')
             ->orderByDesc('total_sold');
 

@@ -6,8 +6,11 @@ import RevenueChart from '@/components/dashboard/RevenueChart.vue';
 import TopMenus from '@/components/dashboard/TopMenus.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/vue3';
-import { AlertTriangle, Coffee, ShoppingCart, Utensils, Wallet, CalendarDays } from 'lucide-vue-next';
+import { Head, router } from '@inertiajs/vue3';
+import {
+    AlertTriangle, Coffee, ShoppingCart, Utensils, Wallet,
+    CalendarDays, Building2, CreditCard, Banknote, QrCode, Store
+} from 'lucide-vue-next';
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import axios from 'axios';
 
@@ -27,6 +30,7 @@ const props = defineProps<{
         totalTables: number;
         occupiedTables: number;
         totalCafes: number;
+        paymentStats: { qris: number; debit: number; manual: number };
     };
     revenueChart: { date: string; revenue: number }[];
     topMenus: any[];
@@ -34,6 +38,8 @@ const props = defineProps<{
     recentTransactions: any[];
     topMenusToday: any[];
     parentCategories: { id: number; name: string }[];
+    cafes: { id: number; name: string }[];
+    activeCafeId: number | null;
 }>();
 
 const formatCurrency = (value: number) =>
@@ -46,6 +52,16 @@ const percentChange = (current: number, previous: number) => {
 
 const revenueChange = computed(() => percentChange(props.stats.revenueToday, props.stats.revenueYesterday));
 const txChange = computed(() => percentChange(props.stats.transactionsToday, props.stats.transactionsYesterday));
+
+// ── Filter Cabang ────────────────────────────────────────────────────────────
+const selectedCafeId = ref<number | null>(props.activeCafeId ?? null);
+
+function applyCafeFilter(cafeId: number | null) {
+    selectedCafeId.value = cafeId;
+    const params: Record<string, string> = {};
+    if (cafeId !== null) params.cafe_id = String(cafeId);
+    router.get('/dashboard', params, { preserveScroll: true, preserveState: false });
+}
 
 // ── Produk Terjual Hari Ini ───────────────────────────────────────────────────
 const todayStr = new Date().toISOString().slice(0, 10);
@@ -60,6 +76,7 @@ async function fetchTopMenus() {
         isLoadingMenus.value = true;
         const params: Record<string, string> = { date: filterDate.value };
         if (filterCategoryId.value !== null) params.category_id = String(filterCategoryId.value);
+        if (selectedCafeId.value !== null) params.cafe_id = String(selectedCafeId.value);
         const { data } = await axios.get('/dashboard/top-menus-today', { params });
         topMenusToday.value = data;
     } catch {
@@ -85,6 +102,12 @@ onMounted(() => {
 onBeforeUnmount(() => {
     if (pollInterval) { clearInterval(pollInterval); pollInterval = undefined; }
 });
+
+// Label cabang aktif
+const activeCafeName = computed(() => {
+    if (selectedCafeId.value === null) return 'Semua Cabang';
+    return props.cafes.find(c => c.id === selectedCafeId.value)?.name ?? 'Semua Cabang';
+});
 </script>
 
 <template>
@@ -93,7 +116,44 @@ onBeforeUnmount(() => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-1 flex-col gap-6 p-4 md:p-6">
 
-            <!-- KPI Cards -->
+            <!-- ── Filter Cabang ─────────────────────────────────────────── -->
+            <div v-if="cafes.length > 1" class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Building2 class="h-4 w-4 shrink-0" />
+                    <span class="font-medium">Filter Cabang:</span>
+                </div>
+                <button
+                    class="rounded-full px-3 py-1.5 text-xs font-medium transition-all"
+                    :class="selectedCafeId === null
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/70'"
+                    @click="applyCafeFilter(null)"
+                >
+                    Semua Cabang
+                </button>
+                <button
+                    v-for="cafe in cafes"
+                    :key="cafe.id"
+                    class="rounded-full px-3 py-1.5 text-xs font-medium transition-all"
+                    :class="selectedCafeId === cafe.id
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/70'"
+                    @click="applyCafeFilter(cafe.id)"
+                >
+                    {{ cafe.name }}
+                </button>
+            </div>
+
+            <!-- Label cabang yang sedang aktif -->
+            <div v-if="selectedCafeId !== null" class="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+                <Store class="h-3.5 w-3.5 shrink-0" />
+                <span>Menampilkan data untuk cabang: <strong>{{ activeCafeName }}</strong></span>
+                <button class="ml-auto rounded px-1.5 py-0.5 hover:bg-primary/10 transition-colors" @click="applyCafeFilter(null)">
+                    ✕ Reset
+                </button>
+            </div>
+
+            <!-- ── KPI Cards ─────────────────────────────────────────────── -->
             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <KpiCard
                     title="Revenue Hari Ini"
@@ -125,6 +185,49 @@ onBeforeUnmount(() => {
                     :icon="Utensils"
                     icon-class="bg-purple-100 dark:bg-purple-900/30"
                 />
+            </div>
+
+            <!-- ── Metode Pembayaran (Hari Ini) ──────────────────────────── -->
+            <div>
+                <div class="mb-3 flex items-center gap-2">
+                    <CreditCard class="h-4 w-4 text-muted-foreground" />
+                    <span class="text-sm font-semibold">Transaksi per Metode Pembayaran <span class="font-normal text-muted-foreground">(Hari Ini)</span></span>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <!-- QRIS -->
+                    <div class="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/30">
+                            <QrCode class="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-xs font-medium text-muted-foreground">QRIS</div>
+                            <div class="text-2xl font-bold leading-tight">{{ stats.paymentStats.qris }}</div>
+                            <div class="text-xs text-muted-foreground">transaksi</div>
+                        </div>
+                    </div>
+                    <!-- Debit -->
+                    <div class="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                            <CreditCard class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-xs font-medium text-muted-foreground">Debit</div>
+                            <div class="text-2xl font-bold leading-tight">{{ stats.paymentStats.debit }}</div>
+                            <div class="text-xs text-muted-foreground">transaksi</div>
+                        </div>
+                    </div>
+                    <!-- Manual / Cash -->
+                    <div class="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                            <Banknote class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-xs font-medium text-muted-foreground">Manual / Cash</div>
+                            <div class="text-2xl font-bold leading-tight">{{ stats.paymentStats.manual }}</div>
+                            <div class="text-xs text-muted-foreground">transaksi</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Revenue Chart (full width) -->
@@ -205,7 +308,7 @@ onBeforeUnmount(() => {
                             <div class="text-sm font-medium leading-tight truncate">{{ m.name }}</div>
                             <div class="text-xs text-muted-foreground truncate">
                                 {{ m.parent_category_name ?? m.category_name ?? '' }}
-                                <span v-if="m.cafe_name"> · {{ m.cafe_name }}</span>
+                                <span v-if="m.cafe_name">· {{ m.cafe_name }}</span>
                             </div>
                         </div>
                         <div class="text-sm font-bold shrink-0 text-primary">{{ m.total_sold }}x</div>
