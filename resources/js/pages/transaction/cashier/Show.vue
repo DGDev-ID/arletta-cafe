@@ -264,9 +264,8 @@ const applyPromo = () => {
                                 <td class="px-6 py-4 text-muted-foreground">{{ detail.menu?.category?.name ?? '-' }}
                                 </td>
                                 <td class="px-6 py-4">{{ detail.amount }}</td>
-                                <td class="px-6 py-4">{{ formatCurrency(detail.price) }}</td>
-                                <td class="px-6 py-4 font-medium">{{ formatCurrency(Number(detail.price) *
-                                    detail.amount) }}</td>
+                                <td class="px-6 py-4">{{ formatCurrency(Number(detail.price) / detail.amount) }}</td>
+                                <td class="px-6 py-4 font-medium">{{ formatCurrency(detail.price) }}</td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ detail.description ?? '-' }}</td>
                                 <td v-if="isPending" class="px-6 py-4">
                                     <button @click="reduceDetail(detail.id)" type="button"
