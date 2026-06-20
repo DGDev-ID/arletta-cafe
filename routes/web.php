@@ -45,6 +45,11 @@ Route::get('dashboard/top-menus-today', [DashboardController::class, 'topMenusTo
     ->middleware(['auth', 'verified'])
     ->name('dashboard.top-menus-today');
 
+// JSON endpoint for purchase summary (inbound & outbound) with date range filter
+Route::get('dashboard/purchase-summary', [DashboardController::class, 'purchaseSummary'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard.purchase-summary');
+
 Route::middleware(['auth'])->group(function () {
     Route::prefix('master')->name('master.')->group(function () {
         Route::post('cafe/{cafeId}/table', [CafeTableController::class, 'storeTable'])->name('cafe.table.store');

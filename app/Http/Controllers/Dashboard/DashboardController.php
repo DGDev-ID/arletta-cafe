@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MCafe;
 use App\Models\MCafeTable;
 use App\Models\MMaterial;
+use App\Models\MaterialInboundOutbound;
 use App\Models\MMenu;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
@@ -54,11 +55,20 @@ class DashboardController extends Controller
             ->when($cafeId, fn ($q) => $q->where('cafe_id', $cafeId))
             ->count();
 
-        // Payment method stats (today)
+        // Payment method stats (today) — count + revenue nominal
         $paymentStats = [
-            'qris'   => (int) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'qris')->count(),
-            'debit'  => (int) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'debit')->count(),
-            'manual' => (int) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'manual')->count(),
+            'qris'   => [
+                'count'   => (int)   $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'qris')->count(),
+                'revenue' => (float) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'qris')->sum('total_price'),
+            ],
+            'debit'  => [
+                'count'   => (int)   $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'debit')->count(),
+                'revenue' => (float) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'debit')->sum('total_price'),
+            ],
+            'manual' => [
+                'count'   => (int)   $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'manual')->count(),
+                'revenue' => (float) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'manual')->sum('total_price'),
+            ],
         ];
 
         // Revenue last 7 days
@@ -231,5 +241,48 @@ class DashboardController extends Controller
         }
 
         return response()->json($topMenusToday->values());
+    }
+
+    /**
+     * Return purchase summary (inbound & outbound) as JSON.
+     * Query params:
+     *   - date_from   : Y-m-d (default: today)
+     *   - date_to     : Y-m-d (default: today)
+     *   - cafe_id     : optional
+     */
+    public function purchaseSummary(\Illuminate\Http\Request $request)
+    {
+        $dateFrom = $request->filled('date_from')
+            ? Carbon::createFromFormat('d-m-Y', $request->date_from)->startOfDay()
+            : Carbon::today()->startOfDay();
+        $dateTo   = $request->filled('date_to')
+            ? Carbon::createFromFormat('d-m-Y', $request->date_to)->endOfDay()
+            : Carbon::today()->endOfDay();
+        $cafeId   = $request->filled('cafe_id')   ? (int) $request->cafe_id : null;
+
+        $base = MaterialInboundOutbound::query()
+            ->join('m_materials', 'material_inbound_outbounds.material_id', '=', 'm_materials.id')
+            ->whereBetween('material_inbound_outbounds.created_at', [$dateFrom, $dateTo])
+            ->when($cafeId, fn ($q) => $q->where('m_materials.cafe_id', $cafeId));
+
+        $inbound = (clone $base)->where('material_inbound_outbounds.type', 'inbound')
+            ->selectRaw('COUNT(*) as total_records, SUM(material_inbound_outbounds.amount) as total_amount, SUM(material_inbound_outbounds.amount * COALESCE(material_inbound_outbounds.inbound_buy_price, 0)) as total_nominal')
+            ->first();
+
+        $outbound = (clone $base)->where('material_inbound_outbounds.type', 'outbound')
+            ->selectRaw('COUNT(*) as total_records, SUM(material_inbound_outbounds.amount) as total_amount')
+            ->first();
+
+        return response()->json([
+            'inbound' => [
+                'total_records' => (int) ($inbound->total_records ?? 0),
+                'total_amount'  => (float) ($inbound->total_amount ?? 0),
+                'total_nominal' => (float) ($inbound->total_nominal ?? 0),
+            ],
+            'outbound' => [
+                'total_records' => (int) ($outbound->total_records ?? 0),
+                'total_amount'  => (float) ($outbound->total_amount ?? 0),
+            ],
+        ]);
     }
 }

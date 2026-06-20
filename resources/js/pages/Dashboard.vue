@@ -9,7 +9,8 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import {
     AlertTriangle, Coffee, ShoppingCart, Utensils, Wallet,
-    CalendarDays, Building2, CreditCard, Banknote, QrCode, Store
+    CalendarDays, Building2, CreditCard, Banknote, QrCode, Store,
+    PackagePlus, PackageMinus, TrendingUp, TrendingDown
 } from 'lucide-vue-next';
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import axios from 'axios';
@@ -30,7 +31,11 @@ const props = defineProps<{
         totalTables: number;
         occupiedTables: number;
         totalCafes: number;
-        paymentStats: { qris: number; debit: number; manual: number };
+        paymentStats: {
+            qris:   { count: number; revenue: number };
+            debit:  { count: number; revenue: number };
+            manual: { count: number; revenue: number };
+        };
     };
     revenueChart: { date: string; revenue: number }[];
     topMenus: any[];
@@ -93,6 +98,7 @@ let pollInterval: number | undefined;
 
 onMounted(() => {
     void fetchTopMenus();
+    void fetchPurchaseSummary();
     pollInterval = window.setInterval(() => {
         // Only auto-poll if viewing today
         if (filterDate.value === todayStr) void fetchTopMenus();
@@ -108,6 +114,42 @@ const activeCafeName = computed(() => {
     if (selectedCafeId.value === null) return 'Semua Cabang';
     return props.cafes.find(c => c.id === selectedCafeId.value)?.name ?? 'Semua Cabang';
 });
+
+// ── Purchase Summary (Inbound & Outbound) ────────────────────────────────────
+const purchaseDateFrom = ref(todayStr);
+const purchaseDateTo   = ref(todayStr);
+const isLoadingPurchase = ref(false);
+const purchaseSummary = ref<{
+    inbound:  { total_records: number; total_amount: number; total_nominal: number };
+    outbound: { total_records: number; total_amount: number };
+} | null>(null);
+
+// Helper: konversi YYYY-MM-DD -> DD-MM-YYYY untuk dikirim ke API
+const toApiDate = (ymd: string) => {
+    const [y, m, d] = ymd.split('-');
+    return `${d}-${m}-${y}`;
+};
+
+async function fetchPurchaseSummary() {
+    try {
+        isLoadingPurchase.value = true;
+        const params: Record<string, string> = {
+            date_from: toApiDate(purchaseDateFrom.value),
+            date_to:   toApiDate(purchaseDateTo.value),
+        };
+        if (selectedCafeId.value !== null) params.cafe_id = String(selectedCafeId.value);
+        const { data } = await axios.get('/dashboard/purchase-summary', { params });
+        purchaseSummary.value = data;
+    } catch {
+        // silent
+    } finally {
+        isLoadingPurchase.value = false;
+    }
+}
+
+watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSummary());
+
+
 </script>
 
 <template>
@@ -201,8 +243,8 @@ const activeCafeName = computed(() => {
                         </div>
                         <div class="min-w-0">
                             <div class="text-xs font-medium text-muted-foreground">QRIS</div>
-                            <div class="text-2xl font-bold leading-tight">{{ stats.paymentStats.qris }}</div>
-                            <div class="text-xs text-muted-foreground">transaksi</div>
+                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(stats.paymentStats.qris.revenue) }}</div>
+                            <div class="text-xs text-muted-foreground">{{ stats.paymentStats.qris.count }} transaksi</div>
                         </div>
                     </div>
                     <!-- Debit -->
@@ -212,8 +254,8 @@ const activeCafeName = computed(() => {
                         </div>
                         <div class="min-w-0">
                             <div class="text-xs font-medium text-muted-foreground">Debit</div>
-                            <div class="text-2xl font-bold leading-tight">{{ stats.paymentStats.debit }}</div>
-                            <div class="text-xs text-muted-foreground">transaksi</div>
+                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(stats.paymentStats.debit.revenue) }}</div>
+                            <div class="text-xs text-muted-foreground">{{ stats.paymentStats.debit.count }} transaksi</div>
                         </div>
                     </div>
                     <!-- Manual / Cash -->
@@ -223,8 +265,8 @@ const activeCafeName = computed(() => {
                         </div>
                         <div class="min-w-0">
                             <div class="text-xs font-medium text-muted-foreground">Manual / Cash</div>
-                            <div class="text-2xl font-bold leading-tight">{{ stats.paymentStats.manual }}</div>
-                            <div class="text-xs text-muted-foreground">transaksi</div>
+                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(stats.paymentStats.manual.revenue) }}</div>
+                            <div class="text-xs text-muted-foreground">{{ stats.paymentStats.manual.count }} transaksi</div>
                         </div>
                     </div>
                 </div>
@@ -232,6 +274,107 @@ const activeCafeName = computed(() => {
 
             <!-- Revenue Chart (full width) -->
             <RevenueChart :data="revenueChart" />
+
+            <!-- ── Total Purchase (Inbound & Outbound) ─────────────────── -->
+            <div class="rounded-lg border bg-card p-4 shadow-sm flex flex-col gap-4">
+
+                <!-- Header -->
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-2">
+                        <TrendingUp class="h-4 w-4 text-primary" />
+                        <span class="text-sm font-semibold">Total Purchase</span>
+                        <span class="text-xs text-muted-foreground font-normal">— Inbound & Outbound Bahan Baku</span>
+                    </div>
+
+                    <!-- Date Range Filter -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs">
+                            <CalendarDays class="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span class="text-muted-foreground">Dari:</span>
+                            <input
+                                v-model="purchaseDateFrom"
+                                type="date"
+                                class="bg-transparent text-xs outline-none cursor-pointer"
+                            />
+                        </div>
+                        <div class="flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs">
+                            <CalendarDays class="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span class="text-muted-foreground">Sampai:</span>
+                            <input
+                                v-model="purchaseDateTo"
+                                type="date"
+                                class="bg-transparent text-xs outline-none cursor-pointer"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards -->
+                <div v-if="isLoadingPurchase" class="grid gap-4 sm:grid-cols-2">
+                    <div v-for="i in 2" :key="i" class="flex items-center gap-4 rounded-xl border p-4 animate-pulse">
+                        <div class="h-11 w-11 rounded-lg bg-muted shrink-0"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="h-3 w-1/3 rounded bg-muted"></div>
+                            <div class="h-5 w-1/2 rounded bg-muted"></div>
+                            <div class="h-2.5 w-2/3 rounded bg-muted"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else-if="purchaseSummary" class="grid gap-4 sm:grid-cols-2">
+                    <!-- Inbound -->
+                    <div class="flex items-start gap-4 rounded-xl border bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/40 p-4">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                            <PackagePlus class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-1">Inbound (Masuk)</div>
+                            <div class="flex items-baseline gap-2 flex-wrap">
+                                <span class="text-2xl font-bold leading-tight text-emerald-700 dark:text-emerald-300">
+                                    {{ purchaseSummary.inbound.total_records }}
+                                </span>
+                                <span class="text-xs text-muted-foreground">transaksi</span>
+                            </div>
+                            <div class="mt-1 space-y-0.5">
+                                <div class="text-xs text-muted-foreground">
+                                    Jumlah Barang:
+                                    <span class="font-semibold text-foreground">{{ purchaseSummary.inbound.total_amount.toLocaleString('id-ID', { maximumFractionDigits: 2 }) }}</span>
+                                </div>
+                                <div class="text-xs text-muted-foreground">
+                                    Total Nominal:
+                                    <span class="font-semibold text-emerald-700 dark:text-emerald-400">{{ formatCurrency(purchaseSummary.inbound.total_nominal) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Outbound -->
+                    <div class="flex items-start gap-4 rounded-xl border bg-orange-50/50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800/40 p-4">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/40">
+                            <PackageMinus class="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-xs font-semibold text-orange-700 dark:text-orange-400 uppercase tracking-wide mb-1">Outbound (Keluar)</div>
+                            <div class="flex items-baseline gap-2 flex-wrap">
+                                <span class="text-2xl font-bold leading-tight text-orange-700 dark:text-orange-300">
+                                    {{ purchaseSummary.outbound.total_records }}
+                                </span>
+                                <span class="text-xs text-muted-foreground">transaksi</span>
+                            </div>
+                            <div class="mt-1">
+                                <div class="text-xs text-muted-foreground">
+                                    Jumlah Barang:
+                                    <span class="font-semibold text-foreground">{{ purchaseSummary.outbound.total_amount.toLocaleString('id-ID', { maximumFractionDigits: 2 }) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="py-8 text-center text-sm text-muted-foreground">
+                    Tidak ada data purchase untuk filter ini.
+                </div>
+            </div>
 
             <!-- Produk Terjual (full width) -->
             <div class="rounded-lg border bg-card p-4 shadow-sm flex flex-col gap-4">
