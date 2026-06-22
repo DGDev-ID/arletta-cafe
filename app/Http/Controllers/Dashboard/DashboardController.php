@@ -266,7 +266,7 @@ class DashboardController extends Controller
             ->when($cafeId, fn ($q) => $q->where('m_materials.cafe_id', $cafeId));
 
         $inbound = (clone $base)->where('material_inbound_outbounds.type', 'inbound')
-            ->selectRaw('COUNT(*) as total_records, SUM(material_inbound_outbounds.amount) as total_amount, SUM(material_inbound_outbounds.amount * COALESCE(material_inbound_outbounds.inbound_buy_price, 0)) as total_nominal')
+            ->selectRaw('COUNT(*) as total_records, SUM(material_inbound_outbounds.amount) as total_amount, SUM(COALESCE(material_inbound_outbounds.inbound_buy_price, 0)) as total_nominal')
             ->first();
 
         $outbound = (clone $base)->where('material_inbound_outbounds.type', 'outbound')
@@ -316,6 +316,21 @@ class DashboardController extends Controller
                 $txBase = $txBase->whereYear('created_at', $now->year)
                                  ->whereMonth('created_at', $now->month);
             }
+        } elseif ($period === 'week') {
+            // Spesifik minggu: ?week=2025-W25  format ISO 8601  (fallback: minggu ini)
+            if ($request->filled('week')) {
+                // Pisahkan "2025-W25" → tahun=2025, week=25
+                preg_match('/^(\d{4})-W(\d{2})$/', $request->week, $m);
+                if ($m) {
+                    $startOfWeek = Carbon::now()->setISODate((int) $m[1], (int) $m[2])->startOfDay();
+                } else {
+                    $startOfWeek = $now->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
+                }
+            } else {
+                $startOfWeek = $now->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
+            }
+            $endOfWeek = $startOfWeek->copy()->addDays(6)->endOfDay();
+            $txBase = $txBase->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
         } else {
             // Spesifik hari: ?date=2025-06-22  (fallback: hari ini)
             $date = $request->filled('date') ? $request->date : $now->toDateString();

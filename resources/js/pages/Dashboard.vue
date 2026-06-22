@@ -116,9 +116,10 @@ const activeCafeName = computed(() => {
 });
 
 // ── Payment Stats (Metode Pembayaran) ────────────────────────────────────────
-type PaymentPeriod = 'day' | 'month' | 'year';
+type PaymentPeriod = 'day' | 'week' | 'month' | 'year';
 const paymentPeriod      = ref<PaymentPeriod>('day');
 const paymentFilterDate  = ref(todayStr);                              // YYYY-MM-DD
+const paymentFilterWeek  = ref(getCurrentISOWeek());                   // YYYY-Www
 const paymentFilterMonth = ref(todayStr.slice(0, 7));                  // YYYY-MM
 const paymentFilterYear  = ref(new Date().getFullYear());              // number
 const isLoadingPayment   = ref(false);
@@ -127,6 +128,38 @@ const paymentStats = ref<{
     debit:  { count: number; revenue: number };
     manual: { count: number; revenue: number };
 } | null>(null);
+
+// Helper: dapatkan ISO week string (YYYY-Www) untuk hari ini
+function getCurrentISOWeek(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    // Cari Kamis di minggu yang sama (ISO 8601: minggu dimulai Senin)
+    const thu = new Date(now);
+    thu.setDate(now.getDate() - ((now.getDay() + 6) % 7) + 3);
+    const jan4 = new Date(year, 0, 4);
+    const weekNum = Math.round(((thu.getTime() - jan4.getTime()) / 86400000 + ((jan4.getDay() + 6) % 7)) / 7) + 1;
+    const isoYear = thu.getFullYear();
+    return `${isoYear}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+// Helper: tampilkan label rentang minggu dari nilai YYYY-Www
+function getWeekLabel(weekVal: string): string {
+    // Parse YYYY-Www
+    const match = weekVal.match(/^(\d{4})-W(\d{2})$/);
+    if (!match) return weekVal;
+    const year = parseInt(match[1]);
+    const week = parseInt(match[2]);
+    // Cari Senin minggu ke-n (ISO week: Kamis di minggu itu ada di tahun itu)
+    const jan4 = new Date(year, 0, 4);
+    const mondayW1 = new Date(jan4);
+    mondayW1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
+    const monday = new Date(mondayW1);
+    monday.setDate(mondayW1.getDate() + (week - 1) * 7);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    return `${fmt(monday)} – ${fmt(sunday)} ${year}`;
+}
 
 // Seed awal dari props (hari ini)
 function seedPaymentStats() {
@@ -144,6 +177,7 @@ async function fetchPaymentStats() {
         const params: Record<string, string> = { period: paymentPeriod.value };
         if (selectedCafeId.value !== null) params.cafe_id = String(selectedCafeId.value);
         if (paymentPeriod.value === 'day')   params.date  = paymentFilterDate.value;
+        if (paymentPeriod.value === 'week')  params.week  = paymentFilterWeek.value;
         if (paymentPeriod.value === 'month') params.month = paymentFilterMonth.value;
         if (paymentPeriod.value === 'year')  params.year  = String(paymentFilterYear.value);
         const { data } = await axios.get('/dashboard/payment-stats', { params });
@@ -155,7 +189,7 @@ async function fetchPaymentStats() {
     }
 }
 
-// Daftar tahun tersedia (5 tahun ke belakang sampai sekarang)
+// Daftar tahun tersedia (6 tahun ke belakang sampai sekarang)
 const availableYears = computed(() => {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: 6 }, (_, i) => currentYear - i);
@@ -171,12 +205,15 @@ const paymentPeriodLabel = computed(() => {
         const date = new Date(Number(y), Number(m) - 1, 1);
         return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
     }
+    if (paymentPeriod.value === 'week') {
+        return getWeekLabel(paymentFilterWeek.value);
+    }
     // day
     const d = new Date(paymentFilterDate.value + 'T00:00:00');
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 });
 
-watch([paymentPeriod, paymentFilterDate, paymentFilterMonth, paymentFilterYear, selectedCafeId], () => fetchPaymentStats());
+watch([paymentPeriod, paymentFilterDate, paymentFilterWeek, paymentFilterMonth, paymentFilterYear, selectedCafeId], () => fetchPaymentStats());
 
 // ── Purchase Summary (Inbound & Outbound) ────────────────────────────────────
 const purchaseDateFrom = ref(todayStr);
@@ -304,10 +341,10 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                                 <span class="font-normal text-muted-foreground">({{ paymentPeriodLabel }})</span>
                             </span>
                         </div>
-                        <!-- Toggle mode: Hari / Bulan / Tahun -->
+                        <!-- Toggle mode: Hari / Minggu / Bulan / Tahun -->
                         <div class="flex items-center gap-1 rounded-lg border bg-muted p-0.5 self-start sm:self-auto">
                             <button
-                                v-for="opt in ([{ value: 'day', label: 'Hari' }, { value: 'month', label: 'Bulan' }, { value: 'year', label: 'Tahun' }] as const)"
+                                v-for="opt in ([{ value: 'day', label: 'Hari' }, { value: 'week', label: 'Minggu' }, { value: 'month', label: 'Bulan' }, { value: 'year', label: 'Tahun' }] as const)"
                                 :key="opt.value"
                                 class="rounded-md px-3 py-1 text-xs font-medium transition-all"
                                 :class="paymentPeriod === opt.value
@@ -329,6 +366,16 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                                 v-model="paymentFilterDate"
                                 type="date"
                                 :max="todayStr"
+                                class="bg-transparent text-xs outline-none cursor-pointer"
+                            />
+                        </div>
+                        <!-- Mode Minggu: week picker -->
+                        <div v-else-if="paymentPeriod === 'week'" class="flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs">
+                            <CalendarDays class="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span class="text-muted-foreground">Minggu:</span>
+                            <input
+                                v-model="paymentFilterWeek"
+                                type="week"
                                 class="bg-transparent text-xs outline-none cursor-pointer"
                             />
                         </div>
