@@ -50,6 +50,11 @@ Route::get('dashboard/purchase-summary', [DashboardController::class, 'purchaseS
     ->middleware(['auth', 'verified'])
     ->name('dashboard.purchase-summary');
 
+// JSON endpoint for payment stats by period (today / this month / this year)
+Route::get('dashboard/payment-stats', [DashboardController::class, 'paymentStatsByPeriod'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard.payment-stats');
+
 Route::middleware(['auth'])->group(function () {
     Route::prefix('master')->name('master.')->group(function () {
         Route::post('cafe/{cafeId}/table', [CafeTableController::class, 'storeTable'])->name('cafe.table.store');

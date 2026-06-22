@@ -48,7 +48,7 @@ const props = defineProps<{
 }>();
 
 const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
 
 const percentChange = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 100 : 0;
@@ -114,6 +114,69 @@ const activeCafeName = computed(() => {
     if (selectedCafeId.value === null) return 'Semua Cabang';
     return props.cafes.find(c => c.id === selectedCafeId.value)?.name ?? 'Semua Cabang';
 });
+
+// ── Payment Stats (Metode Pembayaran) ────────────────────────────────────────
+type PaymentPeriod = 'day' | 'month' | 'year';
+const paymentPeriod      = ref<PaymentPeriod>('day');
+const paymentFilterDate  = ref(todayStr);                              // YYYY-MM-DD
+const paymentFilterMonth = ref(todayStr.slice(0, 7));                  // YYYY-MM
+const paymentFilterYear  = ref(new Date().getFullYear());              // number
+const isLoadingPayment   = ref(false);
+const paymentStats = ref<{
+    qris:   { count: number; revenue: number };
+    debit:  { count: number; revenue: number };
+    manual: { count: number; revenue: number };
+} | null>(null);
+
+// Seed awal dari props (hari ini)
+function seedPaymentStats() {
+    paymentStats.value = {
+        qris:   { ...props.stats.paymentStats.qris },
+        debit:  { ...props.stats.paymentStats.debit },
+        manual: { ...props.stats.paymentStats.manual },
+    };
+}
+seedPaymentStats();
+
+async function fetchPaymentStats() {
+    try {
+        isLoadingPayment.value = true;
+        const params: Record<string, string> = { period: paymentPeriod.value };
+        if (selectedCafeId.value !== null) params.cafe_id = String(selectedCafeId.value);
+        if (paymentPeriod.value === 'day')   params.date  = paymentFilterDate.value;
+        if (paymentPeriod.value === 'month') params.month = paymentFilterMonth.value;
+        if (paymentPeriod.value === 'year')  params.year  = String(paymentFilterYear.value);
+        const { data } = await axios.get('/dashboard/payment-stats', { params });
+        paymentStats.value = data;
+    } catch {
+        // silent
+    } finally {
+        isLoadingPayment.value = false;
+    }
+}
+
+// Daftar tahun tersedia (5 tahun ke belakang sampai sekarang)
+const availableYears = computed(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 6 }, (_, i) => currentYear - i);
+});
+
+// Format label header
+const paymentPeriodLabel = computed(() => {
+    if (paymentPeriod.value === 'year') {
+        return `Tahun ${paymentFilterYear.value}`;
+    }
+    if (paymentPeriod.value === 'month') {
+        const [y, m] = paymentFilterMonth.value.split('-');
+        const date = new Date(Number(y), Number(m) - 1, 1);
+        return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    }
+    // day
+    const d = new Date(paymentFilterDate.value + 'T00:00:00');
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+});
+
+watch([paymentPeriod, paymentFilterDate, paymentFilterMonth, paymentFilterYear, selectedCafeId], () => fetchPaymentStats());
 
 // ── Purchase Summary (Inbound & Outbound) ────────────────────────────────────
 const purchaseDateFrom = ref(todayStr);
@@ -229,13 +292,85 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                 />
             </div>
 
-            <!-- ── Metode Pembayaran (Hari Ini) ──────────────────────────── -->
+            <!-- ── Metode Pembayaran ──────────────────────────────────────── -->
             <div>
-                <div class="mb-3 flex items-center gap-2">
-                    <CreditCard class="h-4 w-4 text-muted-foreground" />
-                    <span class="text-sm font-semibold">Transaksi per Metode Pembayaran <span class="font-normal text-muted-foreground">(Hari Ini)</span></span>
+                <!-- Header + Filter Periode -->
+                <div class="mb-3 flex flex-col gap-2">
+                    <!-- Baris 1: judul + toggle mode -->
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-2">
+                            <CreditCard class="h-4 w-4 text-muted-foreground" />
+                            <span class="text-sm font-semibold">Transaksi per Metode Pembayaran
+                                <span class="font-normal text-muted-foreground">({{ paymentPeriodLabel }})</span>
+                            </span>
+                        </div>
+                        <!-- Toggle mode: Hari / Bulan / Tahun -->
+                        <div class="flex items-center gap-1 rounded-lg border bg-muted p-0.5 self-start sm:self-auto">
+                            <button
+                                v-for="opt in ([{ value: 'day', label: 'Hari' }, { value: 'month', label: 'Bulan' }, { value: 'year', label: 'Tahun' }] as const)"
+                                :key="opt.value"
+                                class="rounded-md px-3 py-1 text-xs font-medium transition-all"
+                                :class="paymentPeriod === opt.value
+                                    ? 'bg-background text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'"
+                                @click="paymentPeriod = opt.value"
+                            >
+                                {{ opt.label }}
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Baris 2: input picker sesuai mode -->
+                    <div class="flex items-center gap-2">
+                        <!-- Mode Hari: date picker -->
+                        <div v-if="paymentPeriod === 'day'" class="flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs">
+                            <CalendarDays class="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span class="text-muted-foreground">Tanggal:</span>
+                            <input
+                                v-model="paymentFilterDate"
+                                type="date"
+                                :max="todayStr"
+                                class="bg-transparent text-xs outline-none cursor-pointer"
+                            />
+                        </div>
+                        <!-- Mode Bulan: month picker -->
+                        <div v-else-if="paymentPeriod === 'month'" class="flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs">
+                            <CalendarDays class="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span class="text-muted-foreground">Bulan:</span>
+                            <input
+                                v-model="paymentFilterMonth"
+                                type="month"
+                                :max="todayStr.slice(0, 7)"
+                                class="bg-transparent text-xs outline-none cursor-pointer"
+                            />
+                        </div>
+                        <!-- Mode Tahun: select dropdown -->
+                        <div v-else class="flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs">
+                            <CalendarDays class="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span class="text-muted-foreground">Tahun:</span>
+                            <select
+                                v-model="paymentFilterYear"
+                                class="bg-transparent text-xs outline-none cursor-pointer"
+                            >
+                                <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="grid gap-4 sm:grid-cols-3">
+
+                <!-- Skeleton loader -->
+                <div v-if="isLoadingPayment" class="grid gap-4 sm:grid-cols-3">
+                    <div v-for="i in 3" :key="i" class="flex items-center gap-4 rounded-xl border p-4 animate-pulse">
+                        <div class="h-11 w-11 rounded-lg bg-muted shrink-0"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="h-2.5 w-1/3 rounded bg-muted"></div>
+                            <div class="h-5 w-2/3 rounded bg-muted"></div>
+                            <div class="h-2.5 w-1/2 rounded bg-muted"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards -->
+                <div v-else-if="paymentStats" class="grid gap-4 sm:grid-cols-3">
                     <!-- QRIS -->
                     <div class="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm">
                         <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/30">
@@ -243,8 +378,8 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                         </div>
                         <div class="min-w-0">
                             <div class="text-xs font-medium text-muted-foreground">QRIS</div>
-                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(stats.paymentStats.qris.revenue) }}</div>
-                            <div class="text-xs text-muted-foreground">{{ stats.paymentStats.qris.count }} transaksi</div>
+                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(paymentStats.qris.revenue) }}</div>
+                            <div class="text-xs text-muted-foreground">{{ paymentStats.qris.count }} transaksi</div>
                         </div>
                     </div>
                     <!-- Debit -->
@@ -254,8 +389,8 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                         </div>
                         <div class="min-w-0">
                             <div class="text-xs font-medium text-muted-foreground">Debit</div>
-                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(stats.paymentStats.debit.revenue) }}</div>
-                            <div class="text-xs text-muted-foreground">{{ stats.paymentStats.debit.count }} transaksi</div>
+                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(paymentStats.debit.revenue) }}</div>
+                            <div class="text-xs text-muted-foreground">{{ paymentStats.debit.count }} transaksi</div>
                         </div>
                     </div>
                     <!-- Manual / Cash -->
@@ -265,8 +400,8 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                         </div>
                         <div class="min-w-0">
                             <div class="text-xs font-medium text-muted-foreground">Manual / Cash</div>
-                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(stats.paymentStats.manual.revenue) }}</div>
-                            <div class="text-xs text-muted-foreground">{{ stats.paymentStats.manual.count }} transaksi</div>
+                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(paymentStats.manual.revenue) }}</div>
+                            <div class="text-xs text-muted-foreground">{{ paymentStats.manual.count }} transaksi</div>
                         </div>
                     </div>
                 </div>
@@ -364,7 +499,7 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                             <div class="mt-1">
                                 <div class="text-xs text-muted-foreground">
                                     Jumlah Barang:
-                                    <span class="font-semibold text-foreground">{{ purchaseSummary.outbound.total_amount.toLocaleString('id-ID', { maximumFractionDigits: 2 }) }}</span>
+                                    <span class="font-semibold text-foreground">{{ Math.round(purchaseSummary.outbound.total_amount).toLocaleString('id-ID') }}</span>
                                 </div>
                             </div>
                         </div>

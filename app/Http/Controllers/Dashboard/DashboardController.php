@@ -285,4 +285,53 @@ class DashboardController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Return payment method stats (QRIS, Debit, Manual) filtered by period.
+     * Query params:
+     *   - period  : 'day' (default) | 'month' | 'year'
+     *   - cafe_id : optional
+     */
+    public function paymentStatsByPeriod(\Illuminate\Http\Request $request)
+    {
+        $period = $request->input('period', 'day');
+        $cafeId = $request->filled('cafe_id') ? (int) $request->cafe_id : null;
+
+        $now = Carbon::now();
+
+        $txBase = Transaction::where('status', 'success')
+            ->when($cafeId, fn ($q) => $q->where('cafe_id', $cafeId));
+
+        if ($period === 'year') {
+            // Spesifik tahun: ?year=2025  (fallback: tahun ini)
+            $year = $request->filled('year') ? (int) $request->year : $now->year;
+            $txBase = $txBase->whereYear('created_at', $year);
+        } elseif ($period === 'month') {
+            // Spesifik bulan: ?month=2025-06  (fallback: bulan ini)
+            if ($request->filled('month')) {
+                [$y, $m] = explode('-', $request->month);
+                $txBase = $txBase->whereYear('created_at', (int) $y)
+                                 ->whereMonth('created_at', (int) $m);
+            } else {
+                $txBase = $txBase->whereYear('created_at', $now->year)
+                                 ->whereMonth('created_at', $now->month);
+            }
+        } else {
+            // Spesifik hari: ?date=2025-06-22  (fallback: hari ini)
+            $date = $request->filled('date') ? $request->date : $now->toDateString();
+            $txBase = $txBase->whereDate('created_at', $date);
+        }
+
+        $paymentTypes = ['qris', 'debit', 'manual'];
+        $stats = [];
+        foreach ($paymentTypes as $type) {
+            $q = (clone $txBase)->where('payment_type', $type);
+            $stats[$type] = [
+                'count'   => (int)   $q->count(),
+                'revenue' => (float) $q->sum('total_price'),
+            ];
+        }
+
+        return response()->json($stats);
+    }
 }
