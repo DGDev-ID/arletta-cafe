@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CheckPromoCodeController;
 use App\Http\Controllers\Api\MakeFailedOpenBillController;
 use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\PaymentWebhookController;
+use App\Http\Controllers\Api\PromoBannerApiController;
 use App\Http\Controllers\Api\PayOpenbillQrisController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Dashboard\PublicController;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Route;
     Route::get('/queue/kitchen/{cafeId}', [PublicController::class, 'apiKitchenQueue']);
     
     Route::get('/landing-page', LandingPageController::class);
+    Route::get('/promo-banners', PromoBannerApiController::class);
     Route::get('/get-menu-cafe-table', GetMenuCafeTableController::class);
 
     Route::post('/check-available-materials', CheckMenuAvailableController::class);

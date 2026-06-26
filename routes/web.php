@@ -7,6 +7,7 @@ use App\Http\Controllers\Dashboard\Master\MenuCategoryController;
 use App\Http\Controllers\Dashboard\Master\GalleryController;
 use App\Http\Controllers\Dashboard\Master\MenuController;
 use App\Http\Controllers\Dashboard\Master\CafePromoController;
+use App\Http\Controllers\Dashboard\Master\PromoBannerController;
 use App\Http\Controllers\Dashboard\Master\SemiFinishedMaterialController;
 use App\Http\Controllers\Dashboard\Master\UnitController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageAdminController;
@@ -130,6 +131,18 @@ Route::middleware(['auth'])->group(function () {
             ]);
         Route::patch('cafe-promo/{cafe_promo}/toggle-status', [CafePromoController::class, 'toggleStatus'])
             ->name('cafe-promo.toggle-status')
+            ->middleware('can:master.menu.update');
+
+        Route::resource('promo-banner', PromoBannerController::class)
+            ->except(['show'])
+            ->middleware([
+                'can:master.menu.view',
+                'can:master.menu.create',
+                'can:master.menu.update',
+                'can:master.menu.delete',
+            ]);
+        Route::patch('promo-banner/{promo_banner}/toggle-status', [PromoBannerController::class, 'toggleStatus'])
+            ->name('promo-banner.toggle-status')
             ->middleware('can:master.menu.update');
 
         Route::resource('semi-finished-material', SemiFinishedMaterialController::class)

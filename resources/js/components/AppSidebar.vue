@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { ArrowLeftRight, BookA, BookOpen, Camera, Coffee, Coins, DollarSign, Folder, History, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, User, UserCheck, UserCog, Utensils } from 'lucide-vue-next';
+import { ArrowLeftRight, BookA, BookOpen, Camera, Coffee, Coins, DollarSign, Folder, History, Image, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, User, UserCheck, UserCog, Utensils } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -27,6 +27,12 @@ const masterDataNavItems: NavItem[] = [
         title: 'Promo',
         href: '/master/cafe-promo',
         icon: Coins,
+        permission: 'master.menu.view',
+    },
+    {
+        title: 'Banner Promo',
+        href: '/master/promo-banner',
+        icon: Image,
         permission: 'master.menu.view',
     },
     {
