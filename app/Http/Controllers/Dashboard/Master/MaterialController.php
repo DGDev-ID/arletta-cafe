@@ -203,37 +203,54 @@ class MaterialController extends Controller
         // Remove default sheet
         $spreadsheet->removeSheetByIndex(0);
 
+        $cafes = MCafe::all();
+
         // 1. Generate Material (Bahan Baku) Sheet
         if (in_array($exportType, ['material', 'all'])) {
             $sheet1 = $spreadsheet->createSheet();
             $sheet1->setTitle('Material (Bahan Baku)');
             
-            $sheet1->fromArray([
-                'No', 'Cafe', 'Nama Material', 'Tipe', 'Unit Dasar', 'Stock', 'Harga Beli (Avg)'
-            ], null, 'A1');
-
-            $materials = MMaterial::with('cafe', 'baseUnit')->get();
-            $row = 2;
-            foreach ($materials as $i => $item) {
-                $typeLabel = $item->type === 'selectable' ? 'Selectable (Punya Varian)' : 'Normal';
-                $sheet1->fromArray([
-                    $i + 1,
-                    $item->cafe->name ?? '-',
-                    $item->name,
-                    $typeLabel,
-                    $item->baseUnit->name ?? '-',
-                    (float) $item->stock,
-                    (float) $item->avg_buy_price,
-                ], null, "A{$row}");
+            $row = 1;
+            foreach ($cafes as $cafe) {
+                $sheet1->setCellValue("A{$row}", "Cafe: " . $cafe->name);
+                $sheet1->getStyle("A{$row}")->getFont()->setBold(true)->setSize(12);
                 $row++;
+
+                $sheet1->fromArray([
+                    'No', 'Nama Material', 'Tipe', 'Unit Dasar', 'Stock', 'Harga Beli (Avg)'
+                ], null, "A{$row}");
+                $headerRow = $row;
+                $row++;
+
+                $materials = MMaterial::with('baseUnit')->where('cafe_id', $cafe->id)->get();
+                $no = 1;
+                foreach ($materials as $item) {
+                    $typeLabel = $item->type === 'selectable' ? 'Selectable (Punya Varian)' : 'Normal';
+                    $sheet1->fromArray([
+                        $no++,
+                        $item->name,
+                        $typeLabel,
+                        $item->baseUnit->name ?? '-',
+                        (float) $item->stock,
+                        (float) $item->avg_buy_price,
+                    ], null, "A{$row}");
+                    
+                    // Format Rupiah
+                    $sheet1->getStyle("F{$row}")->getNumberFormat()->setFormatCode('"Rp "#,##0.00_-');
+                    $row++;
+                }
+
+                // Styling header
+                $sheet1->getStyle("A{$headerRow}:F{$headerRow}")->getFont()->setBold(true);
+                $sheet1->getStyle("A{$headerRow}:F{$headerRow}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFEFEFEF');
+
+                $row += 2; // space between tables
             }
 
-            // Styling Sheet 1
-            foreach (range('A', $sheet1->getHighestColumn()) as $col) {
+            // Styling Sheet 1 - Auto Size
+            foreach (range('A', 'F') as $col) {
                 $sheet1->getColumnDimension($col)->setAutoSize(true);
             }
-            $sheet1->getStyle('A1:' . $sheet1->getHighestColumn() . '1')->getFont()->setBold(true);
-            $sheet1->getStyle('A1:' . $sheet1->getHighestColumn() . '1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFEFEFEF');
         }
 
         // 2. Generate Production (Bahan Setengah Jadi) Sheet
@@ -241,55 +258,70 @@ class MaterialController extends Controller
             $sheet2 = $spreadsheet->createSheet();
             $sheet2->setTitle('Material Production');
 
-            $sheet2->fromArray([
-                'No', 'Cafe', 'Nama Material', 'Unit', 'Total Estimasi Harga (HPP)'
-            ], null, 'A1');
-
-            $sfm = SemiFinishedMaterial::with(['cafe', 'unit', 'details.material'])->get();
-            $row = 2;
-            foreach ($sfm as $i => $item) {
-                // Calculate dynamic HPP
-                $totalHpp = 0;
-                foreach ($item->details as $detail) {
-                    if ($detail->material) {
-                        $multiplier = 1;
-                        if ($detail->unit_id != $detail->material->base_unit_id) {
-                            $converter = \App\Models\UnitMaterialConverter::where('material_id', $detail->material_id)
-                                ->where('from_unit_id', $detail->unit_id)
-                                ->where('to_unit_id', $detail->material->base_unit_id)
-                                ->first();
-                            if ($converter) {
-                                $multiplier = $converter->multiplier;
-                            } else {
-                                $reverse = \App\Models\UnitMaterialConverter::where('material_id', $detail->material_id)
-                                    ->where('from_unit_id', $detail->material->base_unit_id)
-                                    ->where('to_unit_id', $detail->unit_id)
-                                    ->first();
-                                if ($reverse) {
-                                    $multiplier = 1 / $reverse->multiplier;
-                                }
-                            }
-                        }
-                        $totalHpp += ((float) $detail->amount * $multiplier) * (float) $detail->material->avg_buy_price;
-                    }
-                }
+            $row = 1;
+            foreach ($cafes as $cafe) {
+                $sheet2->setCellValue("A{$row}", "Cafe: " . $cafe->name);
+                $sheet2->getStyle("A{$row}")->getFont()->setBold(true)->setSize(12);
+                $row++;
 
                 $sheet2->fromArray([
-                    $i + 1,
-                    $item->cafe->name ?? '-',
-                    $item->name,
-                    $item->unit->name ?? '-',
-                    $totalHpp,
+                    'No', 'Nama Material', 'Unit', 'Total Estimasi Harga (HPP)'
                 ], null, "A{$row}");
+                $headerRow = $row;
                 $row++;
+
+                $sfm = SemiFinishedMaterial::with(['unit', 'details.material'])->where('cafe_id', $cafe->id)->get();
+                $no = 1;
+                foreach ($sfm as $item) {
+                    // Calculate dynamic HPP
+                    $totalHpp = 0;
+                    foreach ($item->details as $detail) {
+                        if ($detail->material) {
+                            $multiplier = 1;
+                            if ($detail->unit_id != $detail->material->base_unit_id) {
+                                $converter = \App\Models\UnitMaterialConverter::where('material_id', $detail->material_id)
+                                    ->where('from_unit_id', $detail->unit_id)
+                                    ->where('to_unit_id', $detail->material->base_unit_id)
+                                    ->first();
+                                if ($converter) {
+                                    $multiplier = $converter->multiplier;
+                                } else {
+                                    $reverse = \App\Models\UnitMaterialConverter::where('material_id', $detail->material_id)
+                                        ->where('from_unit_id', $detail->material->base_unit_id)
+                                        ->where('to_unit_id', $detail->unit_id)
+                                        ->first();
+                                    if ($reverse) {
+                                        $multiplier = 1 / $reverse->multiplier;
+                                    }
+                                }
+                            }
+                            $totalHpp += ((float) $detail->amount * $multiplier) * (float) $detail->material->avg_buy_price;
+                        }
+                    }
+
+                    $sheet2->fromArray([
+                        $no++,
+                        $item->name,
+                        $item->unit->name ?? '-',
+                        $totalHpp,
+                    ], null, "A{$row}");
+                    
+                    // Format Rupiah
+                    $sheet2->getStyle("D{$row}")->getNumberFormat()->setFormatCode('"Rp "#,##0.00_-');
+                    $row++;
+                }
+
+                // Styling header
+                $sheet2->getStyle("A{$headerRow}:D{$headerRow}")->getFont()->setBold(true);
+                $sheet2->getStyle("A{$headerRow}:D{$headerRow}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFEFEFEF');
+
+                $row += 2; // space between tables
             }
 
-            // Styling Sheet 2
-            foreach (range('A', $sheet2->getHighestColumn()) as $col) {
+            // Styling Sheet 2 - Auto Size
+            foreach (range('A', 'D') as $col) {
                 $sheet2->getColumnDimension($col)->setAutoSize(true);
             }
-            $sheet2->getStyle('A1:' . $sheet2->getHighestColumn() . '1')->getFont()->setBold(true);
-            $sheet2->getStyle('A1:' . $sheet2->getHighestColumn() . '1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFEFEFEF');
         }
 
         // Set the active sheet index to the first one
