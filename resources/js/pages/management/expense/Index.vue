@@ -23,6 +23,7 @@ const notyf = new Notyf({ duration: 4000, position: { x: 'right', y: 'bottom' } 
 // --- create form state (moved from Create.vue) ---
 const selectedCafe = ref<number | ''>('');
 const menus = ref<MenuItem[]>([]);
+const menuSearch = ref('');
 const loadingMenus = ref(false);
 const checkingAvailability = ref(false);
 
@@ -40,6 +41,7 @@ const cafeOptions = computed(() => props.cafes.map(c => ({ value: c.id, label: c
 
 watch(selectedCafe, async (val) => {
     menus.value = [];
+    menuSearch.value = '';
     form.details = [];
     form.cafe_id = val || '';
 
@@ -137,6 +139,12 @@ const decrement = (menuId: number) => {
     if (d && d.amount > 1) d.amount -= 1;
 };
 
+const filteredMenus = computed(() => {
+    if (!menuSearch.value.trim()) return menus.value;
+    const q = menuSearch.value.toLowerCase();
+    return menus.value.filter(m => m.name.toLowerCase().includes(q));
+});
+
 const selectedMenuMap = computed(() => {
     const map: Record<number, any> = {};
     menus.value.forEach(m => map[m.id] = m);
@@ -185,17 +193,24 @@ const submit = () => {
 
                     <div class="rounded-2xl border bg-background shadow-sm p-8">
                         <form @submit.prevent="submit" class="grid gap-6">
-                            <div class="grid gap-2">
-                                <label class="text-sm font-medium leading-none">Cafe</label>
-                                <SearchableSelect v-model="selectedCafe" :options="cafeOptions" placeholder="Pilih Cafe"
-                                    required />
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="grid gap-2">
+                                    <label class="text-sm font-medium leading-none">Cafe</label>
+                                    <SearchableSelect v-model="selectedCafe" :options="cafeOptions" placeholder="Pilih Cafe"
+                                        required />
+                                </div>
+                                <div v-if="selectedCafe" class="grid gap-2">
+                                    <label class="text-sm font-medium leading-none">Cari Menu</label>
+                                    <input v-model="menuSearch" type="text" placeholder="Ketik nama menu..."
+                                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                                </div>
                             </div>
 
                             <div>
                                 <label class="text-sm font-medium leading-none">Menu</label>
                                 <div v-if="loadingMenus" class="text-sm text-muted-foreground">Memuat menu...</div>
                                 <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-                                    <div v-for="menu in menus" :key="menu.id" class="p-3 rounded-lg border bg-white">
+                                    <div v-for="menu in filteredMenus" :key="menu.id" class="p-3 rounded-lg border bg-white">
                                         <div class="flex items-start justify-between gap-2">
                                             <div>
                                                 <div class="font-medium">{{ menu.name }}</div>
