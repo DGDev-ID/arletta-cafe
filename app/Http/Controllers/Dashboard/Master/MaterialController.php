@@ -7,6 +7,11 @@ use App\Models\MCafe;
 use App\Models\MMaterial;
 use App\Models\MUnit;
 use Illuminate\Http\Request;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Models\SemiFinishedMaterial;
+use App\Models\SemiFinishedMaterialDetail;
 
 class MaterialController extends Controller
 {
@@ -187,5 +192,123 @@ class MaterialController extends Controller
 
         return back()
             ->with('success', 'Material berhasil diatur sebagai habis.');
+    }
+
+    public function export(Request $request)
+    {
+        $exportType = $request->query('type', 'all'); // 'material', 'production', 'all'
+        
+        $spreadsheet = new Spreadsheet();
+        
+        // Remove default sheet
+        $spreadsheet->removeSheetByIndex(0);
+
+        // 1. Generate Material (Bahan Baku) Sheet
+        if (in_array($exportType, ['material', 'all'])) {
+            $sheet1 = $spreadsheet->createSheet();
+            $sheet1->setTitle('Material (Bahan Baku)');
+            
+            $sheet1->fromArray([
+                'No', 'Cafe', 'Nama Material', 'Tipe', 'Unit Dasar', 'Stock', 'Harga Beli (Avg)'
+            ], null, 'A1');
+
+            $materials = MMaterial::with('cafe', 'baseUnit')->get();
+            $row = 2;
+            foreach ($materials as $i => $item) {
+                $typeLabel = $item->type === 'selectable' ? 'Selectable (Punya Varian)' : 'Normal';
+                $sheet1->fromArray([
+                    $i + 1,
+                    $item->cafe->name ?? '-',
+                    $item->name,
+                    $typeLabel,
+                    $item->baseUnit->name ?? '-',
+                    (float) $item->stock,
+                    (float) $item->avg_buy_price,
+                ], null, "A{$row}");
+                $row++;
+            }
+
+            // Styling Sheet 1
+            foreach (range('A', $sheet1->getHighestColumn()) as $col) {
+                $sheet1->getColumnDimension($col)->setAutoSize(true);
+            }
+            $sheet1->getStyle('A1:' . $sheet1->getHighestColumn() . '1')->getFont()->setBold(true);
+            $sheet1->getStyle('A1:' . $sheet1->getHighestColumn() . '1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFEFEFEF');
+        }
+
+        // 2. Generate Production (Bahan Setengah Jadi) Sheet
+        if (in_array($exportType, ['production', 'all'])) {
+            $sheet2 = $spreadsheet->createSheet();
+            $sheet2->setTitle('Material Production');
+
+            $sheet2->fromArray([
+                'No', 'Cafe', 'Nama Material', 'Unit', 'Total Estimasi Harga (HPP)'
+            ], null, 'A1');
+
+            $sfm = SemiFinishedMaterial::with(['cafe', 'unit', 'details.material'])->get();
+            $row = 2;
+            foreach ($sfm as $i => $item) {
+                // Calculate dynamic HPP
+                $totalHpp = 0;
+                foreach ($item->details as $detail) {
+                    if ($detail->material) {
+                        $multiplier = 1;
+                        if ($detail->unit_id != $detail->material->base_unit_id) {
+                            $converter = \App\Models\UnitMaterialConverter::where('material_id', $detail->material_id)
+                                ->where('from_unit_id', $detail->unit_id)
+                                ->where('to_unit_id', $detail->material->base_unit_id)
+                                ->first();
+                            if ($converter) {
+                                $multiplier = $converter->multiplier;
+                            } else {
+                                $reverse = \App\Models\UnitMaterialConverter::where('material_id', $detail->material_id)
+                                    ->where('from_unit_id', $detail->material->base_unit_id)
+                                    ->where('to_unit_id', $detail->unit_id)
+                                    ->first();
+                                if ($reverse) {
+                                    $multiplier = 1 / $reverse->multiplier;
+                                }
+                            }
+                        }
+                        $totalHpp += ((float) $detail->amount * $multiplier) * (float) $detail->material->avg_buy_price;
+                    }
+                }
+
+                $sheet2->fromArray([
+                    $i + 1,
+                    $item->cafe->name ?? '-',
+                    $item->name,
+                    $item->unit->name ?? '-',
+                    $totalHpp,
+                ], null, "A{$row}");
+                $row++;
+            }
+
+            // Styling Sheet 2
+            foreach (range('A', $sheet2->getHighestColumn()) as $col) {
+                $sheet2->getColumnDimension($col)->setAutoSize(true);
+            }
+            $sheet2->getStyle('A1:' . $sheet2->getHighestColumn() . '1')->getFont()->setBold(true);
+            $sheet2->getStyle('A1:' . $sheet2->getHighestColumn() . '1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFEFEFEF');
+        }
+
+        // Set the active sheet index to the first one
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $prefix = match($exportType) {
+            'material' => 'Material_Recipe',
+            'production' => 'Material_Production',
+            default => 'All_Materials'
+        };
+        $filename = "{$prefix}_" . now()->format('Y-m-d_His') . '.xlsx';
+
+        return new StreamedResponse(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Cache-Control' => 'max-age=0',
+        ]);
     }
 }

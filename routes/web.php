@@ -84,6 +84,9 @@ Route::middleware(['auth'])->group(function () {
                 'can:master.unit.delete',
             ]);
 
+        Route::get('material/export', [MaterialController::class, 'export'])
+            ->name('material.export')
+            ->middleware('can:master.material.view');
         Route::resource('material', MaterialController::class)
             ->middleware([
                 'can:master.material.view',

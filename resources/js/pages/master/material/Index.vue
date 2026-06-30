@@ -7,6 +7,8 @@ import { Logs, Pencil, Trash2 } from 'lucide-vue-next';
 import Pagination from '@/components/Pagination.vue';
 import { ref } from 'vue';
 
+const exportType = ref('all');
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Material',
@@ -59,10 +61,22 @@ const searchMaterial = () => applyFilters();
                         <Heading variant="small" title="Master Material"
                             description="Kelola daftar material, unit, dan stok material." />
 
-                        <Link href="/master/material/create"
-                            class="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90">
-                            Tambah Material
-                        </Link>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center border border-input rounded-xl overflow-hidden shadow-sm bg-background">
+                                <select v-model="exportType" class="h-10 border-none bg-transparent px-3 py-2 text-sm focus:ring-0 cursor-pointer outline-none">
+                                    <option value="all">Semua Material</option>
+                                    <option value="material">Hanya Bahan Baku</option>
+                                    <option value="production">Hanya Produksi</option>
+                                </select>
+                                <a :href="`/master/material/export?type=${exportType}`" class="h-10 bg-green-600 hover:bg-green-700 text-white px-4 flex items-center text-sm font-medium transition-colors border-l border-green-700">
+                                    Export Excel
+                                </a>
+                            </div>
+                            <Link href="/master/material/create"
+                                class="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90">
+                                Tambah Material
+                            </Link>
+                        </div>
                     </div>
 
                     <!-- Filter Cafe & Stock -->
