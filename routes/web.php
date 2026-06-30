@@ -62,6 +62,9 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('cafe/{cafeId}/table/{tableId}/toggle-open-bill', [CafeTableController::class, 'toggleOpenBill'])
             ->name('cafe.table.toggle-open-bill')
             ->middleware('can:master.cafe.update');
+        Route::patch('cafe/{cafeId}/table/{tableId}/toggle-only-preview', [CafeTableController::class, 'toggleOnlyPreview'])
+            ->name('cafe.table.toggle-only-preview')
+            ->middleware('can:master.cafe.update');
         Route::resource('cafe', CafeTableController::class)
             ->except(['show'])
             ->middleware([

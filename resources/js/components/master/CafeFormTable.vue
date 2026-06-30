@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
 import { router, useForm } from '@inertiajs/vue3';
-import { Plus, QrCode, Trash2, Receipt } from 'lucide-vue-next';
+import { Plus, QrCode, Trash2, Receipt, Eye, EyeOff } from 'lucide-vue-next';
 import QRCode from 'qrcode';
 
 interface CafeTable {
@@ -10,6 +10,7 @@ interface CafeTable {
     status: 'available' | 'occupied';
     description: string | null;
     is_open_bill?: number | boolean;
+    only_preview?: number | boolean;
 }
 
 const props = defineProps<{
@@ -70,6 +71,24 @@ const toggleOpenBill = (table: CafeTable) => {
         }
     });
 };
+
+const toggleOnlyPreview = (table: CafeTable) => {
+    const newVal = table.only_preview ? 0 : 1;
+    const action = newVal === 1 ? 'Aktifkan' : 'Nonaktifkan';
+    if (!confirm(`${action} Preview Only untuk meja "${table.name}"?`)) {
+        return;
+    }
+
+    router.patch(`/master/cafe/${props.cafeId}/table/${table.id}/toggle-only-preview`, { only_preview: newVal }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            window.location.reload();
+        },
+        onError: () => {
+            alert('Gagal memperbarui pengaturan preview only.');
+        }
+    });
+};
 </script>
 
 <template>
@@ -90,6 +109,7 @@ const toggleOpenBill = (table: CafeTable) => {
                     <th class="px-6 py-3 text-left font-medium">Deskripsi</th>
                     <th class="px-6 py-3 text-left font-medium">Status</th>
                     <th class="px-6 py-3 text-left font-medium">Open Bill</th>
+                    <th class="px-6 py-3 text-left font-medium">Preview Only</th>
                     <th class="px-6 py-3 text-right font-medium">Aksi</th>
                 </tr>
             </thead>
@@ -113,6 +133,14 @@ const toggleOpenBill = (table: CafeTable) => {
                             -
                         </span>
                     </td>
+                    <td class="px-6 py-3">
+                        <span v-if="table.only_preview" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                            Preview Only
+                        </span>
+                        <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted/10 text-muted-foreground">
+                            -
+                        </span>
+                    </td>
                     <td class="px-6 py-3 text-right">
                         <div class="flex justify-end gap-2">
                             <button type="button" @click="downloadQR(table)"
@@ -127,6 +155,13 @@ const toggleOpenBill = (table: CafeTable) => {
                                 <Receipt class="w-4 h-4" />
                             </button>
 
+                            <button type="button" @click="toggleOnlyPreview(table)"
+                                :title="table.only_preview ? 'Nonaktifkan Preview Only' : 'Aktifkan Preview Only'"
+                                :class="['cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md transition', table.only_preview ? 'bg-violet-100 text-violet-600 hover:bg-violet-600 hover:text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-600 hover:text-white']">
+                                <Eye v-if="table.only_preview" class="w-4 h-4" />
+                                <EyeOff v-else class="w-4 h-4" />
+                            </button>
+
                             <button type="button" @click="deleteTable(table.id)"
                                 class="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition"
                                 title="Hapus Meja">
@@ -137,7 +172,7 @@ const toggleOpenBill = (table: CafeTable) => {
                 </tr>
 
                 <tr v-if="tables.length === 0">
-                    <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">
+                    <td colspan="7" class="px-6 py-10 text-center text-muted-foreground">
                         Belum ada meja. Tambahkan di bawah.
                     </td>
                 </tr>

@@ -16,12 +16,14 @@ class MCafeTable extends Model
         'status',
         'description',
         'is_open_bill',
+        'only_preview',
     ];
 
     protected function casts(): array
     {
         return [
             'is_open_bill' => 'integer',
+            'only_preview' => 'boolean',
         ];
     }
 

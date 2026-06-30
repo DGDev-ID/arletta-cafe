@@ -184,4 +184,19 @@ class CafeTableController extends Controller
             ->route('master.cafe.edit', $cafeId)
             ->with('success', 'Pengaturan Open Bill berhasil diperbarui.');
     }
+
+    public function toggleOnlyPreview(Request $request, $cafeId, $tableId)
+    {
+        $validated = $request->validate([
+            'only_preview' => ['required', 'in:0,1'],
+        ]);
+
+        $table = MCafeTable::where('cafe_id', $cafeId)->findOrFail($tableId);
+        $table->only_preview = (bool) $validated['only_preview'];
+        $table->save();
+
+        return redirect()
+            ->route('master.cafe.edit', $cafeId)
+            ->with('success', 'Pengaturan Preview Only berhasil diperbarui.');
+    }
 }
