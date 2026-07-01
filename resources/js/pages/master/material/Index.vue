@@ -8,6 +8,7 @@ import Pagination from '@/components/Pagination.vue';
 import { ref } from 'vue';
 
 const exportType = ref('all');
+const exportCafeId = ref('');
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -63,12 +64,18 @@ const searchMaterial = () => applyFilters();
 
                         <div class="flex flex-wrap items-center gap-3">
                             <div class="flex items-center border border-input rounded-xl overflow-hidden shadow-sm bg-background">
+                                <select v-model="exportCafeId" class="h-10 border-none border-r bg-transparent px-3 py-2 text-sm focus:ring-0 cursor-pointer outline-none">
+                                    <option value="">Semua Cafe (Export)</option>
+                                    <option v-for="cafe in allCafe" :key="cafe.id" :value="cafe.id">
+                                        {{ cafe.name }}
+                                    </option>
+                                </select>
                                 <select v-model="exportType" class="h-10 border-none bg-transparent px-3 py-2 text-sm focus:ring-0 cursor-pointer outline-none">
                                     <option value="all">Semua Material</option>
                                     <option value="material">Hanya Bahan Baku</option>
                                     <option value="production">Hanya Produksi</option>
                                 </select>
-                                <a :href="`/master/material/export?type=${exportType}`" class="h-10 bg-green-600 hover:bg-green-700 text-white px-4 flex items-center text-sm font-medium transition-colors border-l border-green-700">
+                                <a :href="`/master/material/export?type=${exportType}&cafe_id=${exportCafeId}`" class="h-10 bg-green-600 hover:bg-green-700 text-white px-4 flex items-center text-sm font-medium transition-colors border-l border-green-700">
                                     Export Excel
                                 </a>
                             </div>

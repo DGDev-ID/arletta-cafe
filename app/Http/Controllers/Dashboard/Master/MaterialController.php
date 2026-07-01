@@ -197,13 +197,18 @@ class MaterialController extends Controller
     public function export(Request $request)
     {
         $exportType = $request->query('type', 'all'); // 'material', 'production', 'all'
+        $cafeId = $request->query('cafe_id');
         
         $spreadsheet = new Spreadsheet();
         
         // Remove default sheet
         $spreadsheet->removeSheetByIndex(0);
 
-        $cafes = MCafe::all();
+        if ($cafeId) {
+            $cafes = MCafe::where('id', $cafeId)->get();
+        } else {
+            $cafes = MCafe::all();
+        }
 
         // 1. Generate Material (Bahan Baku) Sheet
         if (in_array($exportType, ['material', 'all'])) {
