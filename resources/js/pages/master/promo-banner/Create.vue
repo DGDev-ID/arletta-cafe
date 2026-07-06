@@ -5,6 +5,15 @@ import PromoBannerForm from '@/components/master/PromoBannerForm.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
+interface Cafe {
+    id: number;
+    name: string;
+}
+
+const props = defineProps<{
+    cafes: Cafe[];
+}>();
+
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Banner Promo', href: '/master/promo-banner' },
     { title: 'Tambah Banner', href: '/master/promo-banner/create' },
@@ -17,6 +26,7 @@ const form = useForm({
     end_date: '',
     sort_order: 0,
     is_active: true,
+    cafe_ids: [] as number[],
 });
 
 const submit = () => form.post('/master/promo-banner');
@@ -41,6 +51,7 @@ const submit = () => form.post('/master/promo-banner');
                 <div class="rounded-2xl border bg-background shadow-sm p-8">
                     <PromoBannerForm
                         :form="form"
+                        :cafes="props.cafes"
                         submit-label="Simpan Banner"
                         @submit="submit"
                     />

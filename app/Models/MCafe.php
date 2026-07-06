@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class MCafe extends Model
 {
@@ -52,5 +53,10 @@ class MCafe extends Model
     public function cafeCashiers(): HasMany
     {
         return $this->hasMany(CafeCashier::class, 'cafe_id');
+    }
+
+    public function promoBanners(): BelongsToMany
+    {
+        return $this->belongsToMany(PromoBanner::class, 'promo_banner_cafes', 'cafe_id', 'promo_banner_id');
     }
 }

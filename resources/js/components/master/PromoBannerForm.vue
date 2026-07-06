@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
-import { Upload, X } from 'lucide-vue-next';
+import { Upload, X, Store } from 'lucide-vue-next';
 import { ref } from 'vue';
+
+interface Cafe {
+    id: number;
+    name: string;
+}
 
 interface PromoBannerFormData {
     title: string;
@@ -10,12 +15,14 @@ interface PromoBannerFormData {
     end_date: string;
     sort_order: number;
     is_active: boolean;
+    cafe_ids: number[];
     errors: Record<string, string>;
     processing: boolean;
 }
 
 const props = defineProps<{
     form: PromoBannerFormData;
+    cafes: Cafe[];
     existingImgUrl?: string | null;
     submitLabel?: string;
 }>();
@@ -44,6 +51,27 @@ function removeImage() {
     imagePreview.value = null;
     const input = document.getElementById('banner-img') as HTMLInputElement;
     if (input) input.value = '';
+}
+
+function toggleCafe(cafeId: number) {
+    const idx = props.form.cafe_ids.indexOf(cafeId);
+    if (idx === -1) {
+        props.form.cafe_ids.push(cafeId);
+    } else {
+        props.form.cafe_ids.splice(idx, 1);
+    }
+}
+
+function isCafeSelected(cafeId: number): boolean {
+    return props.form.cafe_ids.includes(cafeId);
+}
+
+function toggleAllCafes() {
+    if (props.form.cafe_ids.length === props.cafes.length) {
+        props.form.cafe_ids.splice(0, props.form.cafe_ids.length);
+    } else {
+        props.form.cafe_ids.splice(0, props.form.cafe_ids.length, ...props.cafes.map(c => c.id));
+    }
 }
 </script>
 
@@ -74,7 +102,7 @@ function removeImage() {
                         class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/30 px-6 py-8 text-center transition hover:border-primary/50 hover:bg-muted/50">
                         <Upload :size="24" class="text-muted-foreground/60" />
                         <span class="text-sm text-muted-foreground">
-                            Klik untuk upload atau drag & drop
+                            Klik untuk upload atau drag &amp; drop
                         </span>
                         <span class="text-xs text-muted-foreground/60">JPG, JPEG, PNG, WEBP (max 10MB)</span>
                         <input id="banner-img" type="file" accept=".jpg,.jpeg,.png,.webp" class="hidden"
@@ -140,6 +168,59 @@ function removeImage() {
                     Aktif
                 </label>
             </div>
+        </div>
+
+        <!-- Cafe Selection -->
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                        <Store :size="14" />
+                        Tampilkan di Cafe <span class="text-red-500">*</span>
+                    </h3>
+                    <p class="text-xs text-muted-foreground mt-1">Pilih minimal 1 cafe yang akan menampilkan banner ini.</p>
+                </div>
+                <button
+                    type="button"
+                    @click="toggleAllCafes"
+                    class="text-xs text-primary hover:underline"
+                >
+                    {{ form.cafe_ids.length === cafes.length ? 'Hapus semua' : 'Pilih semua' }}
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <label
+                    v-for="cafe in cafes"
+                    :key="cafe.id"
+                    :for="`cafe-${cafe.id}`"
+                    class="flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all duration-150"
+                    :class="isCafeSelected(cafe.id)
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                        : 'border-border bg-background hover:bg-muted/50'"
+                >
+                    <input
+                        :id="`cafe-${cafe.id}`"
+                        type="checkbox"
+                        :value="cafe.id"
+                        :checked="isCafeSelected(cafe.id)"
+                        @change="toggleCafe(cafe.id)"
+                        class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary shrink-0"
+                    />
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div
+                            class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                            :class="isCafeSelected(cafe.id) ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'"
+                        >
+                            <Store :size="13" />
+                        </div>
+                        <span class="text-sm font-medium truncate">{{ cafe.name }}</span>
+                    </div>
+                </label>
+            </div>
+
+            <InputError :message="form.errors.cafe_ids" />
+            <InputError :message="(form.errors as any)['cafe_ids.0']" />
         </div>
 
         <!-- Action Buttons -->

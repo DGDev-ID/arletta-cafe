@@ -5,6 +5,11 @@ import PromoBannerForm from '@/components/master/PromoBannerForm.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
+interface Cafe {
+    id: number;
+    name: string;
+}
+
 const props = defineProps<{
     banner: {
         id: number;
@@ -14,7 +19,9 @@ const props = defineProps<{
         end_date: string | null;
         sort_order: number;
         is_active: boolean;
+        cafe_ids: number[];
     };
+    cafes: Cafe[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -30,6 +37,7 @@ const form = useForm({
     end_date: props.banner.end_date ?? '',
     sort_order: props.banner.sort_order,
     is_active: props.banner.is_active,
+    cafe_ids: [...props.banner.cafe_ids],
 });
 
 const submit = () => form.post(`/master/promo-banner/${props.banner.id}`);
@@ -54,6 +62,7 @@ const submit = () => form.post(`/master/promo-banner/${props.banner.id}`);
                 <div class="rounded-2xl border bg-background shadow-sm p-8">
                     <PromoBannerForm
                         :form="form"
+                        :cafes="props.cafes"
                         :existing-img-url="banner.image_url"
                         submit-label="Update Banner"
                         @submit="submit"

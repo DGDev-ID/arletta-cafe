@@ -63,7 +63,7 @@ const formatDate = (date: string | null) => {
                 <!-- Header -->
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <Heading variant="small" title="Master Banner Promo"
-                        description="Kelola banner promo yang ditampilkan di halaman menu." />
+                        description="Kelola banner promo yang ditampilkan di halaman menu per cabang cafe." />
 
                     <Link href="/master/promo-banner/create"
                         class="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90">
@@ -86,6 +86,7 @@ const formatDate = (date: string | null) => {
                             <tr class="text-muted-foreground">
                                 <th class="px-6 py-4 text-left font-medium">Gambar</th>
                                 <th class="px-6 py-4 text-left font-medium">Judul</th>
+                                <th class="px-6 py-4 text-left font-medium">Cafe</th>
                                 <th class="px-6 py-4 text-left font-medium">Periode</th>
                                 <th class="px-6 py-4 text-center font-medium">Status</th>
                                 <th class="px-6 py-4 text-center font-medium">Urutan</th>
@@ -102,6 +103,18 @@ const formatDate = (date: string | null) => {
                                 </td>
                                 <td class="px-6 py-4 font-medium">
                                     {{ banner.title }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div v-if="banner.cafes && banner.cafes.length > 0" class="flex flex-wrap gap-1">
+                                        <span
+                                            v-for="cafe in banner.cafes"
+                                            :key="cafe.id"
+                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"
+                                        >
+                                            {{ cafe.name }}
+                                        </span>
+                                    </div>
+                                    <span v-else class="text-xs italic text-muted-foreground">Tidak ada cafe</span>
                                 </td>
                                 <td class="px-6 py-4 text-muted-foreground">
                                     <template v-if="banner.start_date || banner.end_date">
@@ -146,7 +159,7 @@ const formatDate = (date: string | null) => {
                             </tr>
 
                             <tr v-if="banners.data.length === 0">
-                                <td colspan="6" class="px-6 py-10 text-center text-muted-foreground">
+                                <td colspan="7" class="px-6 py-10 text-center text-muted-foreground">
                                     Belum ada data banner promo.
                                 </td>
                             </tr>

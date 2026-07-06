@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard\Master;
 
 use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
+use App\Models\MCafe;
 use App\Models\PromoBanner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -12,7 +13,7 @@ class PromoBannerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = PromoBanner::query();
+        $query = PromoBanner::with('cafes:id,name');
 
         // Search by title
         if ($request->has('search') && $request->search !== '') {
@@ -31,18 +32,24 @@ class PromoBannerController extends Controller
 
     public function create()
     {
-        return inertia('master/promo-banner/Create');
+        $cafes = MCafe::orderBy('name')->get(['id', 'name']);
+
+        return inertia('master/promo-banner/Create', [
+            'cafes' => $cafes,
+        ]);
     }
 
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:10240',
+            'title'      => 'required|string|max:255',
+            'image'      => 'required|image|mimes:jpg,jpeg,png,webp|max:10240',
             'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
             'sort_order' => 'nullable|integer|min:0',
-            'is_active' => 'boolean',
+            'is_active'  => 'boolean',
+            'cafe_ids'   => 'required|array|min:1',
+            'cafe_ids.*' => 'integer|exists:m_cafes,id',
         ]);
 
         if ($validator->fails()) {
@@ -57,14 +64,17 @@ class PromoBannerController extends Controller
         $imgUrl = S3Helper::getUrlFileS3('promo-banners', $tempFileName);
         S3Helper::removeFileTemp($tempFileName);
 
-        PromoBanner::create([
-            'title' => $validated['title'],
-            'image_url' => $imgUrl,
+        $banner = PromoBanner::create([
+            'title'      => $validated['title'],
+            'image_url'  => $imgUrl,
             'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
+            'end_date'   => $validated['end_date'] ?? null,
             'sort_order' => $validated['sort_order'] ?? 0,
-            'is_active' => $validated['is_active'] ?? true,
+            'is_active'  => $validated['is_active'] ?? true,
         ]);
+
+        // Sync relasi cafe
+        $banner->cafes()->sync($validated['cafe_ids']);
 
         return redirect()
             ->route('master.promo-banner.index')
@@ -73,10 +83,14 @@ class PromoBannerController extends Controller
 
     public function edit(string $id)
     {
-        $banner = PromoBanner::findOrFail($id);
+        $banner = PromoBanner::with('cafes:id,name')->findOrFail($id);
+        $cafes  = MCafe::orderBy('name')->get(['id', 'name']);
 
         return inertia('master/promo-banner/Edit', [
-            'banner' => $banner,
+            'banner' => array_merge($banner->toArray(), [
+                'cafe_ids' => $banner->cafes->pluck('id')->toArray(),
+            ]),
+            'cafes'  => $cafes,
         ]);
     }
 
@@ -85,12 +99,14 @@ class PromoBannerController extends Controller
         $banner = PromoBanner::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
+            'title'      => 'required|string|max:255',
+            'image'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
             'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
             'sort_order' => 'nullable|integer|min:0',
-            'is_active' => 'boolean',
+            'is_active'  => 'boolean',
+            'cafe_ids'   => 'required|array|min:1',
+            'cafe_ids.*' => 'integer|exists:m_cafes,id',
         ]);
 
         if ($validator->fails()) {
@@ -100,11 +116,11 @@ class PromoBannerController extends Controller
         $validated = $validator->validated();
 
         $data = [
-            'title' => $validated['title'],
+            'title'      => $validated['title'],
             'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
+            'end_date'   => $validated['end_date'] ?? null,
             'sort_order' => $validated['sort_order'] ?? 0,
-            'is_active' => $validated['is_active'] ?? true,
+            'is_active'  => $validated['is_active'] ?? true,
         ];
 
         // Upload new image if provided
@@ -119,6 +135,9 @@ class PromoBannerController extends Controller
 
         $banner->update($data);
 
+        // Sync relasi cafe
+        $banner->cafes()->sync($validated['cafe_ids']);
+
         return redirect()
             ->route('master.promo-banner.index')
             ->with('success', 'Banner promo berhasil diperbarui.');
@@ -127,6 +146,7 @@ class PromoBannerController extends Controller
     public function destroy(string $id)
     {
         $banner = PromoBanner::findOrFail($id);
+        // cascadeOnDelete pada pivot sudah handle penghapusan relasi
         $banner->delete();
 
         return redirect()
