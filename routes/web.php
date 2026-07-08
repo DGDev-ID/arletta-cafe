@@ -33,8 +33,7 @@ Route::get('proxy/logo', function () {
     $response = \Illuminate\Support\Facades\Http::timeout(5)
         ->get('https://dashboard-cafe.arlettaluxury.com/logo-resize1.png');
     return response($response->body(), $response->status())
-        ->header('Content-Type', $response->header('Content-Type') ?? 'image/png')
-        ->header('Cache-Control', 'public, max-age=86400');
+        ->header('Content-Type', $response->header('Content-Type') ?? 'image/png');
 });
 
 Route::get('dashboard', [DashboardController::class, 'index'])
