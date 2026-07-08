@@ -266,7 +266,7 @@ const buildLogoBytes = async (): Promise<number[]> => {
     const LOGO_RENDER_WIDTH = 200;
 
     try {
-        const response = await axios.get('/proxy/logo', { responseType: 'blob' });
+        const response = await axios.get('/proxy/logo1', { responseType: 'blob' });
         const objectUrl = URL.createObjectURL(response.data);
 
         return await new Promise<number[]>((resolve) => {

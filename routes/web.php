@@ -29,7 +29,7 @@ Route::get('/', function () {
 })->name('home');
 
 // Proxy logo to avoid CORS issues when fetching from frontend
-Route::get('proxy/logo', function () {
+Route::get('proxy/logo1', function () {
     $response = \Illuminate\Support\Facades\Http::timeout(5)
         ->get('https://dashboard-cafe.arlettaluxury.com/logo-resize1.png');
     return response($response->body(), $response->status())
