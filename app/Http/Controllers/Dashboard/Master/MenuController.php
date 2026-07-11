@@ -269,10 +269,22 @@ class MenuController extends Controller
                 S3Helper::removeFileTemp($tempFileName);
             }
 
+            // Preserve the [FOOD]/[BEVERAGE] suffix from the original stored name.
+            // The getNameAttribute accessor strips this suffix before it reaches the form,
+            // so re-attach it here to avoid losing the menu_type after an edit.
+            $rawOriginalName = $menu->getAttributes()['name'] ?? '';
+            $newName = $validated['name'];
+            if (
+                preg_match('/(\s*\[(FOOD|BEVERAGE)\])$/i', $rawOriginalName, $matches)
+                && !preg_match('/\[(FOOD|BEVERAGE)\]$/i', $newName)
+            ) {
+                $newName = rtrim($newName) . $matches[1];
+            }
+
             $menu->update([
                 'cafe_id'          => $validated['cafe_id'],
                 'menu_category_id' => $validated['menu_category_id'] ?? null,
-                'name'             => $validated['name'],
+                'name'             => $newName,
                 'description'      => $validated['description'] ?? null,
                 'img_url'          => $imgUrl,
                 'price'            => $validated['price'],
