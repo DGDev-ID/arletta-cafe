@@ -234,6 +234,7 @@ watch(
 // ── RawBT Print (80mm = 48 chars wide) ────────────────────────────────────
 const PRINT_WIDTH = 48;
 const PRINT_LINE = '-'.repeat(PRINT_WIDTH);
+const PRINT_DOUBLE_LINE = '='.repeat(PRINT_WIDTH);
 
 // ── Print Mode Toggle (manual) ────────────────────────────────────────────
 // true  = print via RawBT (mobile/tablet)
@@ -472,48 +473,67 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
             enc('--- ONLY BEVERAGE ---\n');
         }
         
-        enc(PRINT_LINE + '\n');
+        enc(PRINT_DOUBLE_LINE + '\n');
+
+        // ── Transaction info (label: value — colon sejajar) ──
         bytes.push(0x1B, 0x61, 0x00);
-        enc(printPadRight('No', '#' + trx.id) + '\n');
-        enc(printPadRight('Tgl', fmtDate(trx.updated_at)) + '\n');
-        enc(printPadRight('Cust', trx.cust_name || '-') + '\n');
-        if (trx.table) enc(printPadRight('Table', trx.table.name) + '\n');
-        enc(printPadRight('Pay', trx.payment_type) + '\n');
+        const LABEL_W = 6;
+        const fmtL = (label: string) => label.padEnd(LABEL_W) + ': ';
+        enc(fmtL('No') + '#' + trx.id + '\n');
+        enc(fmtL('Tgl') + fmtDate(trx.updated_at) + '\n');
+        enc(fmtL('Cust') + (trx.cust_name || '-') + '\n');
+        if (trx.table) enc(fmtL('Table') + trx.table.name + '\n');
         enc(PRINT_LINE + '\n');
+
+        // ── Table header (Menu | Harga) ──
+        enc(printPadRight('Menu', 'Harga') + '\n');
+
+        // ── Detail items ──
         detailsToPrint.forEach((d: any) => {
             enc((d.menu?.name || '-').substring(0, PRINT_WIDTH) + '\n');
-            const qtyPrice = `${d.amount}x${printNumber(Number(d.menu?.price ?? 0))}`;
-            enc(printPadRight(qtyPrice, printNumber(Number(d.price))) + '\n');
+            enc('  ' + d.amount + ' x Rp ' + printNumber(Number(d.menu?.price ?? 0)) + '\n');
+            enc(printPadRight('', 'Rp ' + printNumber(Number(d.price))) + '\n');
             if (d.selected_variants && d.selected_variants.length > 0) {
                 d.selected_variants.forEach((sv: any) => {
                     const label = sv.material_name ? sv.material_name + ': ' + (sv.variant_name || '-') : (sv.variant_name || '-');
                     enc('  [' + label + ']\n');
                 });
             }
-            if (d.description) enc(' ' + d.description + '\n');
+            if (d.description) enc('   ' + d.description + '\n');
         });
         enc(PRINT_LINE + '\n');
-        
+
         if (filterType === 'all') {
-            enc(printPadRight('Subtotal', printNumber(Number(trx.price))) + '\n');
-            enc(printPadRight('Fee', printNumber(Number(trx.fee))) + '\n');
+            enc(printPadRight('Subtotal', 'Rp ' + printNumber(Number(trx.price))) + '\n');
+            enc(printPadRight('PPN', 'Rp ' + printNumber(Number(trx.fee))) + '\n');
             enc(PRINT_LINE + '\n');
             bytes.push(0x1B, 0x45, 0x01);
             if (trx.promo_id) {
                 const promo = Number(trx.price) + Number(trx.fee) - Number(trx.total_price);
-                enc(printPadRight('Discount', '-' + printNumber(Number(promo))) + '\n');
+                enc(printPadRight('Discount', '-Rp ' + printNumber(Number(promo))) + '\n');
             }
-            enc(printPadRight('TOTAL', printNumber(Number(trx.total_price))) + '\n');
+            enc(PRINT_DOUBLE_LINE + '\n');
+            bytes.push(0x1B, 0x45, 0x01);
+            enc(printPadRight('TOTAL', 'Rp ' + printNumber(Number(trx.total_price))) + '\n');
+            bytes.push(0x1B, 0x45, 0x00);
+            enc(PRINT_DOUBLE_LINE + '\n');
         } else {
             const partialSubtotal = detailsToPrint.reduce((acc: number, d: any) => acc + Number(d.price), 0);
-            enc(printPadRight('Subtotal', printNumber(partialSubtotal)) + '\n');
+            enc(printPadRight('Subtotal', 'Rp ' + printNumber(partialSubtotal)) + '\n');
             enc(PRINT_LINE + '\n');
             bytes.push(0x1B, 0x45, 0x01);
-            enc(printPadRight('TOTAL', printNumber(partialSubtotal)) + '\n');
+            enc(PRINT_DOUBLE_LINE + '\n');
+            bytes.push(0x1B, 0x45, 0x01);
+            enc(printPadRight('TOTAL', 'Rp ' + printNumber(partialSubtotal)) + '\n');
+            bytes.push(0x1B, 0x45, 0x00);
+            enc(PRINT_DOUBLE_LINE + '\n');
         }
-        
+
+        // ── Payment type (dipindah setelah TOTAL) ──
         bytes.push(0x1B, 0x45, 0x00);
+        enc(printPadRight('Pay', trx.payment_type.toUpperCase()) + '\n');
         enc(PRINT_LINE + '\n');
+
         bytes.push(0x1B, 0x61, 0x01);
         enc('Terima kasih\n');
         bytes.push(0x1B, 0x64, 0x05);
