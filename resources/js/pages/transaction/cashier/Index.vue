@@ -508,7 +508,6 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
         if (filterType === 'all') {
             enc(printPadRight('Subtotal', 'Rp ' + printNumber(Number(trx.price))) + '\n');
             enc(printPadRight('PPN', 'Rp ' + printNumber(Number(trx.fee))) + '\n');
-            enc(PRINT_LINE + '\n');
             bytes.push(0x1B, 0x45, 0x01);
             if (trx.promo_id) {
                 const promo = Number(trx.price) + Number(trx.fee) - Number(trx.total_price);
