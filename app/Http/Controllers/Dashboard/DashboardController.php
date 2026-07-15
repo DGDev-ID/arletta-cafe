@@ -8,10 +8,17 @@ use App\Models\MCafeTable;
 use App\Models\MMaterial;
 use App\Models\MaterialInboundOutbound;
 use App\Models\MMenu;
+use App\Models\MMenuCategory;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DashboardController extends Controller
 {
@@ -184,14 +191,32 @@ class DashboardController extends Controller
     }
 
     /**
-     * Return all menus sold on a given date as JSON (used by frontend polling + filter).
+     * Return all menus sold on a given date/range as JSON (used by frontend polling + filter).
      * Query params:
-     *   - date        : Y-m-d (default: today)
-     *   - category_id : parent category id to filter (optional)
+     *   - date_from    : Y-m-d (default: today)  — OR fallback to legacy: date
+     *   - date_to      : Y-m-d (default: today)
+     *   - category_id  : parent category id to filter (optional)
+     *   - cafe_id      : optional
      */
     public function topMenusToday(\Illuminate\Http\Request $request)
     {
-        $date       = $request->filled('date') ? Carbon::parse($request->date) : Carbon::today();
+        // Support both legacy single ?date= and new date range ?date_from= / ?date_to=
+        if ($request->filled('date_from')) {
+            $dateFrom = Carbon::parse($request->date_from)->startOfDay();
+        } elseif ($request->filled('date')) {
+            $dateFrom = Carbon::parse($request->date)->startOfDay();
+        } else {
+            $dateFrom = Carbon::today()->startOfDay();
+        }
+
+        if ($request->filled('date_to')) {
+            $dateTo = Carbon::parse($request->date_to)->endOfDay();
+        } elseif ($request->filled('date')) {
+            $dateTo = Carbon::parse($request->date)->endOfDay();
+        } else {
+            $dateTo = Carbon::today()->endOfDay();
+        }
+
         $categoryId = $request->filled('category_id') ? (int) $request->category_id : null;
         $cafeId     = $request->filled('cafe_id') ? (int) $request->cafe_id : null;
 
@@ -202,14 +227,14 @@ class DashboardController extends Controller
             )
             ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
             ->where('transactions.status', 'success')
-            ->whereDate('transactions.created_at', $date)
+            ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
             ->when($cafeId, fn ($q) => $q->where('transactions.cafe_id', $cafeId))
             ->groupBy('menu_id')
             ->orderByDesc('total_sold');
 
         // Filter by parent category (include children categories too)
         if ($categoryId) {
-            $childIds = \App\Models\MMenuCategory::where('parent_id', $categoryId)->pluck('id');
+            $childIds = MMenuCategory::where('parent_id', $categoryId)->pluck('id');
             $allCategoryIds = $childIds->push($categoryId);
             $menuIdsInCategory = MMenu::whereIn('menu_category_id', $allCategoryIds)->pluck('id');
             $query->whereIn('menu_id', $menuIdsInCategory);
@@ -241,6 +266,150 @@ class DashboardController extends Controller
         }
 
         return response()->json($topMenusToday->values());
+    }
+
+    /**
+     * Export Produk Terjual to Excel.
+     * Query params:
+     *   - date_from   : Y-m-d (default: today)
+     *   - date_to     : Y-m-d (default: today)
+     *   - category_id : optional
+     *   - cafe_id     : optional
+     */
+    public function exportTopMenus(\Illuminate\Http\Request $request)
+    {
+        $dateFrom   = $request->filled('date_from') ? Carbon::parse($request->date_from)->startOfDay() : Carbon::today()->startOfDay();
+        $dateTo     = $request->filled('date_to')   ? Carbon::parse($request->date_to)->endOfDay()     : Carbon::today()->endOfDay();
+        $categoryId = $request->filled('category_id') ? (int) $request->category_id : null;
+        $cafeId     = $request->filled('cafe_id')     ? (int) $request->cafe_id     : null;
+
+        $query = TransactionDetail::select(
+                'menu_id',
+                DB::raw('SUM(transaction_details.amount) as total_sold')
+            )
+            ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
+            ->where('transactions.status', 'success')
+            ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
+            ->when($cafeId, fn ($q) => $q->where('transactions.cafe_id', $cafeId))
+            ->groupBy('menu_id')
+            ->orderByDesc('total_sold');
+
+        if ($categoryId) {
+            $childIds = MMenuCategory::where('parent_id', $categoryId)->pluck('id');
+            $allCategoryIds = $childIds->push($categoryId);
+            $menuIdsInCategory = MMenu::whereIn('menu_category_id', $allCategoryIds)->pluck('id');
+            $query->whereIn('menu_id', $menuIdsInCategory);
+        }
+
+        $aggs = $query->get();
+
+        // Resolve menu names
+        $rows = [];
+        foreach ($aggs as $agg) {
+            $menu = MMenu::find($agg->menu_id);
+            if ($menu) {
+                $rows[] = [
+                    'name'       => $menu->name,
+                    'total_sold' => (int) $agg->total_sold,
+                ];
+            }
+        }
+
+        // ── Build Spreadsheet ─────────────────────────────────────────────
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Produk Terjual');
+
+        $labelFrom = $dateFrom->format('d M Y');
+        $labelTo   = $dateTo->format('d M Y');
+        $periodLabel = $labelFrom === $labelTo ? $labelFrom : "{$labelFrom} s/d {$labelTo}";
+
+        // ── Title ──────────────────────────────────────────────────────────
+        $sheet->setCellValue('A1', 'LAPORAN PRODUK TERJUAL');
+        $sheet->mergeCells('A1:C1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->setCellValue('A2', 'Periode: ' . $periodLabel);
+        $sheet->mergeCells('A2:C2');
+        $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('A2')->getFont()->setSize(10)->setItalic(true);
+
+        $sheet->setCellValue('A3', 'Dicetak: ' . now()->format('d M Y, H:i'));
+        $sheet->mergeCells('A3:C3');
+        $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('A3')->getFont()->setSize(9)->setItalic(true);
+
+        // ── Header Row ─────────────────────────────────────────────────────
+        $headerRow = 5;
+        $sheet->fromArray(['No', 'Produk', 'QTY Terjual'], null, "A{$headerRow}");
+        $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFont()->setBold(true);
+        $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFill()
+            ->setFillType(Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF1E3A5F');
+        $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFont()->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        // ── Data Rows ──────────────────────────────────────────────────────
+        $row = $headerRow + 1;
+        $no  = 1;
+        foreach ($rows as $item) {
+            $sheet->fromArray([
+                $no++,
+                $item['name'],
+                $item['total_sold'],
+            ], null, "A{$row}");
+
+            // Alternating row color
+            $fillColor = ($no % 2 === 0) ? 'FFF5F5F5' : 'FFFFFFFF';
+            $sheet->getStyle("A{$row}:C{$row}")->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setARGB($fillColor);
+
+            $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("C{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("C{$row}")->getNumberFormat()->setFormatCode('#,##0');
+
+            $row++;
+        }
+
+        // ── Total Row ──────────────────────────────────────────────────────
+        if (count($rows) > 0) {
+            $totalQty = array_sum(array_column($rows, 'total_sold'));
+            $sheet->setCellValue("A{$row}", 'TOTAL');
+            $sheet->setCellValue("B{$row}", '');
+            $sheet->setCellValue("C{$row}", $totalQty);
+            $sheet->getStyle("A{$row}:C{$row}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$row}:C{$row}")->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setARGB('FFEFEFEF');
+            $sheet->getStyle("C{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("C{$row}")->getNumberFormat()->setFormatCode('#,##0');
+            $sheet->mergeCells("A{$row}:B{$row}");
+            $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
+
+        // ── Borders on entire table ────────────────────────────────────────
+        $lastRow = count($rows) > 0 ? $row : $headerRow;
+        $sheet->getStyle("A{$headerRow}:C{$lastRow}")->getBorders()->getAllBorders()
+            ->setBorderStyle(Border::BORDER_THIN)
+            ->getColor()->setARGB('FFCCCCCC');
+
+        // ── Column widths ──────────────────────────────────────────────────
+        $sheet->getColumnDimension('A')->setWidth(8);
+        $sheet->getColumnDimension('B')->setWidth(45);
+        $sheet->getColumnDimension('C')->setWidth(16);
+
+        $filename = 'Produk_Terjual_' . $dateFrom->format('Ymd') . '_' . $dateTo->format('Ymd') . '.xlsx';
+
+        return new StreamedResponse(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Cache-Control'       => 'max-age=0',
+        ]);
     }
 
     /**

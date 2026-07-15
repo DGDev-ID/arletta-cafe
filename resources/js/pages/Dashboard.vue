@@ -10,7 +10,7 @@ import { Head, router } from '@inertiajs/vue3';
 import {
     AlertTriangle, Coffee, ShoppingCart, Utensils, Wallet,
     CalendarDays, Building2, CreditCard, Banknote, QrCode, Store,
-    PackagePlus, PackageMinus, TrendingUp, TrendingDown
+    PackagePlus, PackageMinus, TrendingUp, TrendingDown, Download
 } from 'lucide-vue-next';
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import axios from 'axios';
@@ -68,18 +68,23 @@ function applyCafeFilter(cafeId: number | null) {
     router.get('/dashboard', params, { preserveScroll: true, preserveState: false });
 }
 
-// ── Produk Terjual Hari Ini ───────────────────────────────────────────────────
+// ── Produk Terjual ────────────────────────────────────────────────────────────
 const todayStr = new Date().toISOString().slice(0, 10);
-const filterDate = ref(todayStr);
+const filterDateFrom = ref(todayStr);
+const filterDateTo   = ref(todayStr);
 const filterCategoryId = ref<number | null>(null);
 const isLoadingMenus = ref(false);
+const isExportingMenus = ref(false);
 
 const topMenusToday = ref(props.topMenusToday ?? []);
 
 async function fetchTopMenus() {
     try {
         isLoadingMenus.value = true;
-        const params: Record<string, string> = { date: filterDate.value };
+        const params: Record<string, string> = {
+            date_from: filterDateFrom.value,
+            date_to:   filterDateTo.value,
+        };
         if (filterCategoryId.value !== null) params.category_id = String(filterCategoryId.value);
         if (selectedCafeId.value !== null) params.cafe_id = String(selectedCafeId.value);
         const { data } = await axios.get('/dashboard/top-menus-today', { params });
@@ -91,8 +96,23 @@ async function fetchTopMenus() {
     }
 }
 
+async function exportTopMenus() {
+    try {
+        isExportingMenus.value = true;
+        const params = new URLSearchParams({
+            date_from: filterDateFrom.value,
+            date_to:   filterDateTo.value,
+        });
+        if (filterCategoryId.value !== null) params.set('category_id', String(filterCategoryId.value));
+        if (selectedCafeId.value !== null) params.set('cafe_id', String(selectedCafeId.value));
+        window.location.href = `/dashboard/top-menus-export?${params.toString()}`;
+    } finally {
+        setTimeout(() => { isExportingMenus.value = false; }, 1500);
+    }
+}
+
 // Refetch on filter change
-watch([filterDate, filterCategoryId], () => fetchTopMenus());
+watch([filterDateFrom, filterDateTo, filterCategoryId], () => fetchTopMenus());
 
 let pollInterval: number | undefined;
 
@@ -100,8 +120,8 @@ onMounted(() => {
     void fetchTopMenus();
     void fetchPurchaseSummary();
     pollInterval = window.setInterval(() => {
-        // Only auto-poll if viewing today
-        if (filterDate.value === todayStr) void fetchTopMenus();
+        // Only auto-poll if viewing today range
+        if (filterDateFrom.value === todayStr && filterDateTo.value === todayStr) void fetchTopMenus();
     }, 60_000);
 });
 
@@ -572,15 +592,37 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
-                        <!-- Date filter -->
+                        <!-- Date range filter -->
                         <div class="flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs">
                             <CalendarDays class="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span class="text-muted-foreground">Dari:</span>
                             <input
-                                v-model="filterDate"
+                                v-model="filterDateFrom"
                                 type="date"
+                                :max="filterDateTo"
                                 class="bg-transparent text-xs outline-none cursor-pointer"
                             />
                         </div>
+                        <div class="flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs">
+                            <CalendarDays class="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span class="text-muted-foreground">Sampai:</span>
+                            <input
+                                v-model="filterDateTo"
+                                type="date"
+                                :min="filterDateFrom"
+                                :max="todayStr"
+                                class="bg-transparent text-xs outline-none cursor-pointer"
+                            />
+                        </div>
+                        <!-- Export Excel button -->
+                        <button
+                            @click="exportTopMenus"
+                            :disabled="isExportingMenus || isLoadingMenus || topMenusToday.length === 0"
+                            class="flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 text-xs font-medium transition-colors"
+                        >
+                            <Download class="h-3.5 w-3.5 shrink-0" />
+                            {{ isExportingMenus ? 'Mengunduh...' : 'Export Excel' }}
+                        </button>
                     </div>
                 </div>
 

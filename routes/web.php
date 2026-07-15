@@ -45,6 +45,11 @@ Route::get('dashboard/top-menus-today', [DashboardController::class, 'topMenusTo
     ->middleware(['auth', 'verified'])
     ->name('dashboard.top-menus-today');
 
+// Excel export for Produk Terjual on dashboard
+Route::get('dashboard/top-menus-export', [DashboardController::class, 'exportTopMenus'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard.top-menus-export');
+
 // JSON endpoint for purchase summary (inbound & outbound) with date range filter
 Route::get('dashboard/purchase-summary', [DashboardController::class, 'purchaseSummary'])
     ->middleware(['auth', 'verified'])
