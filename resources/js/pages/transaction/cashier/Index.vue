@@ -490,9 +490,9 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
 
         // ── Detail items ──
         detailsToPrint.forEach((d: any) => {
-            enc((d.menu?.name || '-').substring(0, PRINT_WIDTH) + '\n');
+            const menuName = (d.menu?.name || '-').substring(0, PRINT_WIDTH);
+            enc(printPadRight(menuName, 'Rp ' + printNumber(Number(d.price))) + '\n');
             enc('  ' + d.amount + ' x Rp ' + printNumber(Number(d.menu?.price ?? 0)) + '\n');
-            enc(printPadRight('', 'Rp ' + printNumber(Number(d.price))) + '\n');
             if (d.selected_variants && d.selected_variants.length > 0) {
                 d.selected_variants.forEach((sv: any) => {
                     const label = sv.material_name ? sv.material_name + ': ' + (sv.variant_name || '-') : (sv.variant_name || '-');
