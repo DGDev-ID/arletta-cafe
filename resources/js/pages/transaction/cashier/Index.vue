@@ -515,6 +515,7 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
             enc(PRINT_DOUBLE_LINE + '\n');
             bytes.push(0x1B, 0x45, 0x01);
             enc(printPadRight('TOTAL', 'Rp ' + printNumber(Number(trx.total_price))) + '\n');
+            enc(printPadRight('Pay', trx.payment_type.toUpperCase()) + '\n');
             bytes.push(0x1B, 0x45, 0x00);
             enc(PRINT_DOUBLE_LINE + '\n');
         } else {
