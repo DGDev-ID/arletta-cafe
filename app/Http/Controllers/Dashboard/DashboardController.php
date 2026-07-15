@@ -283,36 +283,10 @@ class DashboardController extends Controller
         $categoryId = $request->filled('category_id') ? (int) $request->category_id : null;
         $cafeId     = $request->filled('cafe_id')     ? (int) $request->cafe_id     : null;
 
-        $query = TransactionDetail::select(
-                'menu_id',
-                DB::raw('SUM(transaction_details.amount) as total_sold')
-            )
-            ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
-            ->where('transactions.status', 'success')
-            ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
-            ->when($cafeId, fn ($q) => $q->where('transactions.cafe_id', $cafeId))
-            ->groupBy('menu_id')
-            ->orderByDesc('total_sold');
-
-        if ($categoryId) {
-            $childIds = MMenuCategory::where('parent_id', $categoryId)->pluck('id');
-            $allCategoryIds = $childIds->push($categoryId);
-            $menuIdsInCategory = MMenu::whereIn('menu_category_id', $allCategoryIds)->pluck('id');
-            $query->whereIn('menu_id', $menuIdsInCategory);
-        }
-
-        $aggs = $query->get();
-
-        // Resolve menu names
-        $rows = [];
-        foreach ($aggs as $agg) {
-            $menu = MMenu::find($agg->menu_id);
-            if ($menu) {
-                $rows[] = [
-                    'name'       => $menu->name,
-                    'total_sold' => (int) $agg->total_sold,
-                ];
-            }
+        if ($cafeId) {
+            $cafes = MCafe::where('id', $cafeId)->get();
+        } else {
+            $cafes = MCafe::orderBy('name')->get();
         }
 
         // ── Build Spreadsheet ─────────────────────────────────────────────
@@ -340,60 +314,110 @@ class DashboardController extends Controller
         $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('A3')->getFont()->setSize(9)->setItalic(true);
 
-        // ── Header Row ─────────────────────────────────────────────────────
-        $headerRow = 5;
-        $sheet->fromArray(['No', 'Produk', 'QTY Terjual'], null, "A{$headerRow}");
-        $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFont()->setBold(true);
-        $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFill()
-            ->setFillType(Fill::FILL_SOLID)
-            ->getStartColor()->setARGB('FF1E3A5F');
-        $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFont()->getColor()->setARGB('FFFFFFFF');
-        $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $currentRow = 5;
 
-        // ── Data Rows ──────────────────────────────────────────────────────
-        $row = $headerRow + 1;
-        $no  = 1;
-        foreach ($rows as $item) {
-            $sheet->fromArray([
-                $no++,
-                $item['name'],
-                $item['total_sold'],
-            ], null, "A{$row}");
+        foreach ($cafes as $cafe) {
+            $sheet->setCellValue("A{$currentRow}", "Cabang: " . $cafe->name);
+            $sheet->mergeCells("A{$currentRow}:C{$currentRow}");
+            $sheet->getStyle("A{$currentRow}")->getFont()->setBold(true)->setSize(12);
+            $currentRow++;
 
-            // Alternating row color
-            $fillColor = ($no % 2 === 0) ? 'FFF5F5F5' : 'FFFFFFFF';
-            $sheet->getStyle("A{$row}:C{$row}")->getFill()
+            $query = TransactionDetail::select(
+                    'menu_id',
+                    DB::raw('SUM(transaction_details.amount) as total_sold')
+                )
+                ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
+                ->where('transactions.status', 'success')
+                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
+                ->where('transactions.cafe_id', $cafe->id)
+                ->groupBy('menu_id')
+                ->orderByDesc('total_sold');
+
+            if ($categoryId) {
+                $childIds = MMenuCategory::where('parent_id', $categoryId)->pluck('id');
+                $allCategoryIds = $childIds->push($categoryId);
+                $menuIdsInCategory = MMenu::whereIn('menu_category_id', $allCategoryIds)->pluck('id');
+                $query->whereIn('menu_id', $menuIdsInCategory);
+            }
+
+            $aggs = $query->get();
+
+            // Resolve menu names
+            $rows = [];
+            foreach ($aggs as $agg) {
+                $menu = MMenu::find($agg->menu_id);
+                if ($menu) {
+                    $rows[] = [
+                        'name'       => $menu->name,
+                        'total_sold' => (int) $agg->total_sold,
+                    ];
+                }
+            }
+
+            // ── Header Row ─────────────────────────────────────────────────────
+            $headerRow = $currentRow;
+            $sheet->fromArray(['No', 'Produk', 'QTY Terjual'], null, "A{$headerRow}");
+            $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFill()
                 ->setFillType(Fill::FILL_SOLID)
-                ->getStartColor()->setARGB($fillColor);
+                ->getStartColor()->setARGB('FF1E3A5F');
+            $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFont()->getColor()->setARGB('FFFFFFFF');
+            $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-            $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("C{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("C{$row}")->getNumberFormat()->setFormatCode('#,##0');
+            // ── Data Rows ──────────────────────────────────────────────────────
+            $currentRow++;
+            $no  = 1;
+            foreach ($rows as $item) {
+                $sheet->fromArray([
+                    $no++,
+                    $item['name'],
+                    $item['total_sold'],
+                ], null, "A{$currentRow}");
 
-            $row++;
+                // Alternating row color
+                $fillColor = ($no % 2 === 0) ? 'FFF5F5F5' : 'FFFFFFFF';
+                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB($fillColor);
+
+                $sheet->getStyle("A{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("C{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("C{$currentRow}")->getNumberFormat()->setFormatCode('#,##0');
+
+                $currentRow++;
+            }
+
+            // ── Total Row ──────────────────────────────────────────────────────
+            if (count($rows) > 0) {
+                $totalQty = array_sum(array_column($rows, 'total_sold'));
+                $sheet->setCellValue("A{$currentRow}", 'TOTAL');
+                $sheet->setCellValue("B{$currentRow}", '');
+                $sheet->setCellValue("C{$currentRow}", $totalQty);
+                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getFont()->setBold(true);
+                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB('FFEFEFEF');
+                $sheet->getStyle("C{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("C{$currentRow}")->getNumberFormat()->setFormatCode('#,##0');
+                $sheet->mergeCells("A{$currentRow}:B{$currentRow}");
+                $sheet->getStyle("A{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            } else {
+                $sheet->setCellValue("A{$currentRow}", 'Tidak ada data');
+                $sheet->mergeCells("A{$currentRow}:C{$currentRow}");
+                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getFont()->setItalic(true);
+                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB('FFF5F5F5');
+            }
+
+            // ── Borders on entire table ────────────────────────────────────────
+            $sheet->getStyle("A{$headerRow}:C{$currentRow}")->getBorders()->getAllBorders()
+                ->setBorderStyle(Border::BORDER_THIN)
+                ->getColor()->setARGB('FFCCCCCC');
+
+            $currentRow += 2; // Spacer
         }
-
-        // ── Total Row ──────────────────────────────────────────────────────
-        if (count($rows) > 0) {
-            $totalQty = array_sum(array_column($rows, 'total_sold'));
-            $sheet->setCellValue("A{$row}", 'TOTAL');
-            $sheet->setCellValue("B{$row}", '');
-            $sheet->setCellValue("C{$row}", $totalQty);
-            $sheet->getStyle("A{$row}:C{$row}")->getFont()->setBold(true);
-            $sheet->getStyle("A{$row}:C{$row}")->getFill()
-                ->setFillType(Fill::FILL_SOLID)
-                ->getStartColor()->setARGB('FFEFEFEF');
-            $sheet->getStyle("C{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("C{$row}")->getNumberFormat()->setFormatCode('#,##0');
-            $sheet->mergeCells("A{$row}:B{$row}");
-            $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        }
-
-        // ── Borders on entire table ────────────────────────────────────────
-        $lastRow = count($rows) > 0 ? $row : $headerRow;
-        $sheet->getStyle("A{$headerRow}:C{$lastRow}")->getBorders()->getAllBorders()
-            ->setBorderStyle(Border::BORDER_THIN)
-            ->getColor()->setARGB('FFCCCCCC');
 
         // ── Column widths ──────────────────────────────────────────────────
         $sheet->getColumnDimension('A')->setWidth(8);
