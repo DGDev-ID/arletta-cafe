@@ -482,11 +482,13 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
         enc(fmtL('No') + '#' + trx.id + '\n');
         enc(fmtL('Tgl') + fmtDate(trx.updated_at) + '\n');
         enc(fmtL('Cust') + (trx.cust_name || '-') + '\n');
+        enc(fmtL('Pay') + trx.payment_type.toUpperCase() + '\n');
         if (trx.table) enc(fmtL('Table') + trx.table.name + '\n');
         enc(PRINT_LINE + '\n');
 
         // ── Table header (Menu | Harga) ──
         enc(printPadRight('Menu', 'Harga') + '\n');
+        enc(PRINT_LINE + '\n');
 
         // ── Detail items ──
         detailsToPrint.forEach((d: any) => {
@@ -499,7 +501,7 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
                     enc('  [' + label + ']\n');
                 });
             }
-            if (d.description) enc('   ' + d.description + '\n');
+            if (d.description) enc('  ' + d.description + '\n');
         });
         enc(PRINT_LINE + '\n');
 
@@ -530,9 +532,6 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
         }
 
         // ── Payment type (dipindah setelah TOTAL) ──
-        bytes.push(0x1B, 0x45, 0x00);
-        enc(printPadRight('Pay', trx.payment_type.toUpperCase()) + '\n');
-        enc(PRINT_LINE + '\n');
 
         bytes.push(0x1B, 0x61, 0x01);
         enc('Terima kasih\n');
