@@ -482,7 +482,6 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
         enc(fmtL('No') + '#' + trx.id + '\n');
         enc(fmtL('Tgl') + fmtDate(trx.updated_at) + '\n');
         enc(fmtL('Cust') + (trx.cust_name || '-') + '\n');
-        enc(fmtL('Pay') + trx.payment_type.toUpperCase() + '\n');
         if (trx.table) enc(fmtL('Table') + trx.table.name + '\n');
         enc(PRINT_LINE + '\n');
 
@@ -526,6 +525,7 @@ const printReceiptInline = async (id: number, filterType: 'all' | 'FOOD' | 'BEVE
             enc(PRINT_DOUBLE_LINE + '\n');
             bytes.push(0x1B, 0x45, 0x01);
             enc(printPadRight('TOTAL', 'Rp ' + printNumber(partialSubtotal)) + '\n');
+            enc(printPadRight('Pay', trx.payment_type.toUpperCase()) + '\n');
             bytes.push(0x1B, 0x45, 0x00);
             enc(PRINT_DOUBLE_LINE + '\n');
         }
