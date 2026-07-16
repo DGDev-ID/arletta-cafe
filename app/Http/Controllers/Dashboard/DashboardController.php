@@ -480,6 +480,172 @@ class DashboardController extends Controller
     }
 
     /**
+     * Export Purchase Summary (Inbound & Outbound) to Excel.
+     * Query params:
+     *   - date_from   : Y-m-d (default: today)
+     *   - date_to     : Y-m-d (default: today)
+     *   - cafe_id     : optional
+     */
+    public function exportPurchaseSummary(\Illuminate\Http\Request $request)
+    {
+        $dateFrom = $request->filled('date_from')
+            ? Carbon::createFromFormat('d-m-Y', $request->date_from)->startOfDay()
+            : Carbon::today()->startOfDay();
+        $dateTo   = $request->filled('date_to')
+            ? Carbon::createFromFormat('d-m-Y', $request->date_to)->endOfDay()
+            : Carbon::today()->endOfDay();
+        $cafeId   = $request->filled('cafe_id') ? (int) $request->cafe_id : null;
+
+        if ($cafeId) {
+            $cafes = MCafe::where('id', $cafeId)->get();
+        } else {
+            $cafes = MCafe::orderBy('name')->get();
+        }
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Purchase Summary');
+
+        $labelFrom = $dateFrom->format('d M Y');
+        $labelTo   = $dateTo->format('d M Y');
+        $periodLabel = $labelFrom === $labelTo ? $labelFrom : "{$labelFrom} s/d {$labelTo}";
+
+        $sheet->setCellValue('A1', 'LAPORAN PURCHASE (INBOUND & OUTBOUND)');
+        $sheet->mergeCells('A1:E1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->setCellValue('A2', 'Periode: ' . $periodLabel);
+        $sheet->mergeCells('A2:E2');
+        $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('A2')->getFont()->setSize(10)->setItalic(true);
+
+        $sheet->setCellValue('A3', 'Dicetak: ' . now()->format('d M Y, H:i'));
+        $sheet->mergeCells('A3:E3');
+        $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('A3')->getFont()->setSize(9)->setItalic(true);
+
+        $currentRow = 5;
+
+        foreach ($cafes as $cafe) {
+            $sheet->setCellValue("A{$currentRow}", "Cabang: " . $cafe->name);
+            $sheet->mergeCells("A{$currentRow}:E{$currentRow}");
+            $sheet->getStyle("A{$currentRow}")->getFont()->setBold(true)->setSize(12);
+            $currentRow++;
+
+            $query = MaterialInboundOutbound::query()
+                ->select(
+                    'm_materials.name',
+                    DB::raw("SUM(CASE WHEN material_inbound_outbounds.type = 'inbound' THEN material_inbound_outbounds.amount ELSE 0 END) as qty_inbound"),
+                    DB::raw("SUM(CASE WHEN material_inbound_outbounds.type = 'inbound' THEN COALESCE(material_inbound_outbounds.inbound_buy_price, 0) ELSE 0 END) as nominal_inbound"),
+                    DB::raw("SUM(CASE WHEN material_inbound_outbounds.type = 'outbound' THEN material_inbound_outbounds.amount ELSE 0 END) as qty_outbound")
+                )
+                ->join('m_materials', 'material_inbound_outbounds.material_id', '=', 'm_materials.id')
+                ->whereBetween('material_inbound_outbounds.created_at', [$dateFrom, $dateTo])
+                ->where('m_materials.cafe_id', $cafe->id)
+                ->groupBy('m_materials.id', 'm_materials.name')
+                ->orderBy('m_materials.name');
+
+            $data = $query->get();
+
+            // Header Row
+            $headerRow = $currentRow;
+            $sheet->fromArray(['No', 'Bahan Baku', 'Belanja Masuk (QTY)', 'Belanja Masuk (Rp)', 'Belanja Keluar (QTY)'], null, "A{$headerRow}");
+            $sheet->getStyle("A{$headerRow}:E{$headerRow}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$headerRow}:E{$headerRow}")->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setARGB('FF1E3A5F');
+            $sheet->getStyle("A{$headerRow}:E{$headerRow}")->getFont()->getColor()->setARGB('FFFFFFFF');
+            $sheet->getStyle("A{$headerRow}:E{$headerRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+            $currentRow++;
+            $no = 1;
+
+            foreach ($data as $item) {
+                $sheet->fromArray([
+                    $no++,
+                    $item->name,
+                    (float) $item->qty_inbound,
+                    (float) $item->nominal_inbound,
+                    (float) $item->qty_outbound,
+                ], null, "A{$currentRow}");
+
+                // Alternating row color
+                $fillColor = ($no % 2 === 0) ? 'FFF5F5F5' : 'FFFFFFFF';
+                $sheet->getStyle("A{$currentRow}:E{$currentRow}")->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB($fillColor);
+
+                $sheet->getStyle("A{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("C{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("C{$currentRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+                $sheet->getStyle("D{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                $sheet->getStyle("D{$currentRow}")->getNumberFormat()->setFormatCode('#,##0');
+                $sheet->getStyle("E{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("E{$currentRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+
+                $currentRow++;
+            }
+
+            if ($data->count() > 0) {
+                $totalQtyInbound = $data->sum('qty_inbound');
+                $totalNominalInbound = $data->sum('nominal_inbound');
+                $totalQtyOutbound = $data->sum('qty_outbound');
+
+                $sheet->setCellValue("A{$currentRow}", 'TOTAL');
+                $sheet->setCellValue("B{$currentRow}", '');
+                $sheet->setCellValue("C{$currentRow}", (float) $totalQtyInbound);
+                $sheet->setCellValue("D{$currentRow}", (float) $totalNominalInbound);
+                $sheet->setCellValue("E{$currentRow}", (float) $totalQtyOutbound);
+
+                $sheet->getStyle("A{$currentRow}:E{$currentRow}")->getFont()->setBold(true);
+                $sheet->getStyle("A{$currentRow}:E{$currentRow}")->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB('FFEFEFEF');
+                $sheet->mergeCells("A{$currentRow}:B{$currentRow}");
+                $sheet->getStyle("A{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("C{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("C{$currentRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+                $sheet->getStyle("D{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                $sheet->getStyle("D{$currentRow}")->getNumberFormat()->setFormatCode('#,##0');
+                $sheet->getStyle("E{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("E{$currentRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+            } else {
+                $sheet->setCellValue("A{$currentRow}", 'Tidak ada data');
+                $sheet->mergeCells("A{$currentRow}:E{$currentRow}");
+                $sheet->getStyle("A{$currentRow}:E{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("A{$currentRow}:E{$currentRow}")->getFont()->setItalic(true);
+                $sheet->getStyle("A{$currentRow}:E{$currentRow}")->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB('FFF5F5F5');
+            }
+
+            $sheet->getStyle("A{$headerRow}:E{$currentRow}")->getBorders()->getAllBorders()
+                ->setBorderStyle(Border::BORDER_THIN)
+                ->getColor()->setARGB('FFCCCCCC');
+
+            $currentRow += 2;
+        }
+
+        $sheet->getColumnDimension('A')->setWidth(8);
+        $sheet->getColumnDimension('B')->setWidth(40);
+        $sheet->getColumnDimension('C')->setWidth(20);
+        $sheet->getColumnDimension('D')->setWidth(20);
+        $sheet->getColumnDimension('E')->setWidth(20);
+
+        $filename = 'Purchase_Summary_' . $dateFrom->format('Ymd') . '_' . $dateTo->format('Ymd') . '.xlsx';
+
+        return new StreamedResponse(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Cache-Control'       => 'max-age=0',
+        ]);
+    }
+
+    /**
      * Return payment method stats (QRIS, Debit, Manual) filtered by period.
      * Query params:
      *   - period  : 'day' (default) | 'month' | 'year'

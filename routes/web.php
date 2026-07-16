@@ -55,6 +55,11 @@ Route::get('dashboard/purchase-summary', [DashboardController::class, 'purchaseS
     ->middleware(['auth', 'verified'])
     ->name('dashboard.purchase-summary');
 
+// Excel export for purchase summary on dashboard
+Route::get('dashboard/purchase-summary-export', [DashboardController::class, 'exportPurchaseSummary'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard.purchase-summary-export');
+
 // JSON endpoint for payment stats by period (today / this month / this year)
 Route::get('dashboard/payment-stats', [DashboardController::class, 'paymentStatsByPeriod'])
     ->middleware(['auth', 'verified'])

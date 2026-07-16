@@ -267,6 +267,22 @@ async function fetchPurchaseSummary() {
     }
 }
 
+const isExportingPurchase = ref(false);
+
+async function exportPurchaseSummary() {
+    try {
+        isExportingPurchase.value = true;
+        const params = new URLSearchParams({
+            date_from: toApiDate(purchaseDateFrom.value),
+            date_to:   toApiDate(purchaseDateTo.value),
+        });
+        if (selectedCafeId.value !== null) params.set('cafe_id', String(selectedCafeId.value));
+        window.location.href = `/dashboard/purchase-summary-export?${params.toString()}`;
+    } finally {
+        setTimeout(() => { isExportingPurchase.value = false; }, 1500);
+    }
+}
+
 watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSummary());
 
 
@@ -496,6 +512,7 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                             <input
                                 v-model="purchaseDateFrom"
                                 type="date"
+                                :max="purchaseDateTo"
                                 class="bg-transparent text-xs outline-none cursor-pointer"
                             />
                         </div>
@@ -505,9 +522,20 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                             <input
                                 v-model="purchaseDateTo"
                                 type="date"
+                                :min="purchaseDateFrom"
+                                :max="todayStr"
                                 class="bg-transparent text-xs outline-none cursor-pointer"
                             />
                         </div>
+                        <!-- Export Excel button -->
+                        <button
+                            @click="exportPurchaseSummary"
+                            :disabled="isExportingPurchase || isLoadingPurchase || !purchaseSummary || (purchaseSummary.inbound.total_records === 0 && purchaseSummary.outbound.total_records === 0)"
+                            class="flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 text-xs font-medium transition-colors"
+                        >
+                            <Download class="h-3.5 w-3.5 shrink-0" />
+                            {{ isExportingPurchase ? 'Mengunduh...' : 'Export Excel' }}
+                        </button>
                     </div>
                 </div>
 
