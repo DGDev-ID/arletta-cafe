@@ -53,6 +53,21 @@ const filteredMenus = computed(() => {
     return editableMenus.value.filter(m => m.name.toLowerCase().includes(q) || m.category_name.toLowerCase().includes(q));
 });
 
+const currentPage = ref(1);
+const itemsPerPage = 10;
+
+watch([searchQuery, selectedCafeId], () => {
+    currentPage.value = 1;
+});
+
+const totalPages = computed(() => Math.ceil(filteredMenus.value.length / itemsPerPage));
+
+const paginatedMenus = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filteredMenus.value.slice(start, end);
+});
+
 const changeCafe = () => {
     if (selectedCafeId.value) {
         router.get(`/master/third-party-channel/${props.channel.id}/menus`, { cafe_id: selectedCafeId.value }, {
@@ -153,9 +168,9 @@ const submit = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(menu, index) in filteredMenus" :key="menu.id"
+                            <tr v-for="(menu, index) in paginatedMenus" :key="menu.id"
                                 class="border-t hover:bg-muted/30 transition">
-                                <td class="px-6 py-4 text-muted-foreground">{{ index + 1 }}</td>
+                                <td class="px-6 py-4 text-muted-foreground">{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
                                 <td class="px-6 py-4 text-muted-foreground text-xs">{{ menu.category_name }}</td>
                                 <td class="px-6 py-4 font-semibold">{{ menu.name }}</td>
                                 <td class="px-6 py-4">{{ formatCurrency(menu.price) }}</td>
@@ -175,6 +190,32 @@ const submit = () => {
                             </tr>
                         </tbody>
                     </table>
+
+                    <!-- Pagination Controls -->
+                    <div v-if="totalPages > 1" class="flex items-center justify-between px-6 py-4 border-t bg-muted/20">
+                        <span class="text-sm text-muted-foreground">
+                            Menampilkan {{ (currentPage - 1) * itemsPerPage + 1 }} - 
+                            {{ Math.min(currentPage * itemsPerPage, filteredMenus.length) }} 
+                            dari {{ filteredMenus.length }} menu
+                        </span>
+                        <div class="flex items-center gap-1">
+                            <button @click="currentPage > 1 && currentPage--" type="button" :disabled="currentPage === 1"
+                                class="px-3 py-1.5 text-sm rounded-lg border bg-background hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                Prev
+                            </button>
+                            <div class="flex items-center gap-1 px-2">
+                                <button v-for="page in totalPages" :key="page" @click="currentPage = page" type="button"
+                                    :class="currentPage === page ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'"
+                                    class="w-8 h-8 flex items-center justify-center text-sm rounded-lg border transition">
+                                    {{ page }}
+                                </button>
+                            </div>
+                            <button @click="currentPage < totalPages && currentPage++" type="button" :disabled="currentPage === totalPages"
+                                class="px-3 py-1.5 text-sm rounded-lg border bg-background hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                Next
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
             </div>
