@@ -495,7 +495,7 @@ class CashierController extends Controller
                 'admin_fee'              => $adminFee,
                 'total_price'            => $totalPrice,
                 'payment_type'           => 'third_party',
-                'status'                 => 'in_order', // Langsung in_order
+                'status'                 => 'pending', // Harus pending dulu agar pendingAction jalan
                 'third_party_channel_id' => $channel->id,
                 'third_party_reference'  => $validated['third_party_reference'] ?? null,
             ]);
@@ -510,8 +510,11 @@ class CashierController extends Controller
                 ]);
             }
 
-            // Potong stok bahan baku (sama seperti approve manual)
+            // Potong stok bahan baku & hitung profit margin
             TransactionService::pendingAction($transaction);
+            
+            // Setelah stok terpotong aman, jadikan in_order (bypassing approval)
+            TransactionService::makeSuccess($transaction);
         });
 
         return redirect()->route('transaction.cashier.index')
