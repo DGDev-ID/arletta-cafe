@@ -426,22 +426,37 @@ class CashierController extends Controller
     }
 
     /**
-     * GET /transaction/cashier/menus-by-cafe?cafe_id=X
+     * GET /transaction/cashier/menus-by-cafe?cafe_id=X&third_party_channel_id=Y
      * Mengembalikan daftar menu berdasarkan cafe untuk keperluan kasir pihak ketiga.
      */
     public function getMenusByCafe(Request $request)
     {
         $cafeId = $request->input('cafe_id');
+        $channelId = $request->input('third_party_channel_id');
+        
         if (!$cafeId) {
             return response()->json([]);
         }
 
-        $menus = MMenu::where('cafe_id', $cafeId)
+        $query = MMenu::where('cafe_id', $cafeId)
             ->where('status', 'available')
             ->with('category:id,name')
-            ->orderBy('name')
-            ->get(['id', 'name', 'price', 'menu_category_id', 'img_url', 'is_combo']);
+            ->orderBy('name');
+            
+        if ($channelId) {
+            $query->join('third_party_channel_menus', function($join) use ($channelId) {
+                $join->on('m_menus.id', '=', 'third_party_channel_menus.menu_id')
+                     ->where('third_party_channel_menus.third_party_channel_id', '=', $channelId);
+            })->select(
+                'm_menus.id', 'm_menus.name', 'm_menus.price', 
+                'm_menus.menu_category_id', 'm_menus.img_url', 'm_menus.is_combo',
+                'third_party_channel_menus.admin_fee'
+            );
+        } else {
+            $query->select('id', 'name', 'price', 'menu_category_id', 'img_url', 'is_combo');
+        }
 
+        $menus = $query->get();
         return response()->json($menus);
     }
 
@@ -473,16 +488,28 @@ class CashierController extends Controller
             return redirect()->back()->with('error', 'Beberapa menu tidak ditemukan atau bukan milik cafe ini.');
         }
 
+        // Ambil data admin fee dari pivot table untuk menu yang dipilih
+        $pivots = \App\Models\ThirdPartyChannelMenu::where('third_party_channel_id', $channel->id)
+            ->whereIn('menu_id', $menuIds)
+            ->get()
+            ->keyBy('menu_id');
+
         // Hitung subtotal (harga murni menu, INI yang jadi omset)
         $price = 0;
+        $adminFee = 0;
+        
         foreach ($validated['details'] as $detail) {
             $menu   = $menus->firstWhere('id', $detail['menu_id']);
             $price += $menu->price * $detail['amount'];
+            
+            $pivot = $pivots->get($detail['menu_id']);
+            if ($pivot) {
+                $adminFee += $pivot->admin_fee * $detail['amount'];
+            }
         }
 
         // PPN dari cafe
         $ppn       = $cafe->ppn_fee > 0 ? ($price * ($cafe->ppn_fee / 100)) : 0;
-        $adminFee  = (float) $channel->admin_fee; // flat per nota, TIDAK masuk omset
         $totalPrice = floor($price + $ppn + $adminFee);
 
         DB::transaction(function () use ($validated, $cafe, $channel, $menus, $price, $ppn, $adminFee, $totalPrice) {

@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import { ref, computed } from 'vue';
-import { Pencil, Trash2, Plus, ToggleLeft, ToggleRight, X, Check } from 'lucide-vue-next';
+import { Pencil, Trash2, Plus, ToggleLeft, ToggleRight, X, Check, UtensilsCrossed } from 'lucide-vue-next';
 
 interface ThirdPartyChannel {
     id: number;
     name: string;
-    admin_fee: string;
     is_active: boolean;
 }
 
@@ -22,27 +21,24 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Saluran Pihak Ketiga', href: '/master/third-party-channel' },
 ];
 
-const formatCurrency = (val: string | number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(val));
-
 // ── Form State ─────────────────────────────────────────────────────────────
 const showForm = ref(false);
 const editingId = ref<number | null>(null);
-const form = ref({ name: '', admin_fee: '' });
+const form = ref({ name: '' });
 const errors = ref<Record<string, string>>({});
 
 const formTitle = computed(() => editingId.value ? 'Edit Saluran' : 'Tambah Saluran');
 
 const openAdd = () => {
     editingId.value = null;
-    form.value = { name: '', admin_fee: '' };
+    form.value = { name: '' };
     errors.value = {};
     showForm.value = true;
 };
 
 const openEdit = (channel: ThirdPartyChannel) => {
     editingId.value = channel.id;
-    form.value = { name: channel.name, admin_fee: String(Number(channel.admin_fee)) };
+    form.value = { name: channel.name };
     errors.value = {};
     showForm.value = true;
 };
@@ -55,16 +51,13 @@ const closeForm = () => {
 const validateForm = () => {
     errors.value = {};
     if (!form.value.name.trim()) errors.value.name = 'Nama saluran wajib diisi.';
-    if (form.value.admin_fee === '' || isNaN(Number(form.value.admin_fee)) || Number(form.value.admin_fee) < 0) {
-        errors.value.admin_fee = 'Biaya admin harus berupa angka ≥ 0.';
-    }
     return Object.keys(errors.value).length === 0;
 };
 
 const submitForm = () => {
     if (!validateForm()) return;
 
-    const payload = { name: form.value.name.trim(), admin_fee: Number(form.value.admin_fee) };
+    const payload = { name: form.value.name.trim() };
 
     if (editingId.value) {
         router.put(`/master/third-party-channel/${editingId.value}`, payload, {
@@ -102,7 +95,7 @@ const toggleStatus = (id: number) => {
                 <!-- Header -->
                 <div class="flex items-center justify-between">
                     <Heading variant="small" title="Saluran Pihak Ketiga"
-                        description="Kelola daftar platform pihak ketiga (GoFood, GrabFood, dll.) dan biaya admin flatnya." />
+                        description="Kelola daftar platform pihak ketiga (GoFood, GrabFood, dll.) dan kustomisasi harganya per menu." />
                     <button @click="openAdd" type="button"
                         class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition shadow-sm">
                         <Plus :size="16" /> Tambah Saluran
@@ -129,20 +122,6 @@ const toggleStatus = (id: number) => {
                                     :class="errors.name ? 'border-red-400 focus:ring-red-300' : ''" />
                                 <span v-if="errors.name" class="text-xs text-red-500">{{ errors.name }}</span>
                             </div>
-
-                            <!-- Biaya Admin -->
-                            <div class="grid gap-1.5">
-                                <label class="text-sm font-medium">Biaya Admin (Flat / Nota)</label>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-sm text-muted-foreground font-medium">Rp</span>
-                                    <input v-model="form.admin_fee" type="number" min="0" step="500"
-                                        placeholder="5000"
-                                        class="flex-1 px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                                        :class="errors.admin_fee ? 'border-red-400 focus:ring-red-300' : ''" />
-                                </div>
-                                <span v-if="errors.admin_fee" class="text-xs text-red-500">{{ errors.admin_fee }}</span>
-                                <p class="text-xs text-muted-foreground">Biaya ini bersifat flat per transaksi dan <strong>tidak dihitung sebagai omset</strong>.</p>
-                            </div>
                         </div>
 
                         <div class="flex justify-end gap-2 pt-2">
@@ -165,7 +144,6 @@ const toggleStatus = (id: number) => {
                             <tr class="text-muted-foreground">
                                 <th class="px-6 py-4 text-left font-medium">No</th>
                                 <th class="px-6 py-4 text-left font-medium">Nama Saluran</th>
-                                <th class="px-6 py-4 text-left font-medium">Biaya Admin (Flat/Nota)</th>
                                 <th class="px-6 py-4 text-center font-medium">Status</th>
                                 <th class="px-6 py-4 text-right font-medium">Aksi</th>
                             </tr>
@@ -175,9 +153,6 @@ const toggleStatus = (id: number) => {
                                 class="border-t hover:bg-muted/30 transition">
                                 <td class="px-6 py-4 text-muted-foreground">{{ index + 1 }}</td>
                                 <td class="px-6 py-4 font-medium">{{ channel.name }}</td>
-                                <td class="px-6 py-4">
-                                    <span class="font-semibold text-emerald-600">{{ formatCurrency(channel.admin_fee) }}</span>
-                                </td>
                                 <td class="px-6 py-4 text-center">
                                     <button @click="toggleStatus(channel.id)" type="button"
                                         class="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition"
@@ -191,6 +166,10 @@ const toggleStatus = (id: number) => {
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="flex justify-end items-center gap-2">
+                                        <Link :href="`/master/third-party-channel/${channel.id}/menus`"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-100 text-orange-600 text-xs font-medium hover:bg-orange-500 hover:text-white transition">
+                                            <UtensilsCrossed :size="13" /> Kelola Menu
+                                        </Link>
                                         <button @click="openEdit(channel)" type="button"
                                             class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition">
                                             <Pencil :size="13" /> Edit
@@ -203,7 +182,7 @@ const toggleStatus = (id: number) => {
                                 </td>
                             </tr>
                             <tr v-if="channels.length === 0">
-                                <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
+                                <td colspan="4" class="px-6 py-12 text-center text-muted-foreground">
                                     Belum ada saluran pihak ketiga. Klik "Tambah Saluran" untuk menambahkan.
                                 </td>
                             </tr>

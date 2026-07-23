@@ -170,6 +170,12 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('third-party-channel/{id}/toggle-status', [ThirdPartyChannelController::class, 'toggleStatus'])
             ->name('third-party-channel.toggle-status')
             ->middleware('can:master.menu.update');
+        Route::get('third-party-channel/{id}/menus', [ThirdPartyChannelController::class, 'manageMenus'])
+            ->name('third-party-channel.manage-menus')
+            ->middleware('can:master.menu.update');
+        Route::put('third-party-channel/{id}/menus', [ThirdPartyChannelController::class, 'updateMenus'])
+            ->name('third-party-channel.update-menus')
+            ->middleware('can:master.menu.update');
     });
 
     Route::prefix('user-management')->name('user-management.')->group(function () {

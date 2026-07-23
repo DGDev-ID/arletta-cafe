@@ -9,14 +9,12 @@ class ThirdPartyChannel extends Model
 {
     protected $fillable = [
         'name',
-        'admin_fee',
         'is_active',
     ];
 
     protected function casts(): array
     {
         return [
-            'admin_fee' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }
@@ -24,5 +22,10 @@ class ThirdPartyChannel extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class, 'third_party_channel_id');
+    }
+
+    public function channelMenus(): HasMany
+    {
+        return $this->hasMany(ThirdPartyChannelMenu::class, 'third_party_channel_id');
     }
 }

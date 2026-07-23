@@ -22,12 +22,10 @@ class ThirdPartyChannelController extends Controller
     {
         $validated = $request->validate([
             'name'      => 'required|string|max:100|unique:third_party_channels,name',
-            'admin_fee' => 'required|numeric|min:0',
         ]);
 
         ThirdPartyChannel::create([
             'name'      => $validated['name'],
-            'admin_fee' => $validated['admin_fee'],
             'is_active' => true,
         ]);
 
@@ -41,12 +39,10 @@ class ThirdPartyChannelController extends Controller
 
         $validated = $request->validate([
             'name'      => 'required|string|max:100|unique:third_party_channels,name,' . $id,
-            'admin_fee' => 'required|numeric|min:0',
         ]);
 
         $channel->update([
             'name'      => $validated['name'],
-            'admin_fee' => $validated['admin_fee'],
         ]);
 
         return redirect()->route('master.third-party-channel.index')
@@ -69,5 +65,75 @@ class ThirdPartyChannelController extends Controller
 
         return redirect()->back()
             ->with('success', 'Status saluran berhasil diubah.');
+    }
+
+    public function manageMenus(Request $request, $id)
+    {
+        $channel = ThirdPartyChannel::findOrFail($id);
+        
+        $cafeId = $request->input('cafe_id');
+        $cafes = \App\Models\MCafe::orderBy('name')->get();
+
+        $menus = [];
+        if ($cafeId) {
+            $menus = \App\Models\MMenu::with(['category:id,name'])
+                ->where('cafe_id', $cafeId)
+                ->where('status', 'available')
+                ->orderBy('name')
+                ->get()
+                ->map(function ($menu) use ($channel) {
+                    $pivot = \App\Models\ThirdPartyChannelMenu::where('third_party_channel_id', $channel->id)
+                        ->where('menu_id', $menu->id)
+                        ->first();
+                    
+                    return [
+                        'id' => $menu->id,
+                        'name' => $menu->name,
+                        'category_name' => $menu->category ? $menu->category->name : '-',
+                        'price' => $menu->price,
+                        'admin_fee' => $pivot ? $pivot->admin_fee : null,
+                    ];
+                });
+        }
+
+        return Inertia::render('master/third-party-channel/ManageMenus', [
+            'channel' => $channel,
+            'cafes' => $cafes,
+            'menus' => $menus,
+            'activeCafeId' => $cafeId,
+        ]);
+    }
+
+    public function updateMenus(Request $request, $id)
+    {
+        $channel = ThirdPartyChannel::findOrFail($id);
+        
+        $validated = $request->validate([
+            'cafe_id' => 'required|exists:m_cafes,id',
+            'menus' => 'required|array',
+            'menus.*.menu_id' => 'required|exists:m_menus,id',
+            'menus.*.admin_fee' => 'nullable|numeric|min:0',
+        ]);
+
+        foreach ($validated['menus'] as $menuItem) {
+            if ($menuItem['admin_fee'] !== null && $menuItem['admin_fee'] !== '') {
+                \App\Models\ThirdPartyChannelMenu::updateOrCreate(
+                    [
+                        'third_party_channel_id' => $channel->id,
+                        'menu_id' => $menuItem['menu_id'],
+                    ],
+                    [
+                        'admin_fee' => $menuItem['admin_fee'],
+                    ]
+                );
+            } else {
+                \App\Models\ThirdPartyChannelMenu::where('third_party_channel_id', $channel->id)
+                    ->where('menu_id', $menuItem['menu_id'])
+                    ->delete();
+            }
+        }
+
+        return redirect()->back()
+            ->with('success', 'Harga admin per menu berhasil disimpan.');
     }
 }

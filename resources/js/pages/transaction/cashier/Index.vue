@@ -127,17 +127,19 @@ interface ThirdPartyChannel {
 interface TpMenu {
     id: number;
     name: string;
-    price: string;
+    price: string | number;
     menu_category_id: number | null;
     img_url: string | null;
     is_combo: boolean | number;
     category?: { id: number; name: string } | null;
+    admin_fee?: string | number | null;
 }
 
 interface TpCartItem {
     menu_id: number;
     name: string;
     price: number;
+    admin_fee: number;
     amount: number;
 }
 
@@ -213,7 +215,9 @@ const selectedChannel = computed(() =>
 const tpSubtotal = computed(() =>
     tpCart.value.reduce((sum, item) => sum + item.price * item.amount, 0)
 );
-const tpAdminFee = computed(() => Number(selectedChannel.value?.admin_fee ?? 0));
+const tpAdminFee = computed(() => 
+    tpCart.value.reduce((sum, item) => sum + (item.admin_fee * item.amount), 0)
+);
 const tpTotal    = computed(() => Math.floor(tpSubtotal.value + tpAdminFee.value));
 
 const tpFilteredMenus = computed(() => {
@@ -229,10 +233,10 @@ const fetchTpMenus = async () => {
     tpMenus.value = [];
     tpCart.value  = [];
     tpMenuSearch.value = '';
-    if (!tpCafeId.value) return;
+    if (!tpCafeId.value || !tpChannelId.value) return;
     tpMenuLoading.value = true;
     try {
-        const { data } = await axios.get(`/transaction/cashier/menus-by-cafe?cafe_id=${tpCafeId.value}`);
+        const { data } = await axios.get(`/transaction/cashier/menus-by-cafe?cafe_id=${tpCafeId.value}&third_party_channel_id=${tpChannelId.value}`);
         tpMenus.value = data;
     } catch (e: any) {
         notyf.error('Gagal memuat menu.');
@@ -241,14 +245,20 @@ const fetchTpMenus = async () => {
     }
 };
 
-watch(tpCafeId, fetchTpMenus);
+watch([tpCafeId, tpChannelId], fetchTpMenus);
 
 const addToTpCart = (menu: TpMenu) => {
     const existing = tpCart.value.find(i => i.menu_id === menu.id);
     if (existing) {
         existing.amount++;
     } else {
-        tpCart.value.push({ menu_id: menu.id, name: menu.name, price: Number(menu.price), amount: 1 });
+        tpCart.value.push({ 
+            menu_id: menu.id, 
+            name: menu.name, 
+            price: Number(menu.price), 
+            admin_fee: Number(menu.admin_fee || 0),
+            amount: 1 
+        });
     }
 };
 
@@ -1207,7 +1217,7 @@ onUnmounted(() => {
                                         class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
                                         <option value="">-- Pilih Saluran --</option>
                                         <option v-for="ch in thirdPartyChannels" :key="ch.id" :value="ch.id">
-                                            {{ ch.name }} (Admin: {{ formatCurrency(ch.admin_fee) }})
+                                            {{ ch.name }}
                                         </option>
                                     </select>
                                 </div>
@@ -1318,7 +1328,7 @@ onUnmounted(() => {
                                         <MinusIcon :size="12" />
                                     </button>
                                     <span class="w-6 text-center text-xs font-bold">{{ item.amount }}</span>
-                                    <button @click="addToTpCart({ id: item.menu_id, name: item.name, price: String(item.price), menu_category_id: null, img_url: null, is_combo: false })" type="button"
+                                    <button @click="addToTpCart({ id: item.menu_id, name: item.name, price: String(item.price), admin_fee: String(item.admin_fee), menu_category_id: null, img_url: null, is_combo: false })" type="button"
                                         class="cursor-pointer w-6 h-6 flex items-center justify-center rounded-md bg-muted hover:bg-green-100 hover:text-green-600 transition">
                                         <Plus :size="12" />
                                     </button>
