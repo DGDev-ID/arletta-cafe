@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class ThirdPartyChannelMenu extends Model
 {
-    use HasFactory;
 
     protected $fillable = [
         'third_party_channel_id',
