@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
-import { Eye, CheckCircle, Printer, ChevronDown } from 'lucide-vue-next';
+import { Eye, CheckCircle, Printer, ChevronDown, ShoppingBag, X, Plus, Minus as MinusIcon, ChevronLeft } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { Notyf } from 'notyf';
@@ -118,6 +118,29 @@ interface TransactionDetailItem {
 }
 
 
+interface ThirdPartyChannel {
+    id: number;
+    name: string;
+    admin_fee: string;
+}
+
+interface TpMenu {
+    id: number;
+    name: string;
+    price: string;
+    menu_category_id: number | null;
+    img_url: string | null;
+    is_combo: boolean | number;
+    category?: { id: number; name: string } | null;
+}
+
+interface TpCartItem {
+    menu_id: number;
+    name: string;
+    price: number;
+    amount: number;
+}
+
 const props = defineProps<{
     pendingTransactions: Transaction[];
     openBillPendingTransactions: Transaction[];
@@ -128,6 +151,7 @@ const props = defineProps<{
     filters: {
         cafe_id: string;
     };
+    thirdPartyChannels: ThirdPartyChannel[];
 }>();
 
 // QR Code Search State
@@ -169,6 +193,105 @@ watch(selectedCafe, (val) => {
 
 const formatCurrency = (val: string | number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(val));
+
+// ── Third Party Order Modal ───────────────────────────────────────────────
+const showThirdPartyModal = ref(false);
+const tpCafeId          = ref('');
+const tpChannelId       = ref('');
+const tpCustName        = ref('');
+const tpReference       = ref('');
+const tpMenus           = ref<TpMenu[]>([]);
+const tpCart            = ref<TpCartItem[]>([]);
+const tpMenuLoading     = ref(false);
+const tpSubmitting      = ref(false);
+const tpMenuSearch      = ref('');
+
+const selectedChannel = computed(() =>
+    props.thirdPartyChannels.find(c => c.id === Number(tpChannelId.value)) ?? null
+);
+
+const tpSubtotal = computed(() =>
+    tpCart.value.reduce((sum, item) => sum + item.price * item.amount, 0)
+);
+const tpAdminFee = computed(() => Number(selectedChannel.value?.admin_fee ?? 0));
+const tpTotal    = computed(() => Math.floor(tpSubtotal.value + tpAdminFee.value));
+
+const tpFilteredMenus = computed(() => {
+    if (!tpMenuSearch.value.trim()) return tpMenus.value;
+    const q = tpMenuSearch.value.toLowerCase();
+    return tpMenus.value.filter(m => m.name.toLowerCase().includes(q));
+});
+
+const tpCartItemCount = (menuId: number) =>
+    tpCart.value.find(i => i.menu_id === menuId)?.amount ?? 0;
+
+const fetchTpMenus = async () => {
+    tpMenus.value = [];
+    tpCart.value  = [];
+    tpMenuSearch.value = '';
+    if (!tpCafeId.value) return;
+    tpMenuLoading.value = true;
+    try {
+        const { data } = await axios.get(`/transaction/cashier/menus-by-cafe?cafe_id=${tpCafeId.value}`);
+        tpMenus.value = data;
+    } catch (e: any) {
+        notyf.error('Gagal memuat menu.');
+    } finally {
+        tpMenuLoading.value = false;
+    }
+};
+
+watch(tpCafeId, fetchTpMenus);
+
+const addToTpCart = (menu: TpMenu) => {
+    const existing = tpCart.value.find(i => i.menu_id === menu.id);
+    if (existing) {
+        existing.amount++;
+    } else {
+        tpCart.value.push({ menu_id: menu.id, name: menu.name, price: Number(menu.price), amount: 1 });
+    }
+};
+
+const removeFromTpCart = (menuId: number) => {
+    const idx = tpCart.value.findIndex(i => i.menu_id === menuId);
+    if (idx === -1) return;
+    if (tpCart.value[idx].amount > 1) tpCart.value[idx].amount--;
+    else tpCart.value.splice(idx, 1);
+};
+
+const openThirdPartyModal = () => {
+    tpCafeId.value    = '';
+    tpChannelId.value = '';
+    tpCustName.value  = '';
+    tpReference.value = '';
+    tpMenus.value     = [];
+    tpCart.value      = [];
+    tpMenuSearch.value = '';
+    showThirdPartyModal.value = true;
+};
+
+const closeThirdPartyModal = () => {
+    showThirdPartyModal.value = false;
+};
+
+const submitThirdPartyOrder = () => {
+    if (!tpCafeId.value) { notyf.error('Pilih cafe terlebih dahulu.'); return; }
+    if (!tpChannelId.value) { notyf.error('Pilih saluran pihak ketiga.'); return; }
+    if (tpCart.value.length === 0) { notyf.error('Tambahkan minimal 1 menu ke pesanan.'); return; }
+
+    tpSubmitting.value = true;
+    router.post('/transaction/cashier/third-party', {
+        cafe_id:                 Number(tpCafeId.value),
+        third_party_channel_id:  Number(tpChannelId.value),
+        cust_name:               tpCustName.value || null,
+        third_party_reference:   tpReference.value || null,
+        details:                 tpCart.value.map(i => ({ menu_id: i.menu_id, amount: i.amount })),
+    }, {
+        onFinish:  () => { tpSubmitting.value = false; },
+        onSuccess: () => { showThirdPartyModal.value = false; },
+        onError:   (e) => { notyf.error(Object.values(e)[0] as string || 'Terjadi kesalahan.'); },
+    });
+};
 
 // ── Notification toast ────────────────────────────────────────────────────
 const notyf = new Notyf({
@@ -652,7 +775,18 @@ onUnmounted(() => {
             <div class="max-w-7xl mx-auto px-6 space-y-8">
 
                 <!-- Header -->
-                <Heading variant="small" title="Cashier" description="Kelola transaksi pending manual dan in order." />
+                <div class="flex items-center justify-between flex-wrap gap-3">
+                    <Heading variant="small" title="Cashier" description="Kelola transaksi pending manual dan in order." />
+                    <button
+                        v-if="thirdPartyChannels.length > 0"
+                        type="button"
+                        @click="openThirdPartyModal"
+                        class="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition shadow-sm"
+                    >
+                        <ShoppingBag :size="16" />
+                        Buat Pesanan Online
+                    </button>
+                </div>
 
                 <!-- Audio unlock banner -->
                 <div v-if="!userHasInteracted"
@@ -1015,4 +1149,231 @@ onUnmounted(() => {
             </div>
         </div>
     </AppLayout>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  MODAL: BUAT PESANAN PIHAK KETIGA                               -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+        <div
+            v-if="showThirdPartyModal"
+            class="fixed inset-0 z-50 flex"
+        >
+            <!-- Backdrop -->
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeThirdPartyModal" />
+
+            <!-- Panel -->
+            <div class="relative z-10 m-auto w-full max-w-6xl h-[90vh] bg-background rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
+
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between px-6 py-4 border-b bg-orange-50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center">
+                            <ShoppingBag class="text-orange-600" :size="18" />
+                        </div>
+                        <div>
+                            <h2 class="font-semibold text-base">Buat Pesanan Pihak Ketiga</h2>
+                            <p class="text-xs text-muted-foreground">GoFood, GrabFood, ShopeeFood, dll.</p>
+                        </div>
+                    </div>
+                    <button @click="closeThirdPartyModal" type="button"
+                        class="cursor-pointer text-muted-foreground hover:text-foreground transition p-1 rounded-lg hover:bg-muted">
+                        <X :size="20" />
+                    </button>
+                </div>
+
+                <!-- Modal Body: two columns -->
+                <div class="flex flex-1 overflow-hidden">
+
+                    <!-- LEFT: Menu Grid -->
+                    <div class="flex-1 flex flex-col border-r overflow-hidden">
+
+                        <!-- Config bar (Cafe + Channel selectors) -->
+                        <div class="px-5 py-4 border-b bg-muted/30 space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <!-- Pilih Cafe -->
+                                <div class="grid gap-1">
+                                    <label class="text-xs font-medium text-muted-foreground">Pilih Cafe</label>
+                                    <select v-model="tpCafeId"
+                                        class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                        <option value="">-- Pilih Cafe --</option>
+                                        <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">{{ cafe.name }}</option>
+                                    </select>
+                                </div>
+
+                                <!-- Pilih Saluran -->
+                                <div class="grid gap-1">
+                                    <label class="text-xs font-medium text-muted-foreground">Saluran Pihak Ketiga</label>
+                                    <select v-model="tpChannelId"
+                                        class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                        <option value="">-- Pilih Saluran --</option>
+                                        <option v-for="ch in thirdPartyChannels" :key="ch.id" :value="ch.id">
+                                            {{ ch.name }} (Admin: {{ formatCurrency(ch.admin_fee) }})
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Search Menu -->
+                            <input
+                                v-model="tpMenuSearch"
+                                type="text"
+                                placeholder="Cari menu..."
+                                :disabled="!tpCafeId"
+                                class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-40"
+                            />
+                        </div>
+
+                        <!-- Menu Grid -->
+                        <div class="flex-1 overflow-y-auto p-4">
+                            <!-- Loading state -->
+                            <div v-if="tpMenuLoading" class="flex items-center justify-center h-40 text-muted-foreground text-sm">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-4 h-4 rounded-full border-2 border-orange-400 border-t-transparent animate-spin"></div>
+                                    Memuat menu...
+                                </div>
+                            </div>
+
+                            <!-- Empty: no cafe selected -->
+                            <div v-else-if="!tpCafeId" class="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                                <ChevronLeft :size="32" class="mb-2 opacity-30" />
+                                <p class="text-sm">Pilih cafe untuk menampilkan menu</p>
+                            </div>
+
+                            <!-- Empty: no menus found -->
+                            <div v-else-if="tpFilteredMenus.length === 0" class="flex items-center justify-center h-40 text-muted-foreground text-sm">
+                                Tidak ada menu ditemukan.
+                            </div>
+
+                            <!-- Menu cards grid -->
+                            <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <button
+                                    v-for="menu in tpFilteredMenus"
+                                    :key="menu.id"
+                                    type="button"
+                                    @click="addToTpCart(menu)"
+                                    class="group relative cursor-pointer text-left rounded-xl border bg-background hover:border-orange-400 hover:shadow-md transition-all overflow-hidden"
+                                >
+                                    <!-- Badge qty di cart -->
+                                    <div
+                                        v-if="tpCartItemCount(menu.id) > 0"
+                                        class="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-orange-500 text-white text-[11px] font-bold flex items-center justify-center shadow"
+                                    >
+                                        {{ tpCartItemCount(menu.id) }}
+                                    </div>
+
+                                    <!-- Image -->
+                                    <div class="aspect-[4/3] bg-muted overflow-hidden">
+                                        <img
+                                            v-if="menu.img_url"
+                                            :src="menu.img_url"
+                                            :alt="menu.name"
+                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                        <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground/40">
+                                            <ShoppingBag :size="28" />
+                                        </div>
+                                    </div>
+
+                                    <!-- Info -->
+                                    <div class="p-3">
+                                        <p class="text-xs font-semibold leading-tight line-clamp-2">{{ menu.name }}</p>
+                                        <p class="text-xs text-orange-600 font-bold mt-1">{{ formatCurrency(menu.price) }}</p>
+                                        <p v-if="menu.category" class="text-[10px] text-muted-foreground mt-0.5">{{ menu.category.name }}</p>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Cart + Summary -->
+                    <div class="w-80 flex flex-col bg-muted/20">
+
+                        <!-- Cart Header -->
+                        <div class="px-5 py-4 border-b">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-semibold">Pesanan</h3>
+                                <span class="text-xs text-muted-foreground">{{ tpCart.length }} item</span>
+                            </div>
+                        </div>
+
+                        <!-- Cart Items -->
+                        <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+                            <div v-if="tpCart.length === 0" class="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                                <ShoppingBag :size="28" class="mb-2 opacity-30" />
+                                <p class="text-xs">Belum ada menu dipilih</p>
+                            </div>
+
+                            <div
+                                v-for="item in tpCart"
+                                :key="item.menu_id"
+                                class="flex items-center gap-2 bg-background rounded-xl px-3 py-2.5 border"
+                            >
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-medium truncate">{{ item.name }}</p>
+                                    <p class="text-[11px] text-orange-600 font-semibold">{{ formatCurrency(item.price) }}</p>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button @click="removeFromTpCart(item.menu_id)" type="button"
+                                        class="cursor-pointer w-6 h-6 flex items-center justify-center rounded-md bg-muted hover:bg-red-100 hover:text-red-600 transition">
+                                        <MinusIcon :size="12" />
+                                    </button>
+                                    <span class="w-6 text-center text-xs font-bold">{{ item.amount }}</span>
+                                    <button @click="addToTpCart({ id: item.menu_id, name: item.name, price: String(item.price), menu_category_id: null, img_url: null, is_combo: false })" type="button"
+                                        class="cursor-pointer w-6 h-6 flex items-center justify-center rounded-md bg-muted hover:bg-green-100 hover:text-green-600 transition">
+                                        <Plus :size="12" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Extra fields -->
+                        <div class="px-4 py-3 border-t space-y-2">
+                            <div class="grid gap-1">
+                                <label class="text-[11px] font-medium text-muted-foreground">Nama Pelanggan (opsional)</label>
+                                <input v-model="tpCustName" type="text" placeholder="Cth: Order #GoFood-001"
+                                    class="w-full px-3 py-1.5 text-xs rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                            </div>
+                            <div class="grid gap-1">
+                                <label class="text-[11px] font-medium text-muted-foreground">No. Pesanan Platform (opsional)</label>
+                                <input v-model="tpReference" type="text" placeholder="Cth: GF-12345678"
+                                    class="w-full px-3 py-1.5 text-xs rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                            </div>
+                        </div>
+
+                        <!-- Price Summary -->
+                        <div class="px-5 py-4 border-t space-y-2">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-muted-foreground">Subtotal Menu</span>
+                                <span class="font-medium">{{ formatCurrency(tpSubtotal) }}</span>
+                            </div>
+                            <div v-if="selectedChannel" class="flex justify-between text-sm">
+                                <span class="text-muted-foreground">Admin {{ selectedChannel.name }}</span>
+                                <span class="text-amber-600 font-medium">+ {{ formatCurrency(tpAdminFee) }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm pt-2 border-t">
+                                <span class="font-semibold">Total Tagihan</span>
+                                <span class="font-bold text-orange-600 text-base">{{ formatCurrency(tpTotal) }}</span>
+                            </div>
+                            <p class="text-[10px] text-muted-foreground">*Biaya admin <strong>tidak dihitung</strong> sebagai omset</p>
+
+                            <!-- Submit -->
+                            <button
+                                @click="submitThirdPartyOrder"
+                                type="button"
+                                :disabled="tpSubmitting || tpCart.length === 0 || !tpCafeId || !tpChannelId"
+                                class="cursor-pointer w-full mt-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <div v-if="tpSubmitting" class="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
+                                <CheckCircle v-else :size="16" />
+                                {{ tpSubmitting ? 'Memproses...' : 'Proses Pesanan' }}
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </Teleport>
+
 </template>

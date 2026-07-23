@@ -9,6 +9,7 @@ use App\Http\Controllers\Dashboard\Master\MenuController;
 use App\Http\Controllers\Dashboard\Master\CafePromoController;
 use App\Http\Controllers\Dashboard\Master\PromoBannerController;
 use App\Http\Controllers\Dashboard\Master\SemiFinishedMaterialController;
+use App\Http\Controllers\Dashboard\Master\ThirdPartyChannelController;
 use App\Http\Controllers\Dashboard\Master\UnitController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageAdminController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageCashierController;
@@ -162,6 +163,13 @@ Route::middleware(['auth'])->group(function () {
 
         Route::resource('semi-finished-material', SemiFinishedMaterialController::class)
             ->except(['show'])->middleware('can:master.material.view');
+
+        Route::resource('third-party-channel', ThirdPartyChannelController::class)
+            ->except(['show', 'create', 'edit'])
+            ->middleware('can:master.menu.view');
+        Route::patch('third-party-channel/{id}/toggle-status', [ThirdPartyChannelController::class, 'toggleStatus'])
+            ->name('third-party-channel.toggle-status')
+            ->middleware('can:master.menu.update');
     });
 
     Route::prefix('user-management')->name('user-management.')->group(function () {
@@ -308,6 +316,12 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('can:transaction.cashier');
         Route::get('cashier/{id}/receipt-data', [CashierController::class, 'receiptData'])
             ->name('cashier.receipt-data')
+            ->middleware('can:transaction.cashier');
+        Route::get('cashier/menus-by-cafe', [CashierController::class, 'getMenusByCafe'])
+            ->name('cashier.menus-by-cafe')
+            ->middleware('can:transaction.cashier');
+        Route::post('cashier/third-party', [CashierController::class, 'storeThirdParty'])
+            ->name('cashier.third-party.store')
             ->middleware('can:transaction.cashier');
         Route::get('cashier/search-qr/{qr_code}', [CashierController::class, 'searchByQRCode'])
             ->name('search-qr')

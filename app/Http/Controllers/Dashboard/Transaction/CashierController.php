@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\MaterialInboundOutbound;
 use App\Models\MaterialVariant;
 use App\Models\MCafe;
+use App\Models\MMenu;
 use App\Models\MMaterial;
+use App\Models\ThirdPartyChannel;
 use App\Models\Transaction;
 use App\Services\TransactionService;
 use App\Models\TransactionDetail;
@@ -91,6 +93,7 @@ class CashierController extends Controller
             'filters'                     => [
                 'cafe_id' => $cafeId ?? '',
             ],
+            'thirdPartyChannels' => ThirdPartyChannel::where('is_active', true)->orderBy('name')->get(['id', 'name', 'admin_fee']),
         ]);
     }
 
@@ -420,5 +423,98 @@ class CashierController extends Controller
         });
 
         return response()->json($transaction);
+    }
+
+    /**
+     * GET /transaction/cashier/menus-by-cafe?cafe_id=X
+     * Mengembalikan daftar menu berdasarkan cafe untuk keperluan kasir pihak ketiga.
+     */
+    public function getMenusByCafe(Request $request)
+    {
+        $cafeId = $request->input('cafe_id');
+        if (!$cafeId) {
+            return response()->json([]);
+        }
+
+        $menus = MMenu::where('cafe_id', $cafeId)
+            ->where('status', 'available')
+            ->with('category:id,name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'price', 'menu_category_id', 'img_url', 'is_combo']);
+
+        return response()->json($menus);
+    }
+
+    /**
+     * POST /transaction/cashier/third-party
+     * Membuat pesanan pihak ketiga langsung dengan status in_order.
+     * Admin fee tidak masuk omset — disimpan terpisah di kolom admin_fee.
+     */
+    public function storeThirdParty(Request $request)
+    {
+        $validated = $request->validate([
+            'cafe_id'                => 'required|exists:m_cafes,id',
+            'third_party_channel_id' => 'required|exists:third_party_channels,id',
+            'cust_name'              => 'nullable|string|max:255',
+            'third_party_reference'  => 'nullable|string|max:255',
+            'details'                => 'required|array|min:1',
+            'details.*.menu_id'      => 'required|exists:m_menus,id',
+            'details.*.amount'       => 'required|integer|min:1',
+            'details.*.description'  => 'nullable|string|max:500',
+        ]);
+
+        $channel = ThirdPartyChannel::findOrFail($validated['third_party_channel_id']);
+        $cafe    = MCafe::findOrFail($validated['cafe_id']);
+
+        $menuIds = collect($validated['details'])->pluck('menu_id')->all();
+        $menus   = MMenu::whereIn('id', $menuIds)->where('cafe_id', $cafe->id)->get();
+
+        if ($menus->count() !== count($menuIds)) {
+            return redirect()->back()->with('error', 'Beberapa menu tidak ditemukan atau bukan milik cafe ini.');
+        }
+
+        // Hitung subtotal (harga murni menu, INI yang jadi omset)
+        $price = 0;
+        foreach ($validated['details'] as $detail) {
+            $menu   = $menus->firstWhere('id', $detail['menu_id']);
+            $price += $menu->price * $detail['amount'];
+        }
+
+        // PPN dari cafe
+        $ppn       = $cafe->ppn_fee > 0 ? ($price * ($cafe->ppn_fee / 100)) : 0;
+        $adminFee  = (float) $channel->admin_fee; // flat per nota, TIDAK masuk omset
+        $totalPrice = floor($price + $ppn + $adminFee);
+
+        DB::transaction(function () use ($validated, $cafe, $channel, $menus, $price, $ppn, $adminFee, $totalPrice) {
+            $transaction = Transaction::create([
+                'cafe_id'                => $cafe->id,
+                'table_id'               => null,
+                'cust_name'              => $validated['cust_name'] ?? $channel->name,
+                'price'                  => $price,
+                'fee'                    => $ppn,
+                'admin_fee'              => $adminFee,
+                'total_price'            => $totalPrice,
+                'payment_type'           => 'third_party',
+                'status'                 => 'in_order', // Langsung in_order
+                'third_party_channel_id' => $channel->id,
+                'third_party_reference'  => $validated['third_party_reference'] ?? null,
+            ]);
+
+            foreach ($validated['details'] as $item) {
+                $menu = $menus->firstWhere('id', $item['menu_id']);
+                $transaction->details()->create([
+                    'menu_id'     => $menu->id,
+                    'amount'      => $item['amount'],
+                    'price'       => $menu->price * $item['amount'],
+                    'description' => $item['description'] ?? null,
+                ]);
+            }
+
+            // Potong stok bahan baku (sama seperti approve manual)
+            TransactionService::pendingAction($transaction);
+        });
+
+        return redirect()->route('transaction.cashier.index')
+            ->with('success', 'Pesanan ' . $channel->name . ' berhasil diproses dan masuk antrian.');
     }
 }

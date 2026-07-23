@@ -16,6 +16,7 @@ class Transaction extends Model
         'cust_name',
         'price',
         'fee',
+        'admin_fee',
         'total_price',
         'payment_type',
         'status',
@@ -26,6 +27,8 @@ class Transaction extends Model
         'expense_date',
         'profit_margin',
         'promo_id',
+        'third_party_channel_id',
+        'third_party_reference',
     ];
 
     protected function casts(): array
@@ -33,6 +36,7 @@ class Transaction extends Model
         return [
             'price' => 'decimal:2',
             'fee' => 'decimal:2',
+            'admin_fee' => 'decimal:2',
             'total_price' => 'decimal:2',
             'profit_margin' => 'decimal:2',
             'is_open_bill' => 'integer',
@@ -74,5 +78,10 @@ class Transaction extends Model
     public function promo(): BelongsTo
     {
         return $this->belongsTo(CafePromo::class, 'promo_id');
+    }
+
+    public function thirdPartyChannel(): BelongsTo
+    {
+        return $this->belongsTo(ThirdPartyChannel::class, 'third_party_channel_id');
     }
 }
