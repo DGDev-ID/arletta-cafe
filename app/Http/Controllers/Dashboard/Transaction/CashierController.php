@@ -521,7 +521,7 @@ class CashierController extends Controller
                 'fee'                    => $ppn,
                 'admin_fee'              => $adminFee,
                 'total_price'            => $totalPrice,
-                'payment_type'           => 'third_party',
+                'payment_type'           => $channel->name,
                 'status'                 => 'pending', // Harus pending dulu agar pendingAction jalan
                 'third_party_channel_id' => $channel->id,
                 'third_party_reference'  => $validated['third_party_reference'] ?? null,

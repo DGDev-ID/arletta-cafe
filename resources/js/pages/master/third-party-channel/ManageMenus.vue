@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { ChevronLeft, Save } from 'lucide-vue-next';
 
 interface Cafe {
@@ -44,6 +44,14 @@ watch(() => props.menus, (newMenus) => {
     // Clone to make it deeply reactive for v-model
     editableMenus.value = newMenus.map(m => ({ ...m }));
 }, { immediate: true });
+
+const searchQuery = ref('');
+
+const filteredMenus = computed(() => {
+    if (!searchQuery.value) return editableMenus.value;
+    const q = searchQuery.value.toLowerCase();
+    return editableMenus.value.filter(m => m.name.toLowerCase().includes(q) || m.category_name.toLowerCase().includes(q));
+});
 
 const changeCafe = () => {
     if (selectedCafeId.value) {
@@ -100,13 +108,21 @@ const submit = () => {
 
                 <!-- Filter & Actions -->
                 <div class="p-5 rounded-2xl bg-background border flex items-end justify-between shadow-sm">
-                    <div class="grid gap-1.5 min-w-[250px]">
-                        <label class="text-xs font-medium text-muted-foreground">Pilih Cafe</label>
-                        <select v-model="selectedCafeId" @change="changeCafe"
-                            class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                            <option value="">-- Pilih Cafe --</option>
-                            <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">{{ cafe.name }}</option>
-                        </select>
+                    <div class="flex flex-col sm:flex-row gap-4 items-end flex-1">
+                        <div class="grid gap-1.5 min-w-[250px]">
+                            <label class="text-xs font-medium text-muted-foreground">Pilih Cafe</label>
+                            <select v-model="selectedCafeId" @change="changeCafe"
+                                class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                <option value="">-- Pilih Cafe --</option>
+                                <option v-for="cafe in cafes" :key="cafe.id" :value="cafe.id">{{ cafe.name }}</option>
+                            </select>
+                        </div>
+
+                        <div class="grid gap-1.5 flex-1 max-w-sm" v-if="selectedCafeId && menus.length > 0">
+                            <label class="text-xs font-medium text-muted-foreground">Cari Menu</label>
+                            <input v-model="searchQuery" type="text" placeholder="Ketik nama menu atau kategori..."
+                                class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                        </div>
                     </div>
 
                     <button v-if="selectedCafeId && menus.length > 0" @click="submit" type="button"
@@ -137,7 +153,7 @@ const submit = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(menu, index) in editableMenus" :key="menu.id"
+                            <tr v-for="(menu, index) in filteredMenus" :key="menu.id"
                                 class="border-t hover:bg-muted/30 transition">
                                 <td class="px-6 py-4 text-muted-foreground">{{ index + 1 }}</td>
                                 <td class="px-6 py-4 text-muted-foreground text-xs">{{ menu.category_name }}</td>
