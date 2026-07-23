@@ -290,17 +290,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('cashier', [CashierController::class, 'index'])
             ->name('cashier.index')
             ->middleware('can:transaction.cashier');
-        Route::get('cashier/{id}', [CashierController::class, 'show'])
-            ->name('cashier.show')
+
+        // ── Rute SPESIFIK (static) harus dideklarasikan SEBELUM wildcard {id} ──
+        Route::get('cashier/menus-by-cafe', [CashierController::class, 'getMenusByCafe'])
+            ->name('cashier.menus-by-cafe')
             ->middleware('can:transaction.cashier');
-        Route::patch('cashier/{id}/success', [CashierController::class, 'makeSuccess'])
-            ->name('cashier.success')
-            ->middleware('can:transaction.cashier');
-        Route::patch('cashier/{id}/failed', [CashierController::class, 'makeFailed'])
-            ->name('cashier.failed')
-            ->middleware('can:transaction.cashier');
-        Route::patch('cashier/{id}/success-in-order', [CashierController::class, 'makeSuccessInOrder'])
-            ->name('cashier.success-in-order')
+        Route::post('cashier/third-party', [CashierController::class, 'storeThirdParty'])
+            ->name('cashier.third-party.store')
             ->middleware('can:transaction.cashier');
         Route::post('cashier/apply-promo', [CashierController::class, 'applyPromo'])
             ->name('cashier.apply-promo')
@@ -314,17 +310,25 @@ Route::middleware(['auth'])->group(function () {
         Route::get('cashier/detail/{id}/receipt-data', [CashierController::class, 'detailReceiptData'])
             ->name('cashier.detail.receipt-data')
             ->middleware('can:transaction.cashier');
-        Route::get('cashier/{id}/receipt-data', [CashierController::class, 'receiptData'])
-            ->name('cashier.receipt-data')
-            ->middleware('can:transaction.cashier');
-        Route::get('cashier/menus-by-cafe', [CashierController::class, 'getMenusByCafe'])
-            ->name('cashier.menus-by-cafe')
-            ->middleware('can:transaction.cashier');
-        Route::post('cashier/third-party', [CashierController::class, 'storeThirdParty'])
-            ->name('cashier.third-party.store')
-            ->middleware('can:transaction.cashier');
         Route::get('cashier/search-qr/{qr_code}', [CashierController::class, 'searchByQRCode'])
             ->name('search-qr')
+            ->middleware('can:transaction.cashier');
+
+        // ── Rute WILDCARD {id} — harus di bawah rute spesifik ──
+        Route::get('cashier/{id}', [CashierController::class, 'show'])
+            ->name('cashier.show')
+            ->middleware('can:transaction.cashier');
+        Route::patch('cashier/{id}/success', [CashierController::class, 'makeSuccess'])
+            ->name('cashier.success')
+            ->middleware('can:transaction.cashier');
+        Route::patch('cashier/{id}/failed', [CashierController::class, 'makeFailed'])
+            ->name('cashier.failed')
+            ->middleware('can:transaction.cashier');
+        Route::patch('cashier/{id}/success-in-order', [CashierController::class, 'makeSuccessInOrder'])
+            ->name('cashier.success-in-order')
+            ->middleware('can:transaction.cashier');
+        Route::get('cashier/{id}/receipt-data', [CashierController::class, 'receiptData'])
+            ->name('cashier.receipt-data')
             ->middleware('can:transaction.cashier');
     });
 
