@@ -93,7 +93,7 @@ class CashierController extends Controller
             'filters'                     => [
                 'cafe_id' => $cafeId ?? '',
             ],
-            'thirdPartyChannels' => ThirdPartyChannel::where('is_active', true)->orderBy('name')->get(['id', 'name', 'admin_fee']),
+            'thirdPartyChannels' => ThirdPartyChannel::where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ]);
     }
 

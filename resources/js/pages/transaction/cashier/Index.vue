@@ -121,7 +121,6 @@ interface TransactionDetailItem {
 interface ThirdPartyChannel {
     id: number;
     name: string;
-    admin_fee: string;
 }
 
 interface TpMenu {
