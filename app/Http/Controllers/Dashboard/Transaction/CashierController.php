@@ -244,6 +244,18 @@ class CashierController extends Controller
     {
         $detail = TransactionDetail::with(['transaction.cafe', 'transaction.table', 'menu'])->findOrFail($id);
 
+        if ($detail->transaction && $detail->transaction->third_party_channel_id) {
+            $pivot = \App\Models\ThirdPartyChannelMenu::where('third_party_channel_id', $detail->transaction->third_party_channel_id)
+                ->where('menu_id', $detail->menu_id)
+                ->first();
+            if ($pivot) {
+                $detail->price += $pivot->admin_fee * $detail->amount;
+                if ($detail->menu) {
+                    $detail->menu->price += $pivot->admin_fee;
+                }
+            }
+        }
+
         $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
 
         return response()->json($detail);
@@ -417,6 +429,25 @@ class CashierController extends Controller
         $transaction = Transaction::whereIn('status', ['in_order', 'success'])
             ->with(['cafe:id,name,address', 'table:id,name', 'details.menu:id,name,price'])
             ->findOrFail($id);
+
+        if ($transaction->third_party_channel_id) {
+            $pivots = \App\Models\ThirdPartyChannelMenu::where('third_party_channel_id', $transaction->third_party_channel_id)
+                ->whereIn('menu_id', $transaction->details->pluck('menu_id'))
+                ->get()
+                ->keyBy('menu_id');
+
+            $transaction->details->each(function ($detail) use ($pivots) {
+                $pivot = $pivots->get($detail->menu_id);
+                if ($pivot) {
+                    $detail->price += $pivot->admin_fee * $detail->amount;
+                    if ($detail->menu) {
+                        $detail->menu->price += $pivot->admin_fee;
+                    }
+                }
+            });
+            
+            $transaction->price += $transaction->admin_fee;
+        }
 
         $transaction->details->each(function ($detail) {
             $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
