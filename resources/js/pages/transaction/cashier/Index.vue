@@ -1286,7 +1286,7 @@ onUnmounted(() => {
                                     <!-- Info -->
                                     <div class="p-3">
                                         <p class="text-xs font-semibold leading-tight line-clamp-2">{{ menu.name }}</p>
-                                        <p class="text-xs text-orange-600 font-bold mt-1">{{ formatCurrency(menu.price) }}</p>
+                                        <p class="text-xs text-orange-600 font-bold mt-1">{{ formatCurrency(Number(menu.price) + Number(menu.admin_fee || 0)) }}</p>
                                         <p v-if="menu.category" class="text-[10px] text-muted-foreground mt-0.5">{{ menu.category.name }}</p>
                                     </div>
                                 </button>
@@ -1319,7 +1319,7 @@ onUnmounted(() => {
                             >
                                 <div class="flex-1 min-w-0">
                                     <p class="text-xs font-medium truncate">{{ item.name }}</p>
-                                    <p class="text-[11px] text-orange-600 font-semibold">{{ formatCurrency(item.price) }}</p>
+                                    <p class="text-[11px] text-orange-600 font-semibold">{{ formatCurrency(item.price + item.admin_fee) }}</p>
                                 </div>
                                 <div class="flex items-center gap-1">
                                     <button @click="removeFromTpCart(item.menu_id)" type="button"
