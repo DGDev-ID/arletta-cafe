@@ -67,7 +67,7 @@ class DashboardController extends Controller
 
         $paymentStats = [];
         foreach ($paymentTypes as $type) {
-            $q = (clone $txBase)->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', $type);
+            $q = $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', $type);
             $paymentStats[$type] = [
                 'count'   => (int)   $q->count(),
                 'revenue' => (float) $q->sum('total_price'),
