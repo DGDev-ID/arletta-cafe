@@ -62,21 +62,17 @@ class DashboardController extends Controller
             ->when($cafeId, fn ($q) => $q->where('cafe_id', $cafeId))
             ->count();
 
-        // Payment method stats (today) — count + revenue nominal
-        $paymentStats = [
-            'qris'   => [
-                'count'   => (int)   $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'qris')->count(),
-                'revenue' => (float) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'qris')->sum('total_price'),
-            ],
-            'debit'  => [
-                'count'   => (int)   $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'debit')->count(),
-                'revenue' => (float) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'debit')->sum('total_price'),
-            ],
-            'manual' => [
-                'count'   => (int)   $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'manual')->count(),
-                'revenue' => (float) $txBase()->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', 'manual')->sum('total_price'),
-            ],
-        ];
+        $thirdPartyChannels = \App\Models\ThirdPartyChannel::where('is_active', true)->pluck('name')->toArray();
+        $paymentTypes = array_merge(['qris', 'debit', 'manual'], $thirdPartyChannels);
+
+        $paymentStats = [];
+        foreach ($paymentTypes as $type) {
+            $q = (clone $txBase)->where('status', 'success')->whereDate('created_at', $today)->where('payment_type', $type);
+            $paymentStats[$type] = [
+                'count'   => (int)   $q->count(),
+                'revenue' => (float) $q->sum('total_price'),
+            ];
+        }
 
         // Revenue last 7 days
         $last7Days = collect(range(6, 0))->map(function ($daysAgo) use ($txBase) {
@@ -696,7 +692,8 @@ class DashboardController extends Controller
             $txBase = $txBase->whereDate('created_at', $date);
         }
 
-        $paymentTypes = ['qris', 'debit', 'manual'];
+        $thirdPartyChannels = \App\Models\ThirdPartyChannel::where('is_active', true)->pluck('name')->toArray();
+        $paymentTypes = array_merge(['qris', 'debit', 'manual'], $thirdPartyChannels);
         $stats = [];
         foreach ($paymentTypes as $type) {
             $q = (clone $txBase)->where('payment_type', $type);

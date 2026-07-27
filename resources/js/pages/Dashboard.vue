@@ -31,11 +31,7 @@ const props = defineProps<{
         totalTables: number;
         occupiedTables: number;
         totalCafes: number;
-        paymentStats: {
-            qris:   { count: number; revenue: number };
-            debit:  { count: number; revenue: number };
-            manual: { count: number; revenue: number };
-        };
+        paymentStats: Record<string, { count: number; revenue: number }>;
     };
     revenueChart: { date: string; revenue: number }[];
     topMenus: any[];
@@ -143,11 +139,7 @@ const paymentFilterWeek  = ref(getCurrentISOWeek());                   // YYYY-W
 const paymentFilterMonth = ref(todayStr.slice(0, 7));                  // YYYY-MM
 const paymentFilterYear  = ref(new Date().getFullYear());              // number
 const isLoadingPayment   = ref(false);
-const paymentStats = ref<{
-    qris:   { count: number; revenue: number };
-    debit:  { count: number; revenue: number };
-    manual: { count: number; revenue: number };
-} | null>(null);
+const paymentStats = ref<Record<string, { count: number; revenue: number }> | null>(null);
 
 // Helper: dapatkan ISO week string (YYYY-Www) untuk hari ini
 function getCurrentISOWeek(): string {
@@ -183,11 +175,7 @@ function getWeekLabel(weekVal: string): string {
 
 // Seed awal dari props (hari ini)
 function seedPaymentStats() {
-    paymentStats.value = {
-        qris:   { ...props.stats.paymentStats.qris },
-        debit:  { ...props.stats.paymentStats.debit },
-        manual: { ...props.stats.paymentStats.manual },
-    };
+    paymentStats.value = JSON.parse(JSON.stringify(props.stats.paymentStats));
 }
 seedPaymentStats();
 
@@ -461,8 +449,8 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                         </div>
                         <div class="min-w-0">
                             <div class="text-xs font-medium text-muted-foreground">QRIS</div>
-                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(paymentStats.qris.revenue) }}</div>
-                            <div class="text-xs text-muted-foreground">{{ paymentStats.qris.count }} transaksi</div>
+                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(paymentStats.qris?.revenue ?? 0) }}</div>
+                            <div class="text-xs text-muted-foreground">{{ paymentStats.qris?.count ?? 0 }} transaksi</div>
                         </div>
                     </div>
                     <!-- Debit -->
@@ -472,8 +460,8 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                         </div>
                         <div class="min-w-0">
                             <div class="text-xs font-medium text-muted-foreground">Debit</div>
-                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(paymentStats.debit.revenue) }}</div>
-                            <div class="text-xs text-muted-foreground">{{ paymentStats.debit.count }} transaksi</div>
+                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(paymentStats.debit?.revenue ?? 0) }}</div>
+                            <div class="text-xs text-muted-foreground">{{ paymentStats.debit?.count ?? 0 }} transaksi</div>
                         </div>
                     </div>
                     <!-- Manual / Cash -->
@@ -483,10 +471,23 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                         </div>
                         <div class="min-w-0">
                             <div class="text-xs font-medium text-muted-foreground">Manual / Cash</div>
-                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(paymentStats.manual.revenue) }}</div>
-                            <div class="text-xs text-muted-foreground">{{ paymentStats.manual.count }} transaksi</div>
+                            <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(paymentStats.manual?.revenue ?? 0) }}</div>
+                            <div class="text-xs text-muted-foreground">{{ paymentStats.manual?.count ?? 0 }} transaksi</div>
                         </div>
                     </div>
+                    <!-- Pihak Ketiga (Third Party Channels) -->
+                    <template v-for="channel in Object.keys(paymentStats).filter(k => !['qris', 'debit', 'manual'].includes(k))" :key="channel">
+                        <div class="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                                <Store class="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-xs font-medium text-muted-foreground">{{ channel }}</div>
+                                <div class="text-xl font-bold leading-tight truncate">{{ formatCurrency(paymentStats[channel]?.revenue ?? 0) }}</div>
+                                <div class="text-xs text-muted-foreground">{{ paymentStats[channel]?.count ?? 0 }} transaksi</div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
 
