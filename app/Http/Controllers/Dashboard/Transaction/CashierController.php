@@ -76,7 +76,7 @@ class CashierController extends Controller
             if ($cafeId) {
                 $q->where('cafe_id', $cafeId);
             }
-        })->with(['transaction.cafe', 'transaction.table', 'menu']);
+        })->where('status', 'pending')->with(['transaction.cafe', 'transaction.table', 'menu']);
 
         $openBillPendingDetails = $openBillDetailsQuery->latest()->get();
         $openBillPendingDetails->each(function ($detail) {
