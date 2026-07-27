@@ -23,6 +23,7 @@ class AddOrderOpenBillController extends ApiBaseController
                 'orders' => ['required', 'array', 'min:1'],
                 'orders.*.menu_id' => ['required', 'integer', 'exists:m_menus,id'],
                 'orders.*.amount' => ['required', 'integer', 'min:1'],
+                'orders.*.description' => ['nullable', 'string', 'max:255'],
             ]);
 
             $table = MCafeTable::find($validated['cafe_table_id']);
@@ -93,7 +94,7 @@ class AddOrderOpenBillController extends ApiBaseController
                         'menu_id' => $menu->id,
                         'amount' => $o['amount'],
                         'price' => $menu->price * $o['amount'],
-                        'description' => null,
+                        'description' => $o['description'] ?? null,
                     ]);
                     $newDetails[] = $detail;
                     $priceAdd += $menu->price * $o['amount'];
