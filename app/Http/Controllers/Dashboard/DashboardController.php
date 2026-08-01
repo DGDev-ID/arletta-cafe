@@ -311,17 +311,17 @@ class DashboardController extends Controller
 
         // ── Title ──────────────────────────────────────────────────────────
         $sheet->setCellValue('A1', 'LAPORAN PRODUK TERJUAL');
-        $sheet->mergeCells('A1:C1');
+        $sheet->mergeCells('A1:D1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         $sheet->setCellValue('A2', 'Periode: ' . $periodLabel);
-        $sheet->mergeCells('A2:C2');
+        $sheet->mergeCells('A2:D2');
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('A2')->getFont()->setSize(10)->setItalic(true);
 
         $sheet->setCellValue('A3', 'Dicetak: ' . now()->format('d M Y, H:i'));
-        $sheet->mergeCells('A3:C3');
+        $sheet->mergeCells('A3:D3');
         $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('A3')->getFont()->setSize(9)->setItalic(true);
 
@@ -335,7 +335,8 @@ class DashboardController extends Controller
 
             $query = TransactionDetail::select(
                     'menu_id',
-                    DB::raw('SUM(transaction_details.amount) as total_sold')
+                    DB::raw('SUM(transaction_details.amount) as total_sold'),
+                    DB::raw('SUM(transaction_details.price * transaction_details.amount) as total_revenue')
                 )
                 ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
                 ->where('transactions.status', 'success')
@@ -359,21 +360,22 @@ class DashboardController extends Controller
                 $menu = MMenu::find($agg->menu_id);
                 if ($menu) {
                     $rows[] = [
-                        'name'       => $menu->name,
-                        'total_sold' => (int) $agg->total_sold,
+                        'name'          => $menu->name,
+                        'total_sold'    => (int) $agg->total_sold,
+                        'total_revenue' => (float) $agg->total_revenue,
                     ];
                 }
             }
 
             // ── Header Row ─────────────────────────────────────────────────────
             $headerRow = $currentRow;
-            $sheet->fromArray(['No', 'Produk', 'QTY Terjual'], null, "A{$headerRow}");
-            $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFont()->setBold(true);
-            $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFill()
+            $sheet->fromArray(['No', 'Produk', 'QTY Terjual', 'Total Pendapatan (Rp)'], null, "A{$headerRow}");
+            $sheet->getStyle("A{$headerRow}:D{$headerRow}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$headerRow}:D{$headerRow}")->getFill()
                 ->setFillType(Fill::FILL_SOLID)
                 ->getStartColor()->setARGB('FF1E3A5F');
-            $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getFont()->getColor()->setARGB('FFFFFFFF');
-            $sheet->getStyle("A{$headerRow}:C{$headerRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("A{$headerRow}:D{$headerRow}")->getFont()->getColor()->setARGB('FFFFFFFF');
+            $sheet->getStyle("A{$headerRow}:D{$headerRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
             // ── Data Rows ──────────────────────────────────────────────────────
             $currentRow++;
@@ -383,17 +385,20 @@ class DashboardController extends Controller
                     $no++,
                     $item['name'],
                     $item['total_sold'],
+                    $item['total_revenue'],
                 ], null, "A{$currentRow}");
 
                 // Alternating row color
                 $fillColor = ($no % 2 === 0) ? 'FFF5F5F5' : 'FFFFFFFF';
-                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getFill()
+                $sheet->getStyle("A{$currentRow}:D{$currentRow}")->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setARGB($fillColor);
 
                 $sheet->getStyle("A{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle("C{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle("C{$currentRow}")->getNumberFormat()->setFormatCode('#,##0');
+                $sheet->getStyle("D{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                $sheet->getStyle("D{$currentRow}")->getNumberFormat()->setFormatCode('#,##0');
 
                 $currentRow++;
             }
@@ -401,39 +406,43 @@ class DashboardController extends Controller
             // ── Total Row ──────────────────────────────────────────────────────
             if (count($rows) > 0) {
                 $totalQty = array_sum(array_column($rows, 'total_sold'));
+                $totalRev = array_sum(array_column($rows, 'total_revenue'));
                 $sheet->setCellValue("A{$currentRow}", 'TOTAL');
                 $sheet->setCellValue("B{$currentRow}", '');
                 $sheet->setCellValue("C{$currentRow}", $totalQty);
-                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getFont()->setBold(true);
-                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getFill()
+                $sheet->setCellValue("D{$currentRow}", $totalRev);
+                $sheet->getStyle("A{$currentRow}:D{$currentRow}")->getFont()->setBold(true);
+                $sheet->getStyle("A{$currentRow}:D{$currentRow}")->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setARGB('FFEFEFEF');
                 $sheet->getStyle("C{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle("C{$currentRow}")->getNumberFormat()->setFormatCode('#,##0');
+                $sheet->getStyle("D{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                $sheet->getStyle("D{$currentRow}")->getNumberFormat()->setFormatCode('#,##0');
                 $sheet->mergeCells("A{$currentRow}:B{$currentRow}");
                 $sheet->getStyle("A{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             } else {
                 $sheet->setCellValue("A{$currentRow}", 'Tidak ada data');
-                $sheet->mergeCells("A{$currentRow}:C{$currentRow}");
-                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getFont()->setItalic(true);
-                $sheet->getStyle("A{$currentRow}:C{$currentRow}")->getFill()
+                $sheet->mergeCells("A{$currentRow}:D{$currentRow}");
+                $sheet->getStyle("A{$currentRow}:D{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("A{$currentRow}:D{$currentRow}")->getFont()->setItalic(true);
+                $sheet->getStyle("A{$currentRow}:D{$currentRow}")->getFill()
                     ->setFillType(Fill::FILL_SOLID)
-                    ->getStartColor()->setARGB('FFF5F5F5');
+                    ->getStartColor()->setARGB('FFF9F9F9');
             }
 
             // ── Borders on entire table ────────────────────────────────────────
-            $sheet->getStyle("A{$headerRow}:C{$currentRow}")->getBorders()->getAllBorders()
+            $sheet->getStyle("A{$headerRow}:D{$currentRow}")->getBorders()->getAllBorders()
                 ->setBorderStyle(Border::BORDER_THIN)
-                ->getColor()->setARGB('FFCCCCCC');
+                ->getColor()->setARGB('FFDDDDDD');
 
             $currentRow += 2; // Spacer
         }
 
-        // ── Column widths ──────────────────────────────────────────────────
         $sheet->getColumnDimension('A')->setWidth(8);
         $sheet->getColumnDimension('B')->setWidth(45);
         $sheet->getColumnDimension('C')->setWidth(16);
+        $sheet->getColumnDimension('D')->setWidth(25);
 
         $filename = 'Produk_Terjual_' . $dateFrom->format('Ymd') . '_' . $dateTo->format('Ymd') . '.xlsx';
 

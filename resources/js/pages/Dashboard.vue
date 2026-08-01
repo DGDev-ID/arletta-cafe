@@ -82,6 +82,8 @@ const isLoadingMenus = ref(false);
 const isExportingMenus = ref(false);
 
 const topMenusToday = ref(props.topMenusToday ?? []);
+const topMenusTotalSold = computed(() => topMenusToday.value.reduce((sum, item) => sum + (Number(item.total_sold) || 0), 0));
+const topMenusTotalRevenue = computed(() => topMenusToday.value.reduce((sum, item) => sum + (Number(item.total_revenue) || 0), 0));
 
 async function fetchTopMenus() {
     try {
@@ -686,6 +688,19 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                     >
                         {{ cat.name }}
                     </button>
+                </div>
+
+                <!-- Summary Totals -->
+                <div v-if="!isLoadingMenus && topMenusToday.length > 0" class="flex flex-wrap items-center gap-4 rounded-md border border-border/50 bg-muted/20 px-4 py-3">
+                    <div class="flex flex-col">
+                        <span class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Total Item Terjual</span>
+                        <span class="text-base font-bold text-primary">{{ topMenusTotalSold }}x</span>
+                    </div>
+                    <div class="h-8 w-px bg-border/60 hidden sm:block"></div>
+                    <div class="flex flex-col">
+                        <span class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Total Pendapatan</span>
+                        <span class="text-base font-bold text-emerald-600 dark:text-emerald-500">{{ formatCurrency(topMenusTotalRevenue) }}</span>
+                    </div>
                 </div>
 
                 <!-- List -->
