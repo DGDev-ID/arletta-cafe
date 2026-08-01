@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { ArrowLeftRight, BookA, BookOpen, Camera, Coffee, Coins, DollarSign, Folder, History, Image, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, Store, User, UserCheck, UserCog, Utensils } from 'lucide-vue-next';
+import { ArrowLeftRight, BookA, BookOpen, Camera, Coffee, Coins, DollarSign, Folder, History, Image, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, Store, User, UserCheck, UserCog, Utensils, MessageSquare } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -77,6 +77,14 @@ const masterDataNavItems: NavItem[] = [
         href: '/master/third-party-channel',
         icon: Store,
         permission: 'master.menu.view',
+    },
+    {
+        title: 'Ulasan Pelanggan',
+        href: '/master/customer-feedback',
+        icon: MessageSquare,
+        // Optional: you can define a specific permission if needed, but for now we skip or use a general one.
+        // If not using permission guard on the view, we can leave it out. Since we didn't add middleware, it's visible.
+        permission: 'master.menu.view', // Use existing permission to ensure only authorized can see Master Data menu
     },
 ];
 

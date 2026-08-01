@@ -11,6 +11,7 @@ use App\Models\MMenu;
 use App\Models\MMenuCategory;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
+use App\Models\CustomerFeedback;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -161,6 +162,16 @@ class DashboardController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        // Recent Feedbacks (for dashboard widget)
+        $recentFeedbacks = CustomerFeedback::with(['transaction:id,unique_code,cafe_id,cust_name,table_id,created_at', 'transaction.cafe:id,name', 'transaction.table:id,name'])
+            ->when($cafeId, fn ($q) => $q->whereHas('transaction', fn ($tq) => $tq->where('cafe_id', $cafeId)))
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
+        $averageRating = CustomerFeedback::when($cafeId, fn ($q) => $q->whereHas('transaction', fn ($tq) => $tq->where('cafe_id', $cafeId)))
+            ->avg('rating');
+
         return inertia('Dashboard', [
             'stats' => [
                 'revenueToday'          => (float) $revenueToday,
@@ -183,6 +194,8 @@ class DashboardController extends Controller
             'parentCategories'   => $parentCategories,
             'cafes'              => $cafes,
             'activeCafeId'       => $cafeId,
+            'recentFeedbacks'    => $recentFeedbacks,
+            'averageRating'      => $averageRating ? round((float) $averageRating, 1) : null,
         ]);
     }
 

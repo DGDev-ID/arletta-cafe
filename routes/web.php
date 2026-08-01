@@ -11,6 +11,7 @@ use App\Http\Controllers\Dashboard\Master\PromoBannerController;
 use App\Http\Controllers\Dashboard\Master\SemiFinishedMaterialController;
 use App\Http\Controllers\Dashboard\Master\ThirdPartyChannelController;
 use App\Http\Controllers\Dashboard\Master\UnitController;
+use App\Http\Controllers\Dashboard\Master\CustomerFeedbackDashboardController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageAdminController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageCashierController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageBackofficeController;
@@ -176,6 +177,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('third-party-channel/{id}/menus', [ThirdPartyChannelController::class, 'updateMenus'])
             ->name('third-party-channel.update-menus')
             ->middleware('can:master.menu.update');
+
+        Route::get('customer-feedback', [CustomerFeedbackDashboardController::class, 'index'])
+            ->name('customer-feedback.index');
     });
 
     Route::prefix('user-management')->name('user-management.')->group(function () {

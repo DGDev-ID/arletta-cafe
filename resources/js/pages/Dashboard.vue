@@ -10,7 +10,8 @@ import { Head, router } from '@inertiajs/vue3';
 import {
     AlertTriangle, Coffee, ShoppingCart, Utensils, Wallet,
     CalendarDays, Building2, CreditCard, Banknote, QrCode, Store,
-    PackagePlus, PackageMinus, TrendingUp, TrendingDown, Download
+    PackagePlus, PackageMinus, TrendingUp, TrendingDown, Download,
+    Star, MessageSquare
 } from 'lucide-vue-next';
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import axios from 'axios';
@@ -41,6 +42,14 @@ const props = defineProps<{
     parentCategories: { id: number; name: string }[];
     cafes: { id: number; name: string }[];
     activeCafeId: number | null;
+    recentFeedbacks: Array<{
+        id: number;
+        rating: number;
+        comment: string | null;
+        created_at: string;
+        transaction: { cust_name: string | null; cafe: { name: string } | null; table: { name: string } | null } | null;
+    }>;
+    averageRating: number | null;
 }>();
 
 const formatCurrency = (value: number) =>
@@ -724,6 +733,71 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
 
             <!-- Recent Transactions -->
             <RecentTransactions :transactions="recentTransactions" />
+
+            <!-- ── Widget Ulasan Pelanggan ──────────────────────────────── -->
+            <div class="rounded-2xl border bg-card overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-4 border-b">
+                    <div class="flex items-center gap-2">
+                        <MessageSquare class="h-4 w-4 text-muted-foreground" />
+                        <h3 class="text-sm font-semibold text-foreground">Ulasan Pelanggan Terbaru</h3>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Average rating badge -->
+                        <div v-if="averageRating" class="flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1">
+                            <Star class="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                            <span class="text-sm font-bold text-amber-600">{{ averageRating }}</span>
+                            <span class="text-xs text-amber-500">/ 5</span>
+                        </div>
+                        <a
+                            href="/master/customer-feedback"
+                            class="text-xs font-medium text-primary hover:underline transition-colors"
+                        >Lihat Semua →</a>
+                    </div>
+                </div>
+
+                <!-- Empty state -->
+                <div v-if="!recentFeedbacks || recentFeedbacks.length === 0" class="py-10 text-center">
+                    <MessageSquare class="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+                    <p class="text-sm text-muted-foreground">Belum ada ulasan dari pelanggan</p>
+                </div>
+
+                <!-- Feedback list -->
+                <div v-else class="divide-y">
+                    <div
+                        v-for="fb in recentFeedbacks"
+                        :key="fb.id"
+                        class="flex items-start gap-3 px-5 py-3.5 hover:bg-muted/20 transition-colors"
+                    >
+                        <!-- Star badge -->
+                        <div class="flex items-center gap-1 shrink-0 rounded-lg bg-amber-50 border border-amber-200 px-2 py-1">
+                            <Star class="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                            <span class="text-xs font-bold text-amber-600">{{ fb.rating }}</span>
+                        </div>
+                        <!-- Content -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <span class="text-sm font-semibold text-foreground">
+                                    {{ fb.transaction?.cust_name || 'Pelanggan Anonim' }}
+                                </span>
+                                <span v-if="fb.transaction?.cafe" class="text-xs text-muted-foreground">
+                                    · {{ fb.transaction.cafe.name }}
+                                </span>
+                                <span v-if="fb.transaction?.table" class="text-xs text-muted-foreground">
+                                    · Meja {{ fb.transaction.table.name }}
+                                </span>
+                            </div>
+                            <p v-if="fb.comment" class="text-xs text-foreground/70 leading-relaxed line-clamp-2">
+                                "{{ fb.comment }}"
+                            </p>
+                            <p v-else class="text-xs text-muted-foreground italic">Tidak ada komentar</p>
+                        </div>
+                        <!-- Date -->
+                        <span class="text-xs text-muted-foreground shrink-0">
+                            {{ new Date(fb.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) }}
+                        </span>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </AppLayout>

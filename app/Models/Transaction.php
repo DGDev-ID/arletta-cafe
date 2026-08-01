@@ -84,4 +84,9 @@ class Transaction extends Model
     {
         return $this->belongsTo(ThirdPartyChannel::class, 'third_party_channel_id');
     }
+
+    public function feedback(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(CustomerFeedback::class);
+    }
 }
