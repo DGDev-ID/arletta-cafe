@@ -123,6 +123,7 @@ class DashboardController extends Controller
                     'name' => $menu->name,
                     'price' => $menu->price,
                     'total_sold' => (int) $agg->total_sold,
+                    'total_revenue' => (float) $agg->total_revenue,
                     'cafe_id' => $menu->cafe_id,
                     'cafe_name' => $menu->cafe?->name ?? null,
                 ]);
@@ -264,6 +265,7 @@ class DashboardController extends Controller
                     'name'                 => $menu->name,
                     'price'                => $menu->price,
                     'total_sold'           => (int) $agg->total_sold,
+                    'total_revenue'        => (float) $agg->total_revenue,
                     'cafe_id'              => $menu->cafe_id,
                     'cafe_name'            => $menu->cafe?->name ?? null,
                     'category_id'          => $menu->category?->id,

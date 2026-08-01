@@ -715,8 +715,10 @@ watch([purchaseDateFrom, purchaseDateTo, selectedCafeId], () => fetchPurchaseSum
                                 {{ m.parent_category_name ?? m.category_name ?? '' }}
                                 <span v-if="m.cafe_name">· {{ m.cafe_name }}</span>
                             </div>
+                        <div class="text-right shrink-0">
+                            <div class="text-sm font-bold text-primary">{{ m.total_sold }}x</div>
+                            <div v-if="m.total_revenue" class="text-[11px] font-semibold text-muted-foreground">{{ formatCurrency(m.total_revenue) }}</div>
                         </div>
-                        <div class="text-sm font-bold shrink-0 text-primary">{{ m.total_sold }}x</div>
                     </div>
                 </div>
 
