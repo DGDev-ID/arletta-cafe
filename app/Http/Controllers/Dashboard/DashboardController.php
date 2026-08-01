@@ -90,7 +90,7 @@ class DashboardController extends Controller
         $topMenus = TransactionDetail::select(
                 'menu_id',
                 DB::raw('SUM(amount) as total_sold'),
-                DB::raw('SUM(price * amount) as total_revenue')
+                DB::raw('SUM(price) as total_revenue')
             )
             ->with('menu:id,name,price,cafe_id', 'menu.cafe:id,name')
             ->whereHas('transaction', fn ($q) => $q->where('status', 'success')
@@ -104,7 +104,7 @@ class DashboardController extends Controller
         $topTodayAggs = TransactionDetail::select(
                 'menu_id',
                 DB::raw('SUM(transaction_details.amount) as total_sold'),
-                DB::raw('SUM(transaction_details.price * transaction_details.amount) as total_revenue')
+                DB::raw('SUM(transaction_details.price) as total_revenue')
             )
             ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
             ->where('transactions.status', 'success')
@@ -233,7 +233,7 @@ class DashboardController extends Controller
         $query = TransactionDetail::select(
                 'menu_id',
                 DB::raw('SUM(transaction_details.amount) as total_sold'),
-                DB::raw('SUM(transaction_details.price * transaction_details.amount) as total_revenue')
+                DB::raw('SUM(transaction_details.price) as total_revenue')
             )
             ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
             ->where('transactions.status', 'success')
@@ -336,7 +336,7 @@ class DashboardController extends Controller
             $query = TransactionDetail::select(
                     'menu_id',
                     DB::raw('SUM(transaction_details.amount) as total_sold'),
-                    DB::raw('SUM(transaction_details.price * transaction_details.amount) as total_revenue')
+                    DB::raw('SUM(transaction_details.price) as total_revenue')
                 )
                 ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
                 ->where('transactions.status', 'success')
