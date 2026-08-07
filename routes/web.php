@@ -293,6 +293,9 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('history/{id}/failed', [HistoryTransactionController::class, 'makeFailed'])
             ->name('history.failed')
             ->middleware('can:transaction.history');
+        Route::patch('history/{id}/toggle-display', [HistoryTransactionController::class, 'toggleDisplay'])
+            ->name('history.toggle-display')
+            ->middleware('can:transaction.history');
         Route::patch('history/detail/{id}/void', [HistoryTransactionController::class, 'voidDetail'])
             ->name('history.detail.void')
             ->middleware('can:transaction.history');

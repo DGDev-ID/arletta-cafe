@@ -23,6 +23,7 @@ interface Transaction {
     payment_type: string;
     status: string;
     updated_at: string;
+    is_display: number;
     cafe: { id: number; name: string };
     table: { id: number; name: string } | null;
 }
@@ -35,7 +36,9 @@ const props = defineProps<{
         payment_type: string;
         date_from: string;
         date_to: string;
+        display_status?: string;
     };
+    isGod: boolean;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -51,6 +54,7 @@ const filterCafe = ref(props.filters.cafe_id);
 const filterPaymentType = ref(props.filters.payment_type);
 const filterDateFrom = ref(props.filters.date_from);
 const filterDateTo = ref(props.filters.date_to);
+const filterDisplayStatus = ref(props.filters.display_status || '');
 
 
 const applyFilters = () => {
@@ -59,6 +63,7 @@ const applyFilters = () => {
     if (filterPaymentType.value) params.payment_type = filterPaymentType.value;
     if (filterDateFrom.value) params.date_from = filterDateFrom.value;
     if (filterDateTo.value) params.date_to = filterDateTo.value;
+    if (filterDisplayStatus.value) params.display_status = filterDisplayStatus.value;
     router.get('/transaction/history', params, { preserveState: true });
 };
 
@@ -67,6 +72,7 @@ const resetFilters = () => {
     filterPaymentType.value = '';
     filterDateFrom.value = '';
     filterDateTo.value = '';
+    filterDisplayStatus.value = '';
     router.get('/transaction/history', {}, { preserveState: true });
 };
 
@@ -76,6 +82,7 @@ const exportXls = (withDetails: boolean) => {
     if (filterPaymentType.value) params.set('payment_type', filterPaymentType.value);
     if (filterDateFrom.value) params.set('date_from', filterDateFrom.value);
     if (filterDateTo.value) params.set('date_to', filterDateTo.value);
+    if (filterDisplayStatus.value) params.set('display_status', filterDisplayStatus.value);
     if (withDetails) params.set('with_details', '1');
 
     window.location.href = `/transaction/history/export?${params.toString()}`;
@@ -95,6 +102,16 @@ const formatDate = (val: string) => {
     const hour = String(d.getHours()).padStart(2, '0');
     const minute = String(d.getMinutes()).padStart(2, '0');
     return `${day}/${month}/${year} ${hour}:${minute}`;
+};
+
+import { EyeOff, Eye as EyeIcon } from 'lucide-vue-next';
+
+const toggleDisplay = (id: number) => {
+    if (confirm('Apakah Anda yakin ingin mengubah status tampilan transaksi ini?')) {
+        router.patch(`/transaction/history/${id}/toggle-display`, {}, {
+            preserveScroll: true,
+        });
+    }
 };
 </script>
 
@@ -191,6 +208,17 @@ const formatDate = (val: string) => {
                                 <input v-model="filterDateTo" type="date" lang="id-ID"
                                     class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                             </div>
+
+                            <!-- Display Status (GOD ONLY) -->
+                            <div class="grid gap-1.5" v-if="props.isGod">
+                                <label class="text-xs font-medium text-muted-foreground">Status Tampilan (GOD)</label>
+                                <select v-model="filterDisplayStatus"
+                                    class="w-full px-3 py-2 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                    <option value="">Semua</option>
+                                    <option value="displayed">Ditampilkan</option>
+                                    <option value="hidden">Disembunyikan</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="flex gap-2 pt-2">
                             <button @click="applyFilters"
@@ -236,7 +264,15 @@ const formatDate = (val: string) => {
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-muted-foreground">{{ formatDate(trx.updated_at) }}</td>
-                                <td class="px-6 py-4 text-right">
+                                <td class="px-6 py-4 text-right space-x-2">
+                                    <button v-if="props.isGod && trx.payment_type === 'manual'" @click="toggleDisplay(trx.id)"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium hover:text-white transition cursor-pointer"
+                                        :class="trx.is_display ? 'bg-orange-100 text-orange-600 hover:bg-orange-500' : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-500'"
+                                        :title="trx.is_display ? 'Sembunyikan' : 'Tampilkan'">
+                                        <EyeOff v-if="trx.is_display" :size="14" />
+                                        <EyeIcon v-else :size="14" />
+                                        {{ trx.is_display ? 'Hide' : 'Show' }}
+                                    </button>
                                     <Link :href="`/transaction/history/${trx.id}`"
                                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium hover:bg-blue-500 hover:text-white transition"
                                         title="Lihat Detail">

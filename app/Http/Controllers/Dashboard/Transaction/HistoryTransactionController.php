@@ -21,8 +21,23 @@ class HistoryTransactionController extends Controller
 {
     public function index(Request $request)
     {
+        $isGod = auth()->user() ? auth()->user()->hasRole('GOD') : false;
+
         $query = Transaction::where('status', 'success')
             ->with(['cafe', 'table']);
+
+        if ($isGod && $request->filled('display_status')) {
+            if ($request->display_status === 'hidden') {
+                $query->where('is_display', 0);
+            } elseif ($request->display_status === 'displayed') {
+                $query->where('is_display', 1);
+            }
+        } elseif (!$isGod) {
+            $query->where('is_display', 1);
+        } else {
+            // For GOD, default can be showing all or showing displayed. Let's just show all for GOD so they can find hidden ones easily, or follow standard and just show displayed unless asked. The request implies default should be is_display = 1, but we added a filter. Let's make it where('is_display', 1) by default even for GOD, and they can use the filter to see hidden.
+            $query->where('is_display', 1);
+        }
 
         if ($request->filled('cafe_id')) {
             $query->where('cafe_id', $request->cafe_id);
@@ -51,7 +66,9 @@ class HistoryTransactionController extends Controller
                 'payment_type' => $request->input('payment_type', ''),
                 'date_from' => $request->input('date_from', ''),
                 'date_to' => $request->input('date_to', ''),
+                'display_status' => $request->input('display_status', ''),
             ],
+            'isGod' => $isGod,
         ]);
     }
 
@@ -108,10 +125,21 @@ class HistoryTransactionController extends Controller
 
     public function export(Request $request)
     {
+        $isGod = auth()->user() ? auth()->user()->hasRole('GOD') : false;
         $withDetails = $request->input('with_details', false);
 
         $query = Transaction::where('status', 'success')
             ->with(['cafe', 'table']);
+
+        if ($isGod && $request->filled('display_status')) {
+            if ($request->display_status === 'hidden') {
+                $query->where('is_display', 0);
+            } elseif ($request->display_status === 'displayed') {
+                $query->where('is_display', 1);
+            }
+        } else {
+            $query->where('is_display', 1);
+        }
 
         if ($withDetails) {
             $query->with(['details.menu']);
@@ -362,5 +390,20 @@ class HistoryTransactionController extends Controller
         });
 
         return redirect()->back()->with('success', 'Qty item berhasil dikurangi 1.');
+    }
+
+    public function toggleDisplay($id)
+    {
+        $transaction = Transaction::findOrFail($id);
+
+        if (!auth()->user()->hasRole('GOD') || $transaction->payment_type !== 'manual') {
+            return redirect()->back()->with('error', 'Aksi tidak diizinkan.');
+        }
+
+        $transaction->update([
+            'is_display' => !$transaction->is_display
+        ]);
+
+        return redirect()->back()->with('success', 'Status tampilan transaksi berhasil diubah.');
     }
 }

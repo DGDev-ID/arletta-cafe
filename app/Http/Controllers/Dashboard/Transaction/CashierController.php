@@ -38,18 +38,22 @@ class CashierController extends Controller
         $pendingQuery = Transaction::where('status', 'pending')
             ->whereIn('payment_type', ['manual', 'debit'])
             ->where('is_open_bill', 0)
+            ->where('is_display', 1)
             ->with(['cafe', 'table']);
 
         // Open-bill pending transactions
         $openBillQuery = Transaction::where('status', 'pending')
             ->where('is_open_bill', 1)
+            ->where('is_display', 1)
             ->with(['cafe', 'table']);
 
         $inOrderQuery = Transaction::where('status', 'in_order')
+            ->where('is_display', 1)
             ->with(['cafe', 'table']);
 
         $successQuery = Transaction::where('status', 'success')
             ->where('updated_at', '>=', now()->subHours(26))
+            ->where('is_display', 1)
             ->with(['cafe', 'table']);
 
         if ($allowedCafeIds !== null) {

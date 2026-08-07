@@ -29,6 +29,7 @@ class Transaction extends Model
         'promo_id',
         'third_party_channel_id',
         'third_party_reference',
+        'is_display',
     ];
 
     protected function casts(): array
@@ -41,6 +42,7 @@ class Transaction extends Model
             'profit_margin' => 'decimal:2',
             'is_open_bill' => 'integer',
             'is_expense' => 'integer',
+            'is_display' => 'boolean',
         ];
     }
 

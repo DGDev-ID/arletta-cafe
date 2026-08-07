@@ -14,7 +14,7 @@ class RolePermissionController extends Controller
 {
     public function index()
     {
-        $roles = Role::all();
+        $roles = Role::where('name', '!=', 'GOD')->get();
         $permissions = Permission::all();
         $rolePermissions = [];
         foreach ($roles as $role) {

@@ -10,7 +10,9 @@ class ManageUserController extends Controller
 {
     public function index(Request $request)
     {
-        $data = User::with('roles')->paginate(10);
+        $data = User::whereDoesntHave('roles', function ($q) {
+            $q->where('name', 'GOD');
+        })->with('roles')->paginate(10);
         // Add roles as array for each user
         $data->getCollection()->transform(function ($user) {
             $user->roles = $user->getRoleNames();
