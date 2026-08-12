@@ -255,9 +255,15 @@ class CashierController extends Controller
                 ->where('menu_id', $detail->menu_id)
                 ->first();
             if ($pivot) {
-                $detail->price += $pivot->admin_fee * $detail->amount;
-                if ($detail->menu) {
-                    $detail->menu->price += $pivot->admin_fee;
+                if ($pivot->is_manual_price) {
+                    if ($detail->menu) {
+                        $detail->menu->price = $pivot->override_price;
+                    }
+                } else {
+                    $detail->price += $pivot->admin_fee * $detail->amount;
+                    if ($detail->menu) {
+                        $detail->menu->price += $pivot->admin_fee;
+                    }
                 }
             }
         }
@@ -445,9 +451,15 @@ class CashierController extends Controller
             $transaction->details->each(function ($detail) use ($pivots) {
                 $pivot = $pivots->get($detail->menu_id);
                 if ($pivot) {
-                    $detail->price += $pivot->admin_fee * $detail->amount;
-                    if ($detail->menu) {
-                        $detail->menu->price += $pivot->admin_fee;
+                    if ($pivot->is_manual_price) {
+                        if ($detail->menu) {
+                            $detail->menu->price = $pivot->override_price;
+                        }
+                    } else {
+                        $detail->price += $pivot->admin_fee * $detail->amount;
+                        if ($detail->menu) {
+                            $detail->menu->price += $pivot->admin_fee;
+                        }
                     }
                 }
             });
@@ -487,13 +499,24 @@ class CashierController extends Controller
             })->select(
                 'm_menus.id', 'm_menus.name', 'm_menus.price', 
                 'm_menus.menu_category_id', 'm_menus.img_url', 'm_menus.is_combo',
-                'third_party_channel_menus.admin_fee'
+                'third_party_channel_menus.admin_fee',
+                'third_party_channel_menus.is_manual_price',
+                'third_party_channel_menus.override_price'
             );
         } else {
             $query->select('id', 'name', 'price', 'menu_category_id', 'img_url', 'is_combo');
         }
 
         $menus = $query->get();
+        if ($channelId) {
+            $menus->each(function ($menu) {
+                $isManual = filter_var($menu->is_manual_price, FILTER_VALIDATE_BOOLEAN);
+                if ($isManual) {
+                    $menu->price = $menu->override_price;
+                    $menu->admin_fee = 0;
+                }
+            });
+        }
         return response()->json($menus);
     }
 
@@ -537,19 +560,28 @@ class CashierController extends Controller
         
         foreach ($validated['details'] as $detail) {
             $menu   = $menus->firstWhere('id', $detail['menu_id']);
-            $price += $menu->price * $detail['amount'];
+            $pivot  = $pivots->get($detail['menu_id']);
             
-            $pivot = $pivots->get($detail['menu_id']);
+            $itemPrice = $menu->price;
+            $itemAdminFee = 0;
+            
             if ($pivot) {
-                $adminFee += $pivot->admin_fee * $detail['amount'];
+                if ($pivot->is_manual_price) {
+                    $itemPrice = $pivot->override_price;
+                } else {
+                    $itemAdminFee = $pivot->admin_fee;
+                }
             }
+
+            $price += $itemPrice * $detail['amount'];
+            $adminFee += $itemAdminFee * $detail['amount'];
         }
 
         // PPN dari cafe
         $ppn       = $cafe->ppn_fee > 0 ? ($price * ($cafe->ppn_fee / 100)) : 0;
         $totalPrice = floor($price + $ppn + $adminFee);
 
-        DB::transaction(function () use ($validated, $cafe, $channel, $menus, $price, $ppn, $adminFee, $totalPrice) {
+        DB::transaction(function () use ($validated, $cafe, $channel, $menus, $price, $ppn, $adminFee, $totalPrice, $pivots) {
             $transaction = Transaction::create([
                 'cafe_id'                => $cafe->id,
                 'table_id'               => null,
@@ -566,10 +598,16 @@ class CashierController extends Controller
 
             foreach ($validated['details'] as $item) {
                 $menu = $menus->firstWhere('id', $item['menu_id']);
+                $pivot = $pivots->get($item['menu_id']);
+                $itemPrice = $menu->price;
+                if ($pivot && $pivot->is_manual_price) {
+                    $itemPrice = $pivot->override_price;
+                }
+
                 $transaction->details()->create([
                     'menu_id'     => $menu->id,
                     'amount'      => $item['amount'],
-                    'price'       => $menu->price * $item['amount'],
+                    'price'       => $itemPrice * $item['amount'],
                     'description' => $item['description'] ?? null,
                 ]);
             }
