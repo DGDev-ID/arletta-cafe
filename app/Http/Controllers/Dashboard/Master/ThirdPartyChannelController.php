@@ -137,7 +137,7 @@ class ThirdPartyChannelController extends Controller
                         'menu_id'                => $menuItem['menu_id'],
                     ],
                     [
-                        'admin_fee'       => $isManual ? null : $adminFee,
+                        'admin_fee'       => $isManual ? 0 : $adminFee,
                         'is_manual_price' => $isManual,
                         'override_price'  => $isManual ? $overridePrice : null,
                     ]
