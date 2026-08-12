@@ -17,6 +17,8 @@ interface Menu {
     category_name: string;
     price: string | number;
     admin_fee: string | number | null;
+    is_manual_price: boolean;
+    override_price: string | number | null;
 }
 
 const props = defineProps<{
@@ -84,14 +86,38 @@ const changeCafe = () => {
     }
 };
 
+/**
+ * Saat toggle manual diubah, reset field yang tidak relevan
+ */
+const onToggleManual = (menu: Menu) => {
+    if (menu.is_manual_price) {
+        // Mode manual aktif: kosongkan admin_fee
+        menu.admin_fee = null;
+    } else {
+        // Mode manual dimatikan: kosongkan override_price
+        menu.override_price = null;
+    }
+};
+
+/**
+ * Hitung total harga tampilan di kolom "Total Harga Jual Platform"
+ * Dipakai hanya untuk mode normal (bukan manual)
+ */
+const computedTotal = (menu: Menu): number | null => {
+    if (menu.admin_fee === null || menu.admin_fee === '') return null;
+    return Number(menu.price) + Number(menu.admin_fee);
+};
+
 const submit = () => {
     if (!selectedCafeId.value) return;
 
     const payload = {
         cafe_id: selectedCafeId.value,
         menus: editableMenus.value.map(m => ({
-            menu_id: m.id,
-            admin_fee: m.admin_fee
+            menu_id:         m.id,
+            admin_fee:       m.is_manual_price ? null : m.admin_fee,
+            is_manual_price: m.is_manual_price,
+            override_price:  m.is_manual_price ? m.override_price : null,
         }))
     };
 
@@ -109,7 +135,7 @@ const submit = () => {
         <Head :title="`Kelola Menu - ${channel.name}`" />
 
         <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-5xl mx-auto px-6 space-y-6">
+            <div class="max-w-6xl mx-auto px-6 space-y-6">
 
                 <!-- Header -->
                 <div class="flex items-center gap-4 mb-2">
@@ -118,7 +144,7 @@ const submit = () => {
                         <ChevronLeft :size="20" />
                     </Link>
                     <Heading variant="small" :title="`Kelola Harga: ${channel.name}`"
-                        description="Atur biaya admin (markup) untuk setiap menu. Kosongkan harga admin jika menu tidak tersedia di saluran ini." />
+                        description="Atur biaya admin (markup) untuk setiap menu. Aktifkan 'Set Manual' untuk mengisi harga jual platform secara bebas." />
                 </div>
 
                 <!-- Filter & Actions -->
@@ -146,6 +172,18 @@ const submit = () => {
                     </button>
                 </div>
 
+                <!-- Legend -->
+                <div v-if="selectedCafeId && menus.length > 0" class="flex items-center gap-6 px-1 text-xs text-muted-foreground">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-3 h-3 rounded-full bg-orange-400"></span>
+                        <span>Mode Normal: Harga Asli + Admin Fee = Total</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-3 h-3 rounded-full bg-blue-500"></span>
+                        <span>Mode Manual: Isi Total Harga Jual secara bebas</span>
+                    </div>
+                </div>
+
                 <!-- Menu List -->
                 <div v-if="!selectedCafeId" class="py-20 text-center text-muted-foreground bg-background rounded-2xl border border-dashed">
                     Pilih Cafe terlebih dahulu untuk menampilkan daftar menu.
@@ -159,33 +197,90 @@ const submit = () => {
                     <table class="min-w-full text-sm">
                         <thead class="bg-muted/50">
                             <tr class="text-muted-foreground">
-                                <th class="px-6 py-4 text-left font-medium w-16">No</th>
-                                <th class="px-6 py-4 text-left font-medium">Kategori</th>
-                                <th class="px-6 py-4 text-left font-medium">Nama Menu</th>
-                                <th class="px-6 py-4 text-left font-medium">Harga Asli (Dine-in)</th>
-                                <th class="px-6 py-4 text-left font-medium">Harga Tambahan (Admin Pihak Ketiga)</th>
-                                <th class="px-6 py-4 text-left font-medium">Total Harga Jual Platform</th>
+                                <th class="px-4 py-4 text-left font-medium w-12">No</th>
+                                <th class="px-4 py-4 text-left font-medium">Kategori</th>
+                                <th class="px-4 py-4 text-left font-medium">Nama Menu</th>
+                                <th class="px-4 py-4 text-left font-medium">Harga Asli (Dine-in)</th>
+                                <th class="px-4 py-4 text-center font-medium w-32">
+                                    <div class="flex flex-col items-center gap-0.5">
+                                        <span>Set Manual</span>
+                                        <span class="text-[10px] font-normal text-muted-foreground/70 normal-case">Harga bebas</span>
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-left font-medium">Harga Tambahan (Admin)</th>
+                                <th class="px-4 py-4 text-left font-medium">Total Harga Jual Platform</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="(menu, index) in paginatedMenus" :key="menu.id"
-                                class="border-t hover:bg-muted/30 transition">
-                                <td class="px-6 py-4 text-muted-foreground">{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
-                                <td class="px-6 py-4 text-muted-foreground text-xs">{{ menu.category_name }}</td>
-                                <td class="px-6 py-4 font-semibold">{{ menu.name }}</td>
-                                <td class="px-6 py-4">{{ formatCurrency(menu.price) }}</td>
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center gap-2 max-w-[200px]">
+                                :class="menu.is_manual_price ? 'border-t bg-blue-50/40 hover:bg-blue-50/60 dark:bg-blue-950/20 dark:hover:bg-blue-950/30' : 'border-t hover:bg-muted/30'"
+                                class="transition">
+                                <!-- No -->
+                                <td class="px-4 py-4 text-muted-foreground text-xs">{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
+                                <!-- Kategori -->
+                                <td class="px-4 py-4 text-muted-foreground text-xs">{{ menu.category_name }}</td>
+                                <!-- Nama Menu -->
+                                <td class="px-4 py-4 font-semibold">{{ menu.name }}</td>
+                                <!-- Harga Asli -->
+                                <td class="px-4 py-4 text-muted-foreground">{{ formatCurrency(menu.price) }}</td>
+
+                                <!-- Toggle Set Manual -->
+                                <td class="px-4 py-4 text-center">
+                                    <label :for="`toggle-manual-${menu.id}`" class="inline-flex items-center cursor-pointer">
+                                        <div class="relative">
+                                            <input
+                                                :id="`toggle-manual-${menu.id}`"
+                                                type="checkbox"
+                                                v-model="menu.is_manual_price"
+                                                @change="onToggleManual(menu)"
+                                                class="sr-only peer"
+                                            />
+                                            <div class="w-10 h-5 bg-muted rounded-full peer peer-checked:bg-blue-500 transition-colors duration-200 ease-in-out border border-border"></div>
+                                            <div class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ease-in-out peer-checked:translate-x-5"></div>
+                                        </div>
+                                    </label>
+                                </td>
+
+                                <!-- Harga Tambahan (Admin Fee) - disabled jika manual -->
+                                <td class="px-4 py-4">
+                                    <div class="flex items-center gap-2 max-w-[180px]">
                                         <span class="text-sm font-medium text-muted-foreground">Rp</span>
-                                        <input type="number" min="0" step="100" v-model="menu.admin_fee" placeholder="Kosong = Tidak dijual"
-                                            class="w-full px-3 py-1.5 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-orange-600 font-semibold" />
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="100"
+                                            v-model="menu.admin_fee"
+                                            placeholder="Kosong = Tidak dijual"
+                                            :disabled="menu.is_manual_price"
+                                            :class="menu.is_manual_price
+                                                ? 'w-full px-3 py-1.5 text-sm rounded-lg border bg-muted/50 text-muted-foreground/50 cursor-not-allowed'
+                                                : 'w-full px-3 py-1.5 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-orange-600 font-semibold'"
+                                        />
                                     </div>
                                 </td>
-                                <td class="px-6 py-4">
-                                    <span v-if="menu.admin_fee !== null && menu.admin_fee !== ''" class="font-bold text-lg text-emerald-600">
-                                        {{ formatCurrency(Number(menu.price) + Number(menu.admin_fee)) }}
-                                    </span>
-                                    <span v-else class="text-xs text-muted-foreground italic">Tidak tersedia</span>
+
+                                <!-- Total Harga Jual Platform -->
+                                <td class="px-4 py-4">
+                                    <!-- MODE MANUAL: input bebas -->
+                                    <div v-if="menu.is_manual_price" class="flex items-center gap-2 max-w-[180px]">
+                                        <span class="text-sm font-medium text-blue-500">Rp</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="500"
+                                            v-model="menu.override_price"
+                                            placeholder="Isi harga jual..."
+                                            class="w-full px-3 py-1.5 text-sm rounded-lg border-2 border-blue-400 bg-background focus:outline-none focus:ring-2 focus:ring-blue-400 text-blue-600 font-bold"
+                                        />
+                                    </div>
+
+                                    <!-- MODE NORMAL: tampilkan kalkulasi otomatis -->
+                                    <template v-else>
+                                        <span v-if="computedTotal(menu) !== null" class="font-bold text-lg text-emerald-600">
+                                            {{ formatCurrency(computedTotal(menu)!) }}
+                                        </span>
+                                        <span v-else class="text-xs text-muted-foreground italic">Tidak tersedia</span>
+                                    </template>
                                 </td>
                             </tr>
                         </tbody>

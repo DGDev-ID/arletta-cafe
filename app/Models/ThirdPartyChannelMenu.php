@@ -11,6 +11,14 @@ class ThirdPartyChannelMenu extends Model
         'third_party_channel_id',
         'menu_id',
         'admin_fee',
+        'is_manual_price',
+        'override_price',
+    ];
+
+    protected $casts = [
+        'is_manual_price' => 'boolean',
+        'override_price'  => 'float',
+        'admin_fee'       => 'float',
     ];
 
     public function thirdPartyChannel()

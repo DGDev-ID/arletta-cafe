@@ -87,11 +87,13 @@ class ThirdPartyChannelController extends Controller
                         ->first();
                     
                     return [
-                        'id' => $menu->id,
-                        'name' => $menu->name,
-                        'category_name' => $menu->category ? $menu->category->name : '-',
-                        'price' => $menu->price,
-                        'admin_fee' => $pivot ? $pivot->admin_fee : null,
+                        'id'              => $menu->id,
+                        'name'            => $menu->name,
+                        'category_name'   => $menu->category ? $menu->category->name : '-',
+                        'price'           => $menu->price,
+                        'admin_fee'       => $pivot ? $pivot->admin_fee : null,
+                        'is_manual_price' => $pivot ? (bool) $pivot->is_manual_price : false,
+                        'override_price'  => $pivot ? $pivot->override_price : null,
                     ];
                 });
         }
@@ -109,21 +111,35 @@ class ThirdPartyChannelController extends Controller
         $channel = ThirdPartyChannel::findOrFail($id);
         
         $validated = $request->validate([
-            'cafe_id' => 'required|exists:m_cafes,id',
-            'menus' => 'required|array',
-            'menus.*.menu_id' => 'required|exists:m_menus,id',
-            'menus.*.admin_fee' => 'nullable|numeric|min:0',
+            'cafe_id'                   => 'required|exists:m_cafes,id',
+            'menus'                     => 'required|array',
+            'menus.*.menu_id'           => 'required|exists:m_menus,id',
+            'menus.*.admin_fee'         => 'nullable|numeric|min:0',
+            'menus.*.is_manual_price'   => 'nullable|boolean',
+            'menus.*.override_price'    => 'nullable|numeric|min:0',
         ]);
 
         foreach ($validated['menus'] as $menuItem) {
-            if ($menuItem['admin_fee'] !== null && $menuItem['admin_fee'] !== '') {
+            $isManual      = !empty($menuItem['is_manual_price']);
+            $adminFee      = $menuItem['admin_fee'] ?? null;
+            $overridePrice = $menuItem['override_price'] ?? null;
+
+            // Jika mode manual aktif: wajib ada override_price
+            // Jika mode normal: wajib ada admin_fee
+            $hasValue = $isManual
+                ? ($overridePrice !== null && $overridePrice !== '')
+                : ($adminFee !== null && $adminFee !== '');
+
+            if ($hasValue) {
                 \App\Models\ThirdPartyChannelMenu::updateOrCreate(
                     [
                         'third_party_channel_id' => $channel->id,
-                        'menu_id' => $menuItem['menu_id'],
+                        'menu_id'                => $menuItem['menu_id'],
                     ],
                     [
-                        'admin_fee' => $menuItem['admin_fee'],
+                        'admin_fee'       => $isManual ? null : $adminFee,
+                        'is_manual_price' => $isManual,
+                        'override_price'  => $isManual ? $overridePrice : null,
                     ]
                 );
             } else {
