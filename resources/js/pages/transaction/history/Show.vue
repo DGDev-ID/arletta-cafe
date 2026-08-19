@@ -3,7 +3,11 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
-import { Trash2 } from 'lucide-vue-next';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Trash2, Printer, ChevronDown } from 'lucide-vue-next';
+import { ref } from 'vue';
+import axios from 'axios';
+import { Notyf } from 'notyf';
 
 interface SelectedVariant {
     material_id: number;
@@ -80,6 +84,198 @@ const voidDetail = (detailId: number, menuName: string, qty: number) => {
         });
     }
 };
+
+// ── Notyf ──────────────────────────────────────────────────────────────────
+const notyf = new Notyf({
+    duration: 4000,
+    position: { x: 'right', y: 'bottom' },
+    ripple: true,
+    dismissible: true,
+});
+
+// ── Print Mode Toggle ────────────────────────────────────────────────
+const isMobile = ref<boolean>(localStorage.getItem('cashier_is_mobile') === 'true');
+
+// ── RawBT Print ───────────────────────────────────────────────────────────
+const PRINT_WIDTH = 48;
+const PRINT_LINE = '-'.repeat(PRINT_WIDTH);
+const PRINT_DOUBLE_LINE = '='.repeat(PRINT_WIDTH);
+
+const printPadRight = (left: string, right: string): string => {
+    const space = PRINT_WIDTH - (left.length + right.length);
+    return left + ' '.repeat(space > 0 ? space : 1) + right;
+};
+
+const printNumber = (val: number): string => new Intl.NumberFormat('id-ID').format(val);
+
+const sendToRawBT = (bytes: number[]) => {
+    const uint8 = new Uint8Array(bytes);
+    let binary = '';
+    uint8.forEach((b) => (binary += String.fromCharCode(b)));
+    window.location.href = 'rawbt:base64,' + btoa(binary);
+};
+
+const buildLogoBytes = async (): Promise<number[]> => {
+    const PRINTER_DOT_WIDTH = 576;
+    const LOGO_RENDER_WIDTH = 200;
+    try {
+        const response = await axios.get('/proxy/logo1', { responseType: 'blob' });
+        const objectUrl = URL.createObjectURL(response.data);
+        return await new Promise<number[]>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+                try {
+                    const logoHeight = Math.round(LOGO_RENDER_WIDTH * (img.height / img.width));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = PRINTER_DOT_WIDTH;
+                    canvas.height = logoHeight;
+                    const ctx = canvas.getContext('2d')!;
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    const offsetX = Math.floor((PRINTER_DOT_WIDTH - LOGO_RENDER_WIDTH) / 2);
+                    ctx.drawImage(img, offsetX, 0, LOGO_RENDER_WIDTH, logoHeight);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const bytes: number[] = [];
+                    const bytesPerLine = Math.ceil(PRINTER_DOT_WIDTH / 8);
+                    bytes.push(0x1d, 0x76, 0x30, 0x00, bytesPerLine & 0xff, (bytesPerLine >> 8) & 0xff, logoHeight & 0xff, (logoHeight >> 8) & 0xff);
+                    for (let y = 0; y < logoHeight; y++) {
+                        for (let x = 0; x < bytesPerLine; x++) {
+                            let byte = 0;
+                            for (let bit = 0; bit < 8; bit++) {
+                                const px = x * 8 + bit;
+                                if (px < PRINTER_DOT_WIDTH) {
+                                    const i = (y * PRINTER_DOT_WIDTH + px) * 4;
+                                    const gray = (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
+                                    if (gray < 128) byte |= 0x80 >> bit;
+                                }
+                            }
+                            bytes.push(byte);
+                        }
+                    }
+                    resolve(bytes);
+                } catch {
+                    resolve([]);
+                }
+            };
+            img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve([]); };
+            img.src = objectUrl;
+        });
+    } catch {
+        return [];
+    }
+};
+
+const printReceiptInline = async (filterType: 'all' | 'FOOD' | 'BEVERAGE' = 'all') => {
+    try {
+        const { data: trx } = await axios.get(`/transaction/history/${props.transaction.id}/receipt-data`);
+
+        if (!isMobile.value) {
+            const res = await axios.post('http://localhost:3000/print', trx);
+            if (res.status === 200 || res.status === 207) {
+                notyf.success('Print sukses');
+            }
+            return;
+        }
+
+        const fmtDate = (val: string) => new Date(val).toLocaleString('id-ID');
+
+        let detailsToPrint = trx.details;
+        if (filterType !== 'all') {
+            detailsToPrint = trx.details.filter((d: any) => d.menu?.menu_type === filterType);
+        }
+
+        if (detailsToPrint.length === 0) {
+            notyf.error(`Tidak ada item dengan tipe ${filterType}`);
+            return;
+        }
+
+        const bytes: number[] = [];
+        const encoder = new TextEncoder();
+        const enc = (text: string) => bytes.push(...encoder.encode(text));
+
+        bytes.push(0x1b, 0x40);
+        bytes.push(...(await buildLogoBytes()));
+        bytes.push(0x1b, 0x61, 0x01);
+        bytes.push(0x1b, 0x45, 0x01);
+        enc('\n');
+        enc((trx.cafe?.name || 'CAFE') + '\n');
+        bytes.push(0x1b, 0x45, 0x00);
+        if (trx.cafe?.address) enc(trx.cafe.address + '\n');
+
+        if (filterType === 'FOOD') {
+            enc(PRINT_LINE + '\n');
+            enc('--- ONLY FOOD ---\n');
+        } else if (filterType === 'BEVERAGE') {
+            enc(PRINT_LINE + '\n');
+            enc('--- ONLY BEVERAGE ---\n');
+        }
+
+        enc(PRINT_DOUBLE_LINE + '\n');
+
+        bytes.push(0x1b, 0x61, 0x00);
+        const LABEL_W = 6;
+        const fmtL = (label: string) => label.padEnd(LABEL_W) + ': ';
+        enc(fmtL('No') + '#' + trx.id + '\n');
+        enc(fmtL('Tgl') + fmtDate(trx.updated_at) + '\n');
+        enc(fmtL('Cust') + (trx.cust_name || '-') + '\n');
+        if (trx.table) enc(fmtL('Table') + trx.table.name + '\n');
+        enc(PRINT_LINE + '\n');
+
+        enc(printPadRight('Menu', 'Harga') + '\n');
+        enc(PRINT_LINE + '\n');
+
+        detailsToPrint.forEach((d: any) => {
+            const menuName = (d.menu?.name || '-').substring(0, PRINT_WIDTH);
+            enc(printPadRight(menuName, 'Rp ' + printNumber(Number(d.price))) + '\n');
+            enc('  ' + d.amount + ' x Rp ' + printNumber(Number(d.menu?.price ?? 0)) + '\n');
+            if (d.selected_variants && d.selected_variants.length > 0) {
+                d.selected_variants.forEach((sv: any) => {
+                    const label = sv.material_name ? sv.material_name + ': ' + (sv.variant_name || '-') : sv.variant_name || '-';
+                    enc('  [' + label + ']\n');
+                });
+            }
+            if (d.description) enc('  ' + d.description + '\n');
+        });
+        enc(PRINT_LINE + '\n');
+
+        if (filterType === 'all') {
+            enc(printPadRight('Subtotal', 'Rp ' + printNumber(Number(trx.price))) + '\n');
+            enc(printPadRight('PPN', 'Rp ' + printNumber(Number(trx.fee))) + '\n');
+            bytes.push(0x1b, 0x45, 0x01);
+            if (trx.promo_id) {
+                const promo = Number(trx.price) + Number(trx.fee) - Number(trx.total_price);
+                enc(printPadRight('Discount', '-Rp ' + printNumber(Number(promo))) + '\n');
+            }
+            enc(PRINT_DOUBLE_LINE + '\n');
+            bytes.push(0x1b, 0x45, 0x01);
+            enc(printPadRight('TOTAL', 'Rp ' + printNumber(Number(trx.total_price))) + '\n');
+            enc(printPadRight('Pay', trx.payment_type.toUpperCase()) + '\n');
+            bytes.push(0x1b, 0x45, 0x00);
+            enc(PRINT_DOUBLE_LINE + '\n');
+        } else {
+            const partialSubtotal = detailsToPrint.reduce((acc: number, d: any) => acc + Number(d.price), 0);
+            enc(printPadRight('Subtotal', 'Rp ' + printNumber(partialSubtotal)) + '\n');
+            enc(PRINT_LINE + '\n');
+            bytes.push(0x1b, 0x45, 0x01);
+            enc(PRINT_DOUBLE_LINE + '\n');
+            bytes.push(0x1b, 0x45, 0x01);
+            enc(printPadRight('TOTAL', 'Rp ' + printNumber(partialSubtotal)) + '\n');
+            enc(printPadRight('Pay', trx.payment_type.toUpperCase()) + '\n');
+            bytes.push(0x1b, 0x45, 0x00);
+            enc(PRINT_DOUBLE_LINE + '\n');
+        }
+
+        bytes.push(0x1b, 0x61, 0x01);
+        enc('Terima kasih\n');
+        bytes.push(0x1b, 0x64, 0x05);
+        bytes.push(0x1d, 0x56, 0x41, 0x00);
+        sendToRawBT(bytes);
+    } catch (e: any) {
+        console.error(e);
+        notyf.error('Print gagal: ' + (e.message || 'Error'));
+    }
+};
 </script>
 
 <template>
@@ -95,11 +291,23 @@ const voidDetail = (detailId: number, menuName: string, qty: number) => {
                     <Heading variant="small" :title="`Transaction #${transaction.id}`"
                         description="Detail lengkap transaksi." />
 
-                    <div>
+                    <div class="flex items-center gap-2">
                         <button v-if="transaction.status === 'success'" @click="makeFailed"
                             class="inline-flex items-center px-3 py-1.5 rounded-md bg-red-100 text-red-700 text-sm font-medium hover:bg-red-200 transition">
                             Tolak Transaksi
                         </button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-violet-100 px-3 py-1.5 text-sm font-medium text-violet-600 outline-none transition hover:bg-violet-500 hover:text-white"
+                            >
+                                <Printer :size="15" /> Cetak Struk <ChevronDown :size="14" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem @click="printReceiptInline('all')">Semua menu</DropdownMenuItem>
+                                <DropdownMenuItem @click="printReceiptInline('FOOD')">Only food</DropdownMenuItem>
+                                <DropdownMenuItem @click="printReceiptInline('BEVERAGE')">Only beverage</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <Link href="/transaction/history"
                             class="text-sm text-muted-foreground hover:text-foreground transition">
                             ← Kembali

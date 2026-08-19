@@ -287,6 +287,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('history/export', [HistoryTransactionController::class, 'export'])
             ->name('history.export')
             ->middleware('can:transaction.history');
+        Route::get('history/{id}/receipt-data', [HistoryTransactionController::class, 'receiptData'])
+            ->name('history.receipt-data')
+            ->middleware('can:transaction.history');
         Route::get('history/{id}', [HistoryTransactionController::class, 'show'])
             ->name('history.show')
             ->middleware('can:transaction.history');

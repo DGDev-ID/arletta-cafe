@@ -406,4 +406,17 @@ class HistoryTransactionController extends Controller
 
         return redirect()->back()->with('success', 'Status tampilan transaksi berhasil diubah.');
     }
+
+    public function receiptData($id)
+    {
+        $transaction = Transaction::where('status', 'success')
+            ->with(['cafe:id,name,address', 'table:id,name', 'details.menu:id,name,price,menu_type'])
+            ->findOrFail($id);
+
+        $transaction->details->each(function ($detail) {
+            $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
+        });
+
+        return response()->json($transaction);
+    }
 }
