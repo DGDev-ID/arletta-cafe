@@ -410,7 +410,7 @@ class HistoryTransactionController extends Controller
     public function receiptData($id)
     {
         $transaction = Transaction::where('status', 'success')
-            ->with(['cafe:id,name,address', 'table:id,name', 'details.menu:id,name,price,menu_type'])
+            ->with(['cafe:id,name,address', 'table:id,name', 'details.menu:id,name,price'])
             ->findOrFail($id);
 
         $transaction->details->each(function ($detail) {
