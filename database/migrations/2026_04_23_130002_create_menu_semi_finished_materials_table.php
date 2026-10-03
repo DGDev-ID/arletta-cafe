@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('menu_id')->constrained('m_menus')->cascadeOnDelete();
             $table->foreignId('semi_finished_material_id')->constrained('semi_finished_materials')->cascadeOnDelete();
-            $table->decimal('multiplier', 8, 2)->default(1);
+            $table->decimal('multiplier', 15, 2)->default(1);
             $table->timestamps();
         });
     }

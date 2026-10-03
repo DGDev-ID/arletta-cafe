@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (! Schema::hasColumn('transactions', 'profit_margin')) {
             Schema::table('transactions', function (Blueprint $table) {
-                $table->decimal('profit_margin', 8, 2)->nullable();
+                $table->decimal('profit_margin', 15, 2)->nullable();
             });
         }
     }
