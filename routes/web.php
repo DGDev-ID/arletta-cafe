@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Dashboard\BalanceController;
+use App\Http\Controllers\Dashboard\BalanceTopupController;
 use App\Http\Controllers\Dashboard\Master\CafeTableController;
 use App\Http\Controllers\Dashboard\Master\MaterialController;
 use App\Http\Controllers\Dashboard\Master\MenuCategoryController;
@@ -353,6 +355,11 @@ Route::middleware(['auth'])->group(function () {
             ->name('public-link-generator.index')
             ->middleware('can:shortcut.public-link-generator');
     });
+
+    // Balance & Topup
+    Route::get('balance', [BalanceController::class, 'index'])->name('balance.index');
+    Route::post('balance/topup', [BalanceController::class, 'topup'])->name('balance.topup');
+    Route::get('balance/topup/{id}', [BalanceTopupController::class, 'show'])->name('balance.topup.show');
 });
 
 Route::get('for-public/{cafeId}', [PublicController::class, 'forPublic']);

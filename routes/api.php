@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\PromoBannerApiController;
 use App\Http\Controllers\Api\PayOpenbillQrisController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\CustomerFeedbackController;
+use App\Http\Controllers\Api\CheckBalanceTopupController;
 use App\Http\Controllers\Dashboard\PublicController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,4 +41,8 @@ use Illuminate\Support\Facades\Route;
 
     Route::post('/check-promo-code', CheckPromoCodeController::class);
     Route::post('/submit-feedback', CustomerFeedbackController::class);
+
+    // Balance Topup Status Check
+    Route::get('/balance/topup/{id}/check', CheckBalanceTopupController::class);
+
 // });

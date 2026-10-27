@@ -47,4 +47,11 @@ return [
         'webhook_url' => env('XENDIT_WEBHOOK_URL'),
     ],
 
+    'qrisly' => [
+        'api_url'         => env('QRISLY_API_URL', 'https://api.rajaongkir.com/api/v1/qrisly'),
+        'secret_key'      => env('QRISLY_SECRET_KEY'),
+        'arletta_qris_id' => env('QRISLY_ARLETTA_QRIS_ID'),
+        'topup_qris_id'   => env('QRISLY_TOPUP_QRIS_ID'),
+    ],
+
 ];
