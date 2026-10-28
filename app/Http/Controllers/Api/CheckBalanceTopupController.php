@@ -29,7 +29,7 @@ class CheckBalanceTopupController extends ApiBaseController
             }
 
             $qrisly   = new QrislyService();
-            $qrisData = $qrisly->checkPaymentStatus((int) $topup->qris_history_id);
+            $qrisData = $qrisly->checkPaymentStatus((int) $topup->id);
 
             if (! $qrisData) {
                 return $this->clientError('Gagal mengambil status pembayaran dari Qrisly.');

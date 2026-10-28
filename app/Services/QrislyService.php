@@ -70,21 +70,12 @@ class QrislyService
      * @param  int  $historyId
      * @return array|false
      */
-    public function checkPaymentStatus(int $historyId): array|false
+    public function checkPaymentStatus(int $id): array|false
     {
         try {
-            $response = Http::withHeaders([
-                'x-api-key'     => $this->secretKey,
-                'Accept'        => 'application/json',
-            ])->get("{$this->apiUrl}/payment-status/{$historyId}");
-
-            $response = BalanceTopup::where('qris_history_id', $historyId)->first();
+            $response = BalanceTopup::find($id);
 
             if (! $response->successful()) {
-                Log::error('Qrisly checkPaymentStatus failed', [
-                    'history_id' => $historyId,
-                    'body'       => $response->body(),
-                ]);
                 return false;
             }
 
