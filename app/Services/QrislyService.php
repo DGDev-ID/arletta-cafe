@@ -32,7 +32,7 @@ class QrislyService
             Log::info("Topup qirs id $this->topupQrisId");
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->secretKey,
+                'x-api-key'     => $this->secretKey,
                 'Accept'        => 'application/json',
                 'Content-Type'  => 'application/json',
             ])->post("{$this->apiUrl}/generate-qris", [
@@ -73,7 +73,7 @@ class QrislyService
     {
         try {
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->secretKey,
+                'x-api-key'     => $this->secretKey,
                 'Accept'        => 'application/json',
             ])->get("{$this->apiUrl}/payment-status/{$historyId}");
 
