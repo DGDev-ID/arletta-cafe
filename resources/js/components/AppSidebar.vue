@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { ArrowLeftRight, BookA, BookOpen, Camera, Coffee, Coins, DollarSign, Folder, History, Image, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, Store, User, UserCheck, UserCog, Utensils, MessageSquare } from 'lucide-vue-next';
+import { ArrowLeftRight, BookA, BookOpen, Camera, Coffee, Coins, DollarSign, Folder, History, Image, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, Store, User, UserCheck, UserCog, Utensils, MessageSquare, Wallet } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -165,6 +165,14 @@ const shortcutNavItems: NavItem[] = [
         permission: 'shortcut.public-link-generator',
     }
 ]
+
+const balanceNavItems: NavItem[] = [
+    {
+        title: 'Balance & Topup',
+        href: '/balance',
+        icon: Wallet,
+    },
+]
 </script>
 
 <template>
@@ -188,6 +196,7 @@ const shortcutNavItems: NavItem[] = [
             <NavMain :items="managementNavItems" :title="'Management'" />
             <NavMain :items="transactionNavItems" :title="'Transaction'" />
             <NavMain :items="shortcutNavItems" :title="'Shortcut'" />
+            <NavMain :items="balanceNavItems" :title="'Finance'" />
         </SidebarContent>
 
         <SidebarFooter>

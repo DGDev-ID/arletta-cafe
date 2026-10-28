@@ -47,6 +47,11 @@ return [
         'webhook_url' => env('XENDIT_WEBHOOK_URL'),
     ],
 
+    'thirdparty' => [
+        'secret_key'     => env('THIRDPARTY_SECRET_KEY'),
+        'allowed_domain' => env('THIRDPARTY_ALLOWED_DOMAIN', 'core.cafellio.my.id'),
+    ],
+
     'qrisly' => [
         'api_url'         => env('QRISLY_API_URL', 'https://api.rajaongkir.com/api/v1/qrisly'),
         'secret_key'      => env('QRISLY_SECRET_KEY'),

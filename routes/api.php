@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\PayOpenbillQrisController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\CustomerFeedbackController;
 use App\Http\Controllers\Api\CheckBalanceTopupController;
+use App\Http\Controllers\Api\QrislyWebhookController;
+use App\Http\Controllers\Api\TopupBalanceWebhookController;
 use App\Http\Controllers\Dashboard\PublicController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,5 +46,11 @@ use Illuminate\Support\Facades\Route;
 
     // Balance Topup Status Check
     Route::get('/balance/topup/{id}/check', CheckBalanceTopupController::class);
+
+    // Qrisly Payment Webhook (topup & merchant)
+    Route::post('/qrisly-webhook', QrislyWebhookController::class);
+
+    // Webhook Top Up Balance (core.cafellio.my.id)
+    Route::post('/webhook/topup-balance', TopupBalanceWebhookController::class);
 
 // });
