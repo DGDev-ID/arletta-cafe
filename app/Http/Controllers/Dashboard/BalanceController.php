@@ -61,11 +61,13 @@ class BalanceController extends Controller
 
         // Panggil Qrisly untuk generate QRIS
         $qrisly   = new QrislyService();
-        $qrisData = $qrisly->generateTopupQris($topupAmount);
+        $qrisDataResponse = $qrisly->generateTopupQris($topupAmount);
 
-        if (! $qrisData) {
+        if (! $qrisDataResponse) {
             return back()->with('error', 'Gagal membuat QRIS topup. Silakan coba lagi.');
         }
+
+        $qrisData = $qrisDataResponse['data'];
 
         $historyId = $qrisData['history_id'] ?? null;
         $uniqueAmount = (int) $qrisData['final_amount'] - (int) $topupAmount;
