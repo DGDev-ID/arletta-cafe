@@ -27,6 +27,10 @@ class QrislyService
     public function generateTopupQris(int|float $amount): array|false
     {
         try {
+            Log::info("API URL $this->apiUrl");
+            Log::info("Qrisly key $this->secretKey");
+            Log::info("Topup qirs id $this->topupQrisId");
+
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->secretKey,
                 'Accept'        => 'application/json',
