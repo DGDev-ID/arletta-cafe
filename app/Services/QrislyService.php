@@ -74,11 +74,6 @@ class QrislyService
     {
         try {
             $response = BalanceTopup::find($id);
-
-            if (! $response->successful()) {
-                return false;
-            }
-
             return $response->json();
         } catch (\Throwable $e) {
             Log::error('Qrisly checkPaymentStatus exception', [
