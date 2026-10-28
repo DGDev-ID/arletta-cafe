@@ -37,21 +37,21 @@ class CheckBalanceTopupController extends ApiBaseController
 
             $paymentStatus = $qrisData['payment_status'] ?? null;
 
-            if ($paymentStatus === 'paid') {
-                // Update topup status ke success
-                $topup->update(['status' => 'success']);
+            if ($paymentStatus === 'paid' || $paymentStatus === 'success') {
+                // // Update topup status ke success
+                // $topup->update(['status' => 'success']);
 
-                // Tambah balance
-                $balance = $topup->balance;
-                $balance->increment('balance', $topup->topup_amount);
+                // // Tambah balance
+                // $balance = $topup->balance;
+                // $balance->increment('balance', $topup->topup_amount);
 
-                // Catat balance log
-                BalanceLog::create([
-                    'balance_id'     => $balance->id,
-                    'type'           => 'in',
-                    'amount'         => $topup->topup_amount,
-                    'transaction_id' => $topup->id,
-                ]);
+                // // Catat balance log
+                // BalanceLog::create([
+                //     'balance_id'     => $balance->id,
+                //     'type'           => 'in',
+                //     'amount'         => $topup->topup_amount,
+                //     'transaction_id' => $topup->id,
+                // ]);
 
                 return $this->success([
                     'status' => 'success',
@@ -60,7 +60,7 @@ class CheckBalanceTopupController extends ApiBaseController
             }
 
             if ($paymentStatus === 'expired' || $paymentStatus === 'failed') {
-                $topup->update(['status' => 'failed']);
+                // $topup->update(['status' => 'failed']);
 
                 return $this->success([
                     'status' => 'failed',
