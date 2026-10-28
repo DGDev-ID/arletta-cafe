@@ -80,6 +80,7 @@ class BalanceController extends Controller
             'unique_amount'  => $uniqueAmount,
             'total_amount'   => $totalAmount,
             'qris_history_id' => $historyId,
+            'qris_content'    => $qrisData['qris_string'],
             'status'         => 'pending',
         ]);
 

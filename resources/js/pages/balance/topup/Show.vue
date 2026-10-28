@@ -17,6 +17,7 @@ interface BalanceTopup {
     status: 'pending' | 'success' | 'failed';
     created_at: string;
     updated_at: string;
+    qris_content: string;
 }
 
 const props = defineProps<{ topup: BalanceTopup }>();
@@ -33,10 +34,9 @@ const pollInterval = ref<ReturnType<typeof setInterval> | null>(null);
 const pollCount    = ref(0);
 const MAX_POLLS    = 60; // 60 × 5s = 5 minutes
 
-// QR code via public QR service — in production the backend should return the actual QRIS string
 const qrImageUrl = computed(() =>
-    props.topup.qris_history_id
-        ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=QRISLY-${props.topup.qris_history_id}-TOPUP-${props.topup.total_amount}`
+    props.topup.qris_content
+        ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(props.topup.qris_content)}`
         : null
 );
 

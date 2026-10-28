@@ -14,6 +14,7 @@ class BalanceTopup extends Model
         'total_amount',
         'qris_history_id',
         'status',
+        'qris_content'
     ];
 
     protected function casts(): array
