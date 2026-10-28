@@ -9,6 +9,7 @@ use App\Models\BalanceTopup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
 class QrislyWebhookController extends ApiBaseController
@@ -39,33 +40,23 @@ class QrislyWebhookController extends ApiBaseController
             // ── 1. Validate secret key ───────────────────────────────────────
             $expectedSecret = config('services.qrisly.secret_key');
             $receivedSecret = $payload['secret_key'] ?? $request->header('X-Secret-Key');
-
-            if ($expectedSecret && $receivedSecret !== $expectedSecret) {
+            
+            if (!Hash::check($expectedSecret, $receivedSecret)) {
                 Log::warning('Qrisly Webhook: invalid secret key', [
                     'received' => $receivedSecret,
                 ]);
-                return $this->clientError('Unauthorized', null, 401);
+                return $this->success(null, 'Unauthorized', 200);
             }
 
-            $paymentStatus = $payload['payment_status'] ?? null;
-            $historyId     = $payload['history_id']     ?? null;
-            $qrisId        = (int) ($payload['qris_id'] ?? 0);
-            $amount        = (float) ($payload['amount'] ?? 0);
-
-            // Only process "paid" events
-            if ($paymentStatus !== 'paid') {
-                Log::info('Qrisly Webhook: ignored non-paid event', [
-                    'payment_status' => $paymentStatus,
-                    'history_id'     => $historyId,
-                ]);
-                return $this->success(null, 'Event ignored (not paid).');
-            }
-
+            $paymentStatus = $payload['data']['status'] ?? null;
+            $historyId     = $payload['data']['qris_history_id']     ?? null;
+            $qrisId        = (int) ($payload['data']['qris_id'] ?? 0);
+            $amount        = (float) ($payload['data']['original_amount'] ?? 0);
             $topupQrisId = (int) config('services.qrisly.topup_qris_id');
 
             // ── 2. Topup flow ────────────────────────────────────────────────
             if ($qrisId === $topupQrisId) {
-                return $this->handleTopupWebhook((int) $historyId, $amount);
+                return $this->handleTopupWebhook((int) $historyId, $amount, $paymentStatus);
             }
 
             // ── 3. Arletta merchant / other QRIS – log and ack ──────────────
@@ -82,10 +73,10 @@ class QrislyWebhookController extends ApiBaseController
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    private function handleTopupWebhook(int $historyId, float $paidAmount): JsonResponse
+    private function handleTopupWebhook(int $historyId, float $paidAmount, string $paymentStatus): JsonResponse
     {
         // Find the pending topup by qris_history_id (idempotency: skip if already processed)
-        $topup = BalanceTopup::where('qris_history_id', $historyId)->first();
+        $topup = BalanceTopup::where('qris_history_id', $historyId)->where('topup_amount', $paidAmount)->first();
 
         if (! $topup) {
             Log::warning('Qrisly Topup Webhook: no matching BalanceTopup found', [
@@ -104,21 +95,32 @@ class QrislyWebhookController extends ApiBaseController
             return $this->success(null, 'Already processed.');
         }
 
-        DB::transaction(function () use ($topup) {
+        $status = null;
+        if ($paymentStatus == 'paid' || $paymentStatus == 'completed') {
+            $status = 'success';
+        }
+
+        if ($paymentStatus == 'expired') {
+            $status = 'failed';
+        }
+
+        DB::transaction(function () use ($topup, $status) {
             // Mark topup as success
-            $topup->update(['status' => 'success']);
+            $topup->update(['status' => $status]);
 
-            // Add balance
-            $balance = $topup->balance;
-            $balance->increment('balance', $topup->topup_amount);
+            if ($status == 'success') {
+                // Add balance
+                $balance = $topup->balance;
+                $balance->increment('balance', $topup->topup_amount);
 
-            // Log the balance credit
-            BalanceLog::create([
-                'balance_id'     => $balance->id,
-                'type'           => 'in',
-                'amount'         => $topup->topup_amount,
-                'transaction_id' => $topup->id,
-            ]);
+                // Log the balance credit
+                BalanceLog::create([
+                    'balance_id'     => $balance->id,
+                    'type'           => 'in',
+                    'amount'         => $topup->topup_amount,
+                    'transaction_id' => $topup->id,
+                ]);
+            }
         });
 
         Log::info('Qrisly Topup Webhook: topup processed successfully', [
