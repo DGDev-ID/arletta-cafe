@@ -73,7 +73,7 @@ class QrislyService
     public function checkPaymentStatus(int $id): array|false
     {
         try {
-            $response = BalanceTopup::find($id);
+            $response = BalanceTopup::find($id)->toArray();
             return $response;
         } catch (\Throwable $e) {
             Log::error('Qrisly checkPaymentStatus exception', [
