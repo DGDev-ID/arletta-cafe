@@ -99,7 +99,7 @@ class TopupBalanceWebhookController extends Controller
                 ], 200);
             }
 
-            $topup = BalanceTopup::where('qris_history_id', (string) $qrisHistoryId)->first();
+            $topup = BalanceTopup::where('qris_history_id', (string) $qrisHistoryId)->where('topup_amount', $payload['data']['original_amount'])->first();
             if (! $topup) {
                 Log::warning('Topup Balance Webhook: Data topup tidak ditemukan', [
                     'qris_history_id' => $qrisHistoryId,

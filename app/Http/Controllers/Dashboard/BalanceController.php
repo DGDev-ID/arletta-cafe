@@ -57,25 +57,25 @@ class BalanceController extends Controller
         $balance = Balance::firstOrCreate([], ['balance' => 0]);
 
         // Generate unique_amount: tambahkan 3 digit unik random 1-999
-        $uniqueSuffix = rand(1, 999);
         $topupAmount  = (int) $request->amount;
-        $totalAmount  = $topupAmount + $uniqueSuffix;
 
         // Panggil Qrisly untuk generate QRIS
         $qrisly   = new QrislyService();
-        $qrisData = $qrisly->generateTopupQris($totalAmount);
+        $qrisData = $qrisly->generateTopupQris($topupAmount);
 
         if (! $qrisData) {
             return back()->with('error', 'Gagal membuat QRIS topup. Silakan coba lagi.');
         }
 
         $historyId = $qrisData['history_id'] ?? null;
+        $uniqueAmount = (int) $qrisData['final_amount'] - (int) $topupAmount;
+        $totalAmount = (int) $qrisData['final_amount'];
 
         // Simpan record topup
         $topup = BalanceTopup::create([
             'balance_id'     => $balance->id,
             'topup_amount'   => $topupAmount,
-            'unique_amount'  => $uniqueSuffix,
+            'unique_amount'  => $uniqueAmount,
             'total_amount'   => $totalAmount,
             'qris_history_id' => $historyId,
             'status'         => 'pending',
