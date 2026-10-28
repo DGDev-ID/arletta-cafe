@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BalanceTopup;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -77,11 +78,7 @@ class QrislyService
                 'Accept'        => 'application/json',
             ])->get("{$this->apiUrl}/payment-status/{$historyId}");
 
-            Log::info('Qrisly checkPaymentStatus response', [
-                'history_id' => (int) $historyId,
-                'status'     => $response->status(),
-                'body'       => $response->json(),
-            ]);
+            $response = BalanceTopup::where('qris_history_id', $historyId)->first();
 
             if (! $response->successful()) {
                 Log::error('Qrisly checkPaymentStatus failed', [
