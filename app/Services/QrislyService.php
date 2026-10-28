@@ -36,7 +36,7 @@ class QrislyService
                 'Accept'        => 'application/json',
                 'Content-Type'  => 'application/json',
             ])->post("{$this->apiUrl}/generate-qris", [
-                'qris_id'     => $this->topupQrisId,
+                'qris_id'     => (int) $this->topupQrisId,
                 'amount'      => (int) $amount,
                 'output_type' => 'string',
             ]);
@@ -78,7 +78,7 @@ class QrislyService
             ])->get("{$this->apiUrl}/payment-status/{$historyId}");
 
             Log::info('Qrisly checkPaymentStatus response', [
-                'history_id' => $historyId,
+                'history_id' => (int) $historyId,
                 'status'     => $response->status(),
                 'body'       => $response->json(),
             ]);
