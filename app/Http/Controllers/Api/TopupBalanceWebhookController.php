@@ -169,10 +169,10 @@ class TopupBalanceWebhookController extends Controller
                         **Topup Balance Success**\n\nTopup dengan ID {$topup->id} telah berhasil diproses.\n
                         Nominal Topup: Rp " . number_format($topup->topup_amount, 0, ',', '.') . "\n
                         20 Persen Nominal Topup: Rp " . number_format($topup->topup_amount * 0.2, 0, ',', '.') . "\n
-                        Clean Money: Rp " . number_format($topup->topup_amount * 0.8, 0, ',', '.') . "\n\n\n
+                        Clean Money: Rp " . number_format($topup->topup_amount * 0.8, 0, ',', '.') . "\n\n
 
                         🤑🤑🤑
-                        "
+                        ", "markdown"
                     );
 
                     // Catat riwayat ke balance_logs
