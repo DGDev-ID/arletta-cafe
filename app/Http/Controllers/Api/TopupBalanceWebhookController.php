@@ -213,7 +213,7 @@ class TopupBalanceWebhookController extends Controller
      */
     protected function isValidSenderDomain(Request $request): bool
     {
-        $allowedDomain = config('services.thirdparty.allowed_domain', 'core.cafellio.my.id');
+        $allowedDomain = config('services.thirdparty.allowed_domain', '127.0.0.1');
 
         // Di environment local/testing, izinkan localhost untuk mempermudah testing
         if (app()->environment('local', 'testing') && in_array($request->ip(), ['127.0.0.1', '::1'])) {
@@ -221,36 +221,12 @@ class TopupBalanceWebhookController extends Controller
         }
 
         $clientIp = $request->ip();
-
-        // 1. Cek reverse DNS IP pengirim
-        $hostname = @gethostbyaddr($clientIp);
-        if ($hostname && ($hostname === $allowedDomain || str_ends_with($hostname, '.' . $allowedDomain))) {
-            return true;
+        
+        if ($clientIp != $allowedDomain) {
+            return false;
         }
 
-        // 2. Cek resolved IPs dari allowed domain
-        $resolvedIps = @gethostbynamel($allowedDomain);
-        if (is_array($resolvedIps) && in_array($clientIp, $resolvedIps, true)) {
-            return true;
-        }
-
-        // 3. Cek Header Origin / Referer
-        foreach ([$request->headers->get('origin'), $request->headers->get('referer')] as $url) {
-            if ($url) {
-                $host = parse_url($url, PHP_URL_HOST);
-                if ($host === $allowedDomain) {
-                    return true;
-                }
-            }
-        }
-
-        // 4. Cek header X-Forwarded-Host atau Forwarded jika berada di belakang reverse proxy
-        $forwardedHost = $request->headers->get('x-forwarded-host');
-        if ($forwardedHost && ($forwardedHost === $allowedDomain || str_contains($forwardedHost, $allowedDomain))) {
-            return true;
-        }
-
-        return false;
+        return true;
     }
 
     /**
