@@ -164,16 +164,36 @@ class TopupBalanceWebhookController extends Controller
                     $balance->increment('balance', $topup->topup_amount);
 
                     $telegramService = new TelegramService();
-                    $telegramService->sendMessage(
-                        "
-                        **Topup Balance Success**\n\nTopup dengan ID {$topup->id} telah berhasil diproses.\n
-                        Nominal Topup: Rp " . number_format($topup->topup_amount, 0, ',', '.') . "\n
-                        20 Persen Nominal Topup: Rp " . number_format($topup->topup_amount * 0.2, 0, ',', '.') . "\n
-                        Clean Money: Rp " . number_format($topup->topup_amount * 0.8, 0, ',', '.') . "\n\n
 
-                        🤑🤑🤑
-                        ", "markdown"
+                    $amount = number_format($topup->topup_amount, 0, ',', '.');
+
+                    $commission = number_format(
+                        $topup->topup_amount * 0.2,
+                        0,
+                        ',',
+                        '.'
                     );
+
+                    $cleanMoney = number_format(
+                        $topup->topup_amount * 0.8,
+                        0,
+                        ',',
+                        '.'
+                    );
+
+                    $message = implode("\n", [
+                        "💰 <b>TOPUP BALANCE SUCCESS</b>",
+                        "",
+                        "Topup dengan ID <b>#{$topup->id}</b> telah berhasil diproses.",
+                        "",
+                        "Nominal Topup: <b>Rp {$amount}</b>",
+                        "Komisi 20%: <b>Rp {$commission}</b>",
+                        "Clean Money: <b>Rp {$cleanMoney}</b>",
+                        "",
+                        "🤑 🤑 🤑",
+                    ]);
+
+                    $telegramService->sendMessage($message, 'HTML');
 
                     // Catat riwayat ke balance_logs
                     BalanceLog::create([
@@ -206,7 +226,6 @@ class TopupBalanceWebhookController extends Controller
                 'status'  => 'updated',
                 'message' => "Topup status updated to {$targetStatus}.",
             ], 200);
-
         } catch (\Throwable $e) {
             Log::error('Topup Balance Webhook Exception', [
                 'error' => $e->getMessage(),
@@ -234,7 +253,7 @@ class TopupBalanceWebhookController extends Controller
         }
 
         $clientIp = $request->ip();
-        
+
         if ($clientIp != $allowedDomain) {
             return false;
         }
@@ -262,4 +281,3 @@ class TopupBalanceWebhookController extends Controller
         return hash_equals($configuredSecret, $providedKey);
     }
 }
-
