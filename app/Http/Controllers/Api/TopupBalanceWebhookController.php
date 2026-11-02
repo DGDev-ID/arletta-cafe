@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use App\Services\TelegramService;
 
 class TopupBalanceWebhookController extends Controller
 {
@@ -161,6 +162,18 @@ class TopupBalanceWebhookController extends Controller
                     // Perbarui saldo pada tabel balances (gunakan nominal topup yang tersimpan di DB sebagai sumber kebenaran)
                     $balance = $topup->balance ?: Balance::firstOrCreate([], ['balance' => 0]);
                     $balance->increment('balance', $topup->topup_amount);
+
+                    $telegramService = new TelegramService();
+                    $telegramService->sendMessage(
+                        "
+                        **Topup Balance Success**\n\nTopup dengan ID {$topup->id} telah berhasil diproses.\n
+                        Nominal Topup: Rp " . number_format($topup->topup_amount, 0, ',', '.') . "\n
+                        20 Persen Nominal Topup: Rp " . number_format($topup->topup_amount * 0.2, 0, ',', '.') . "\n
+                        Clean Money: Rp " . number_format($topup->topup_amount * 0.8, 0, ',', '.') . "\n\n\n
+
+                        🤑🤑🤑
+                        "
+                    );
 
                     // Catat riwayat ke balance_logs
                     BalanceLog::create([
