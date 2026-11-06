@@ -34,9 +34,9 @@ class CashierController extends Controller
             $cafes = MCafe::select('id', 'name')->orderBy('name')->get();
         }
 
-        // Pending manual and debit transactions (non open-bill)
+        // Pending manual, debit, and qris transactions (non open-bill)
         $pendingQuery = Transaction::where('status', 'pending')
-            ->whereIn('payment_type', ['manual', 'debit'])
+            ->whereIn('payment_type', ['manual', 'debit', 'qris'])
             ->where('is_open_bill', 0)
             ->where('is_display', 1)
             ->with(['cafe', 'table']);
@@ -108,7 +108,7 @@ class CashierController extends Controller
         $detail = TransactionDetail::with(['transaction', 'menu'])->findOrFail($id);
         $transaction = $detail->transaction;
 
-        if (!$transaction || $transaction->status !== 'pending' || !in_array($transaction->payment_type, ['manual', 'debit'])) {
+        if (!$transaction || $transaction->status !== 'pending' || !in_array($transaction->payment_type, ['manual', 'debit', 'qris'])) {
             return redirect()->back()->with('error', 'Transaksi tidak valid untuk aksi ini.');
         }
 
@@ -302,7 +302,7 @@ class CashierController extends Controller
     {
         $transaction = Transaction::where('unique_code', $qr_code)
             ->where('status', 'pending')
-            ->whereIn('payment_type', ['manual', 'debit'])
+            ->whereIn('payment_type', ['manual', 'debit', 'qris'])
             ->with(['cafe', 'table'])
             ->first();
 
@@ -318,7 +318,7 @@ class CashierController extends Controller
         $transaction = Transaction::where(function ($q) {
             $q->where(function ($q2) {
                 $q2->where('status', 'pending')
-                   ->whereIn('payment_type', ['manual', 'debit']);
+                   ->whereIn('payment_type', ['manual', 'debit', 'qris']);
             })->orWhereIn('status', ['in_order', 'success']);
         })
             ->with(['cafe', 'table', 'details.menu.category', 'details.menu.menuCombos.childMenu', 'details.menu.menuComboGroups.options.childMenu'])
@@ -344,7 +344,7 @@ class CashierController extends Controller
     public function makeSuccess($id)
     {
         $transaction = Transaction::where('status', 'pending')
-            ->whereIn('payment_type', ['manual', 'debit'])
+            ->whereIn('payment_type', ['manual', 'debit', 'qris'])
             ->findOrFail($id);
 
         // pendingAction memotong stok & TransactionService::makeSuccess set ke in_order
@@ -359,7 +359,7 @@ class CashierController extends Controller
     public function makeFailed($id)
     {
         $transaction = Transaction::where('status', 'pending')
-            ->whereIn('payment_type', ['manual', 'debit'])
+            ->whereIn('payment_type', ['manual', 'debit', 'qris'])
             ->findOrFail($id);
 
         TransactionService::makeFailed($transaction);

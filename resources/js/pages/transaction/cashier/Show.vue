@@ -4,7 +4,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import { computed, ref } from 'vue';
-import { CheckCircle, XCircle, Minus } from 'lucide-vue-next';
+import { CheckCircle, XCircle, Minus, QrCode } from 'lucide-vue-next';
 
 interface SelectedVariant {
     material_id: number;
@@ -44,6 +44,7 @@ interface Transaction {
     status: string;
     created_at: string;
     updated_at: string;
+    snap_token?: string | null;
     cafe: { id: number; name: string; address: string | null };
     table: { id: number; name: string } | null;
     details: TransactionDetail[];
@@ -69,7 +70,11 @@ const formatDate = (val: string) => {
 };
 
 const makeSuccess = () => {
-    if (confirm('Setujui transaksi ini? Status akan diubah ke in_order.')) {
+    const isQris = props.transaction.payment_type === 'qris';
+    const confirmMsg = isQris
+        ? 'Konfirmasi bahwa pelanggan sudah membayar via QRIS? Status akan diubah ke in_order.'
+        : 'Setujui transaksi ini? Status akan diubah ke in_order.';
+    if (confirm(confirmMsg)) {
         router.patch(`/transaction/cashier/${props.transaction.id}/success`);
     }
 };
@@ -123,19 +128,36 @@ const applyPromo = () => {
 
                 <!-- Header -->
                 <div class="flex items-center justify-between"
-                    v-if="transaction.status === 'pending' && ['manual', 'debit'].includes(transaction.payment_type)">
+                    v-if="transaction.status === 'pending' && ['manual', 'debit', 'qris'].includes(transaction.payment_type)">
                     <Heading variant="small" :title="`Transaction #${transaction.id}`"
-                        description="Detail transaksi pending (Manual/Debit)." />
+                        :description="transaction.payment_type === 'qris' ? 'Transaksi QRIS pending — tampilkan QR atau konfirmasi manual.' : 'Detail transaksi pending (Manual/Debit).'" />
                     <div class="flex items-center gap-2">
                         <button v-if="!hideFailedForOpenBill" @click="makeFailed" type="button"
                             class="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition bg-red-100 text-red-600 hover:bg-red-500 hover:text-white">
-                            <XCircle :size="16" /> Failed
+                            <XCircle :size="16" /> Tolak
                         </button>
                         <button @click="makeSuccess" type="button"
                             class="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-100 text-green-600 text-sm font-medium shadow-sm hover:bg-green-500 hover:text-white transition">
-                            <CheckCircle :size="16" /> Approve
+                            <CheckCircle :size="16" />
+                            {{ transaction.payment_type === 'qris' ? 'Konfirmasi Sudah Bayar' : 'Approve' }}
                         </button>
                     </div>
+                </div>
+
+                <!-- QRIS Code Display (pending QRIS only) -->
+                <div v-if="transaction.status === 'pending' && transaction.payment_type === 'qris' && transaction.snap_token"
+                    class="rounded-2xl border bg-background shadow-sm p-6 flex flex-col items-center gap-4">
+                    <h3 class="font-semibold text-foreground text-base">Scan QRIS untuk Pembayaran</h3>
+                    <div class="rounded-2xl border bg-white p-4 shadow-sm">
+                        <img
+                            :src="`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(transaction.snap_token)}`"
+                            alt="QRIS Code"
+                            class="h-60 w-60 rounded-lg"
+                        />
+                    </div>
+                    <p class="text-sm text-muted-foreground text-center max-w-sm">
+                        Tunjukkan QR ini ke pelanggan untuk pembayaran. Jika pelanggan sudah membayar namun status belum berubah otomatis, klik <strong>Konfirmasi Sudah Bayar</strong> di atas.
+                    </p>
                 </div>
 
                 <!-- Transaction Info Card -->

@@ -6,7 +6,7 @@ use App\Http\Controllers\ApiBaseController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TransactionRequest;
 use App\Services\MidtransService;
-use App\Services\XenditService;
+use App\Services\QrislyService;
 use App\Services\TransactionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,14 +26,19 @@ class TransactionController extends ApiBaseController
 
             $qrResult = null;
             if ($transaction->payment_type === 'qris') {
-                $qrResult = XenditService::createQr($transaction);
-                if (!$qrResult) {
+                $qrisly = new QrislyService();
+                $qrResult = $qrisly->generateTransactionQris(
+                    $transaction->total_price,
+                    (string) $transaction->id
+                );
+                if (!$qrResult || empty($qrResult['qr_string'])) {
+                    DB::rollBack();
                     return response()->json([
                         'success' => false,
-                        'message' => 'Gagal membuat QRIS Xendit'
+                        'message' => 'Gagal membuat QRIS pembayaran. Silakan coba lagi.'
                     ], 500);
                 }
-                $transaction->snap_token = $qrResult['qr_string']; // atau rename field aja biar gak bingung
+                $transaction->snap_token = $qrResult['qr_string'];
                 $transaction->save();
             }
 

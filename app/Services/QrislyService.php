@@ -11,12 +11,14 @@ class QrislyService
     protected string $apiUrl;
     protected string $secretKey;
     protected string $topupQrisId;
+    protected string $arlettaQrisId;
 
     public function __construct()
     {
-        $this->apiUrl      = rtrim(config('services.qrisly.api_url'), '/');
-        $this->secretKey   = config('services.qrisly.secret_key');
-        $this->topupQrisId = config('services.qrisly.topup_qris_id');
+        $this->apiUrl        = rtrim(config('services.qrisly.api_url'), '/');
+        $this->secretKey     = config('services.qrisly.secret_key');
+        $this->topupQrisId   = config('services.qrisly.topup_qris_id');
+        $this->arlettaQrisId = config('services.qrisly.arletta_qris_id');
     }
 
     /**
@@ -58,6 +60,62 @@ class QrislyService
             return $response->json();
         } catch (\Throwable $e) {
             Log::error('Qrisly generateTopupQris exception', [
+                'message' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Generate a QRIS for a transaction (Arletta merchant QRIS).
+     *
+     * @param  int|float  $amount      Total amount in Rupiah
+     * @param  string     $externalId  Unique reference (e.g. transaction ID)
+     * @return array|false             ['qr_string' => ..., 'history_id' => ..., 'expires_at' => ...] or false on failure
+     */
+    public function generateTransactionQris(int|float $amount, string $externalId): array|false
+    {
+        try {
+            Log::info('Qrisly generateTransactionQris', [
+                'arletta_qris_id' => $this->arlettaQrisId,
+                'amount'          => $amount,
+                'external_id'     => $externalId,
+            ]);
+
+            $response = Http::withHeaders([
+                'x-api-key'    => $this->secretKey,
+                'Accept'       => 'application/json',
+                'Content-Type' => 'application/json',
+            ])->post("{$this->apiUrl}/generate-qris", [
+                'qris_id'     => (int) $this->arlettaQrisId,
+                'amount'      => (int) $amount,
+                'output_type' => 'string',
+                'external_id' => $externalId,
+            ]);
+
+            Log::info('Qrisly generateTransactionQris response', [
+                'status' => $response->status(),
+                'body'   => $response->json(),
+            ]);
+
+            if (! $response->successful()) {
+                Log::error('Qrisly generateTransactionQris failed', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+                return false;
+            }
+
+            $json     = $response->json();
+            $qrisData = $json['data'] ?? $json;
+
+            return [
+                'qr_string'  => $qrisData['qris_string'] ?? $qrisData['qr_string'] ?? null,
+                'history_id' => $qrisData['history_id']  ?? null,
+                'expires_at' => $qrisData['expires_at']  ?? $qrisData['expired_at'] ?? null,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Qrisly generateTransactionQris exception', [
                 'message' => $e->getMessage(),
             ]);
             return false;
