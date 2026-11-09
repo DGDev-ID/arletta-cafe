@@ -194,8 +194,7 @@ class QrislyService
                 'amount' => 500,
                 'transaction_id' => $transaction->id,
             ]);
-            $balance = $balance - $balanceLog->amount;
-            $balance->save();
+            $balance->decrement('balance', 500);
         }
 
         $transaction->status = $targetStatus;
