@@ -99,12 +99,44 @@ class TopupBalanceWebhookController extends Controller
                     'message' => 'Unrecognized event or status.',
                 ], 200);
             }
-            
+
             if ($targetStatus === 'success') {
-                if ($topup->status === 'success') {
-                    Log::info('Topup Balance Webhook: Topup sudah berstatus success sebelumnya (idempotent)', [
-                        'topup_id'        => $topup->id,
-                        'qris_history_id' => $qrisHistoryId,
+                $processed = DB::transaction(function () use ($topup) {
+                    // Lock row topup agar webhook paralel tidak memproses bersamaan
+                    $lockedTopup = BalanceTopup::whereKey($topup->id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
+                    // Cek ulang status setelah mendapatkan lock
+                    if ($lockedTopup->status === 'success') {
+                        return false;
+                    }
+
+                    // Update status
+                    $lockedTopup->update([
+                        'status' => 'success',
+                    ]);
+
+                    // Tambahkan saldo
+                    $balance = $lockedTopup->balance
+                        ?: Balance::firstOrCreate([], ['balance' => 0]);
+
+                    $balance->increment('balance', $lockedTopup->topup_amount);
+
+                    // Insert BalanceLog satu kali
+                    BalanceLog::create([
+                        'balance_id'     => $balance->id,
+                        'type'           => 'in',
+                        'amount'         => $lockedTopup->topup_amount,
+                        'transaction_id' => $lockedTopup->id,
+                    ]);
+
+                    return true;
+                });
+
+                if (! $processed) {
+                    Log::info('Topup Balance Webhook: Duplicate webhook ignored', [
+                        'topup_id' => $topup->id,
                     ]);
 
                     return response()->json([
@@ -113,31 +145,13 @@ class TopupBalanceWebhookController extends Controller
                     ], 200);
                 }
 
-                DB::transaction(function () use ($topup) {
-                    // Perbarui status record balance_topups
-                    $topup->update(['status' => 'success']);
-
-                    // Perbarui saldo pada tabel balances (gunakan nominal topup yang tersimpan di DB sebagai sumber kebenaran)
-                    $balance = $topup->balance ?: Balance::firstOrCreate([], ['balance' => 0]);
-                    $balance->increment('balance', $topup->topup_amount);
-
+                // Kirim Telegram setelah transaksi database berhasil commit
+                try {
                     $telegramService = new TelegramService();
 
                     $amount = number_format($topup->topup_amount, 0, ',', '.');
-
-                    $commission = number_format(
-                        $topup->topup_amount * 0.2,
-                        0,
-                        ',',
-                        '.'
-                    );
-
-                    $cleanMoney = number_format(
-                        $topup->topup_amount * 0.8,
-                        0,
-                        ',',
-                        '.'
-                    );
+                    $commission = number_format($topup->topup_amount * 0.2, 0, ',', '.');
+                    $cleanMoney = number_format($topup->topup_amount * 0.8, 0, ',', '.');
 
                     $message = implode("\n", [
                         "💰 <b>TOPUP BALANCE SUCCESS</b>",
@@ -152,15 +166,12 @@ class TopupBalanceWebhookController extends Controller
                     ]);
 
                     $telegramService->sendMessage($message, 'HTML');
-
-                    // Catat riwayat ke balance_logs
-                    BalanceLog::create([
-                        'balance_id'     => $balance->id,
-                        'type'           => 'in',
-                        'amount'         => $topup->topup_amount,
-                        'transaction_id' => $topup->id,
+                } catch (\Throwable $e) {
+                    Log::error('Topup Telegram notification failed', [
+                        'topup_id' => $topup->id,
+                        'error' => $e->getMessage(),
                     ]);
-                });
+                }
 
                 Log::info('Topup Balance Webhook: Saldo berhasil ditambahkan', [
                     'topup_id'     => $topup->id,
