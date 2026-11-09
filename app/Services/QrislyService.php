@@ -146,7 +146,7 @@ class QrislyService
     
     public function handleTransactionWebhook($payload) {
         $qrisHistoryId = $payload['data']['qris_history_id'] ?? null;
-        $totalAmount = $payload['data']['final_amount'] ?? null;
+        $totalAmount = $payload['data']['amount'] ?? null;
 
         $transaction = Transaction::where('qris_history_id', (string) $qrisHistoryId)
             ->where('total_price', $totalAmount)
