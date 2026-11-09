@@ -35,12 +35,12 @@ class TopupBalanceWebhookController extends Controller
 
             $payloadQrisId = (string) ($payload['data']['qris_id'] ?? '');
             $expectedQrisId = (string) (config('services.qrisly.topup_qris_id') ?? env('QRISLY_TOPUP_QRIS_ID'));
-            $expectiedQrisIdTransaction = (string) (config('services.qrisly.arletta_qris_id') ?? env('QRISLY_ARLETTA_QRIS_ID'));
+            $expectedQrisIdTransaction = (string) (config('services.qrisly.arletta_qris_id') ?? env('QRISLY_ARLETTA_QRIS_ID'));
 
-            if ($payloadQrisId == $expectiedQrisIdTransaction) {
+            if ($payloadQrisId == $expectedQrisIdTransaction) {
                 Log::warning('Topup Balance Webhook: qris_id is for transaction', [
                     'payload_qris_id'  => $payloadQrisId,
-                    'expected_qris_id' => $expectedQrisId,
+                    'expected_qris_id' => $expectedQrisIdTransaction,
                 ]);
 
                 $qrislyService = new \App\Services\QrislyService();
