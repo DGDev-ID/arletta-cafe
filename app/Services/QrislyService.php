@@ -116,6 +116,7 @@ class QrislyService
                 'qr_string'  => $qrisData['qris_string'] ?? $qrisData['qr_string'] ?? null,
                 'history_id' => $qrisData['history_id']  ?? null,
                 'expires_at' => $qrisData['expires_at']  ?? $qrisData['expired_at'] ?? null,
+                'total_pay' => $qrisData['final_amount'] ?? $qrisData['amount'] ?? null,
             ];
         } catch (\Throwable $e) {
             Log::error('Qrisly generateTransactionQris exception', [

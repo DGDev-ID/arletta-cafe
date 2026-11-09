@@ -40,6 +40,7 @@ class TransactionController extends ApiBaseController
                 }
                 $transaction->snap_token = $qrResult['qr_string'];
                 $transaction->qris_history_id = $qrResult['history_id'];
+                $transaction->total_price = $qrResult['total_pay'] ?? $transaction->total_price;
                 $transaction->save();
             }
 
