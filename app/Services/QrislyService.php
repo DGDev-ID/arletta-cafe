@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\Transaction;
 use App\Models\BalanceLog;
-use APp\Models\Balance;
+use App\Models\Balance;
 
 class QrislyService
 {
