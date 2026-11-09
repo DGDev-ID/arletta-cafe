@@ -80,7 +80,7 @@ class CashierController extends Controller
             if ($cafeId) {
                 $q->where('cafe_id', $cafeId);
             }
-        })->where(function($q) {
+        })->where(function ($q) {
             $q->whereNull('status')->orWhere('status', 'pending');
         })->with(['transaction.cafe', 'transaction.table', 'menu']);
 
@@ -318,7 +318,7 @@ class CashierController extends Controller
         $transaction = Transaction::where(function ($q) {
             $q->where(function ($q2) {
                 $q2->where('status', 'pending')
-                   ->whereIn('payment_type', ['manual', 'debit', 'qris']);
+                    ->whereIn('payment_type', ['manual', 'debit', 'qris']);
             })->orWhereIn('status', ['in_order', 'success']);
         })
             ->with(['cafe', 'table', 'details.menu.category', 'details.menu.menuCombos.childMenu', 'details.menu.menuComboGroups.options.childMenu'])
@@ -327,6 +327,12 @@ class CashierController extends Controller
         $transaction->details->each(function ($detail) {
             $detail->selected_variants = $this->enrichSelectedVariants($detail->selected_variants ?? []);
         });
+
+        Log::info('Cashier transaction debug', [
+            'id' => $transaction->id,
+            'payment_type' => $transaction->payment_type,
+            'status' => $transaction->status,
+        ]);
 
         return Inertia::render('transaction/cashier/Show', [
             'transaction' => $transaction,
@@ -463,7 +469,7 @@ class CashierController extends Controller
                     }
                 }
             });
-            
+
             $transaction->price += $transaction->admin_fee;
         }
 
@@ -482,7 +488,7 @@ class CashierController extends Controller
     {
         $cafeId = $request->input('cafe_id');
         $channelId = $request->input('third_party_channel_id');
-        
+
         if (!$cafeId) {
             return response()->json([]);
         }
@@ -491,14 +497,18 @@ class CashierController extends Controller
             ->where('status', 'available')
             ->with('category:id,name')
             ->orderBy('name');
-            
+
         if ($channelId) {
-            $query->join('third_party_channel_menus', function($join) use ($channelId) {
+            $query->join('third_party_channel_menus', function ($join) use ($channelId) {
                 $join->on('m_menus.id', '=', 'third_party_channel_menus.menu_id')
-                     ->where('third_party_channel_menus.third_party_channel_id', '=', $channelId);
+                    ->where('third_party_channel_menus.third_party_channel_id', '=', $channelId);
             })->select(
-                'm_menus.id', 'm_menus.name', 'm_menus.price', 
-                'm_menus.menu_category_id', 'm_menus.img_url', 'm_menus.is_combo',
+                'm_menus.id',
+                'm_menus.name',
+                'm_menus.price',
+                'm_menus.menu_category_id',
+                'm_menus.img_url',
+                'm_menus.is_combo',
                 'third_party_channel_menus.admin_fee',
                 'third_party_channel_menus.is_manual_price',
                 'third_party_channel_menus.override_price'
@@ -557,14 +567,14 @@ class CashierController extends Controller
         // Hitung subtotal (harga murni menu, INI yang jadi omset)
         $price = 0;
         $adminFee = 0;
-        
+
         foreach ($validated['details'] as $detail) {
             $menu   = $menus->firstWhere('id', $detail['menu_id']);
             $pivot  = $pivots->get($detail['menu_id']);
-            
+
             $itemPrice = $menu->price;
             $itemAdminFee = 0;
-            
+
             if ($pivot) {
                 if ($pivot->is_manual_price) {
                     $itemPrice = $pivot->override_price;
@@ -614,7 +624,7 @@ class CashierController extends Controller
 
             // Potong stok bahan baku & hitung profit margin
             TransactionService::pendingAction($transaction);
-            
+
             // Setelah stok terpotong aman, jadikan in_order (bypassing approval)
             TransactionService::makeSuccess($transaction);
         });

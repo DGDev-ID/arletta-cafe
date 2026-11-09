@@ -116,6 +116,11 @@ const applyPromo = () => {
         }
     });
 };
+
+console.log({
+    payment_type: props.transaction.payment_type,
+    status: props.transaction.status,
+});
 </script>
 
 <template>
