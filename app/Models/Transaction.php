@@ -30,6 +30,7 @@ class Transaction extends Model
         'third_party_channel_id',
         'third_party_reference',
         'is_display',
+        'qris_history_id',
     ];
 
     protected function casts(): array

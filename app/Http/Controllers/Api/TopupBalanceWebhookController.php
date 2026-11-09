@@ -33,49 +33,27 @@ class TopupBalanceWebhookController extends Controller
                 'payload' => $payload,
             ]);
 
-            // =========================================================================
-            // Langkah 1 — Validasi domain pengirim
-            // Pengirim yang diizinkan: core.cafellio.my.id
-            // =========================================================================
-            if (! $this->isValidSenderDomain($request)) {
-                Log::warning('Topup Balance Webhook: Pengirim domain tidak diizinkan', [
-                    'ip'      => $request->ip(),
-                    'origin'  => $request->headers->get('origin'),
-                    'referer' => $request->headers->get('referer'),
-                ]);
-
-                return response()->json([
-                    'status'  => 'ignored',
-                    'message' => 'Sender domain not authorized.',
-                ], 200);
-            }
-
-            // =========================================================================
-            // Langkah 2 — Validasi secret pada header
-            // Header: x-thirdparty-key
-            // Validasi dengan Hash::check($xThirdPartyKey, config('services.thirdparty.secret_key'))
-            // =========================================================================
-            $xThirdPartyKey = $request->header('x-thirdparty-key');
-            $configuredSecret = (string) config('services.thirdparty.secret_key');
-
-            if (empty($xThirdPartyKey) || empty($configuredSecret) || ! $this->validateSecretKey($xThirdPartyKey, $configuredSecret)) {
-                Log::warning('Topup Balance Webhook: Secret key header invalid atau tidak tersedia');
-
-                return response()->json([
-                    'status'  => 'ignored',
-                    'message' => 'Invalid or missing secret key.',
-                ], 200);
-            }
-
-            // =========================================================================
-            // Langkah 3 — Validasi qris_id
-            // Periksa apakah payload.data.qris_id sama dengan QRISLY_TOPUP_QRIS_ID
-            // =========================================================================
             $payloadQrisId = (string) ($payload['data']['qris_id'] ?? '');
             $expectedQrisId = (string) (config('services.qrisly.topup_qris_id') ?? env('QRISLY_TOPUP_QRIS_ID'));
+            $expectiedQrisIdTransaction = (string) (config('services.qrisly.arletta_qris_id') ?? env('QRISLY_ARLETTA_QRIS_ID'));
 
-            if (empty($payloadQrisId) || empty($expectedQrisId) || $payloadQrisId !== $expectedQrisId) {
-                Log::warning('Topup Balance Webhook: qris_id tidak cocok', [
+            if ($payloadQrisId == $expectiedQrisIdTransaction) {
+                Log::warning('Topup Balance Webhook: qris_id is for transaction', [
+                    'payload_qris_id'  => $payloadQrisId,
+                    'expected_qris_id' => $expectedQrisId,
+                ]);
+
+                $qrislyService = new \App\Services\QrislyService();
+                $qrislyService->handleTransactionWebhook($payload);
+
+                return response()->json([
+                    'status'  => 'success',
+                    'message' => 'QRIS ID is for transaction, not topup.',
+                ], 200);
+            }
+
+            if ($payloadQrisId !== $expectedQrisId) {
+                Log::warning('Topup Balance Webhook: qris_id not match, ignore webhook', [
                     'payload_qris_id'  => $payloadQrisId,
                     'expected_qris_id' => $expectedQrisId,
                 ]);
@@ -86,19 +64,7 @@ class TopupBalanceWebhookController extends Controller
                 ], 200);
             }
 
-            // =========================================================================
-            // Langkah 4 — Cari data top up
-            // Cari record pada tabel balance_topups dengan qris_history_id
-            // =========================================================================
             $qrisHistoryId = $payload['data']['qris_history_id'] ?? null;
-            if (empty($qrisHistoryId)) {
-                Log::warning('Topup Balance Webhook: qris_history_id kosong pada payload');
-
-                return response()->json([
-                    'status'  => 'ignored',
-                    'message' => 'Missing qris_history_id.',
-                ], 200);
-            }
 
             $topup = BalanceTopup::where('qris_history_id', (string) $qrisHistoryId)->where('topup_amount', $payload['data']['original_amount'])->first();
             if (! $topup) {
@@ -112,10 +78,6 @@ class TopupBalanceWebhookController extends Controller
                 ], 200);
             }
 
-            // =========================================================================
-            // Langkah 5 — Perbarui status top up
-            // Pemetaan status provider ke status internal aplikasi
-            // =========================================================================
             $event = strtolower((string) ($payload['event'] ?? ''));
             $dataStatus = strtolower((string) ($payload['data']['status'] ?? ''));
 
@@ -137,12 +99,8 @@ class TopupBalanceWebhookController extends Controller
                     'message' => 'Unrecognized event or status.',
                 ], 200);
             }
-
-            // =========================================================================
-            // Langkah 6 — Proses saldo jika berhasil
-            // =========================================================================
+            
             if ($targetStatus === 'success') {
-                // Idempotensi: jika sudah success sebelumnya, jangan tambah saldo lagi
                 if ($topup->status === 'success') {
                     Log::info('Topup Balance Webhook: Topup sudah berstatus success sebelumnya (idempotent)', [
                         'topup_id'        => $topup->id,
@@ -232,52 +190,10 @@ class TopupBalanceWebhookController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            // Selalu kembalikan HTTP 200 untuk webhook handler agar tidak terjadi retry loop berbahaya jika diinginkan
             return response()->json([
                 'status'  => 'error',
                 'message' => 'Internal webhook error occurred.',
             ], 200);
         }
-    }
-
-    /**
-     * Langkah 1 Helper: Validasi domain pengirim request
-     */
-    protected function isValidSenderDomain(Request $request): bool
-    {
-        $allowedDomain = config('services.thirdparty.allowed_domain', '127.0.0.1');
-
-        // Di environment local/testing, izinkan localhost untuk mempermudah testing
-        if (app()->environment('local', 'testing') && in_array($request->ip(), ['127.0.0.1', '::1'])) {
-            return true;
-        }
-
-        $clientIp = $request->ip();
-
-        if ($clientIp != $allowedDomain) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Langkah 2 Helper: Validasi header x-thirdparty-key
-     * Mendukung Hash::check jika configured secret adalah bcrypt/argon hash,
-     * serta fallback perbandingan aman jika secret disimpan plaintext.
-     */
-    protected function validateSecretKey(string $providedKey, string $configuredSecret): bool
-    {
-        // Coba Hash::check terlebih dahulu sesuai instruksi flow
-        try {
-            if (Hash::check($providedKey, $configuredSecret)) {
-                return true;
-            }
-        } catch (\Throwable $e) {
-            // Abaikan error jika format bukan hash valid
-        }
-
-        // Fallback aman jika THIRDPARTY_SECRET_KEY di-set plaintext di .env
-        return hash_equals($configuredSecret, $providedKey);
     }
 }

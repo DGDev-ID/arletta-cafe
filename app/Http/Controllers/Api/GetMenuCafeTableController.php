@@ -9,6 +9,7 @@ use App\Models\MMenuCategory;
 use App\Models\Transaction;
 use App\Services\MenuAvailabilityService;
 use Illuminate\Http\Request;
+use App\Models\Balance;
 
 class GetMenuCafeTableController extends ApiBaseController
 {
@@ -154,12 +155,16 @@ $menuCategories->each(function ($category) use ($transformMenu) {
     }
 });
 
+            $balance = Balance::first();
+            $canQrisPayment = $balance && $balance->amount >= 500;
+
             return $this->success([
                 'cafe' => $cafe,
                 'table' => $table,
                 'transaction' => $transaction ? $transaction : null,
                 'is_transaction_pending' => $transaction ? ($transaction->status === 'pending') : false,
                 'menu_categories' => $menuCategories,
+                'can_qris_payment' => $canQrisPayment,
             ]);
         } catch (\Throwable $th) {
             return $this->serverError($th);

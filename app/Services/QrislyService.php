@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Models\BalanceTopup;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Models\Transaction;
+use App\Models\BalanceLog;
+use APp\Models\Balance;
 
 class QrislyService
 {
@@ -139,5 +142,63 @@ class QrislyService
             ]);
             return false;
         }
+    }
+    
+    public function handleTransactionWebhook($payload) {
+        $qrisHistoryId = $payload['data']['qris_history_id'] ?? null;
+        $totalAmount = $payload['data']['final_amount'] ?? null;
+
+        $transaction = Transaction::where('qris_history_id', (string) $qrisHistoryId)
+            ->where('total_price', $totalAmount)
+            ->first();
+
+        if (!$transaction) {
+            Log::warning('Transaction Webhook: Data transaction tidak ditemukan', [
+                'qris_history_id' => $qrisHistoryId,
+                'total_amount' => $totalAmount,
+            ]);
+            return false;
+        }
+
+        if ($transaction->status === 'success') {
+            Log::info('Transaction Webhook: Transaction sudah berstatus success sebelumnya (idempotent)', [
+                'transaction_id' => $transaction->id,
+            ]);
+            return true;
+        }
+
+        $event = strtolower((string) ($payload['event'] ?? ''));
+        $dataStatus = strtolower((string) ($payload['data']['status'] ?? ''));
+
+        $targetStatus = null;
+        if ($event === 'payment.success' || $dataStatus === 'paid') {
+            $targetStatus = 'success';
+        } elseif ($event === 'payment.expired' || $dataStatus === 'expired') {
+            $targetStatus = 'failed';
+        } elseif (in_array($dataStatus, ['pending', 'unpaid', 'processing'])) {
+            $targetStatus = 'pending';
+        } else {
+            Log::warning('Transaction Webhook: Event atau status tidak dikenal', [
+                'event'  => $event,
+                'status' => $dataStatus,
+            ]);
+            return false;
+        }
+
+        if ($targetStatus == 'success') {
+            $balance = Balance::first();
+            $balanceLog = BalanceLog::create([
+                'balance_id' => $balance->id,
+                'type' => 'out',
+                'amount' => 500,
+                'transaction_id' => $transaction->id,
+            ]);
+            $balance = $balance - $balanceLog->amount;
+            $balance->save();
+        }
+
+        $transaction->status = $targetStatus;
+        $transaction->save();
+        return true;
     }
 }
