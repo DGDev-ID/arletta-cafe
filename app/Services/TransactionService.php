@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Balance;
+use App\Models\BalanceLog;
 use App\Models\MaterialInboundOutbound;
 use App\Models\MCafe;
 use App\Models\MMaterial;
@@ -340,6 +342,17 @@ public static function pendingAction(Transaction $transaction)
     {
         if ($transaction->status !== 'pending') {
             throw new \Exception('Only pending transactions can be marked as success.');
+        }
+
+        if ($transaction->payment_type == 'qris') {
+            $balance = Balance::first();
+            $balanceLog = BalanceLog::create([
+                'balance_id' => $balance->id,
+                'type' => 'out',
+                'amount' => 500,
+                'transaction_id' => $transaction->id
+            ]);
+            $balance->decrement('balance', 500);
         }
 
         $transaction->update(['status' => 'in_order']);
