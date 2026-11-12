@@ -156,7 +156,7 @@ $menuCategories->each(function ($category) use ($transformMenu) {
 });
 
             $balance = Balance::first();
-            $canQrisPayment = $balance && $balance->balance >= 500;
+            $canQrisPayment = $balance && $balance->balance >= 500 && $cafeId == 1;
 
             return $this->success([
                 'cafe' => $cafe,
