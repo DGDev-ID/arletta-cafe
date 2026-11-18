@@ -57,4 +57,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(CafeCashier::class, 'user_id');
     }
+
+    /**
+     * Determine whether the user holds a Super Admin role.
+     */
+    public function isSuperadmin(): bool
+    {
+        return $this->hasRole(['Super Admin', 'GOD']);
+    }
 }

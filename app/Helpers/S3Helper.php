@@ -11,17 +11,17 @@ class S3Helper
 {
     protected static function baseUrl(): string
     {
-        return config('services.supabase.url') . '/storage/v1';
+        return config('services.supabase.url') ? config('services.supabase.url') . '/storage/v1' : '';
     }
 
     protected static function apiKey(): string
     {
-        return config('services.supabase.key');
+        return (string) config('services.supabase.key');
     }
 
     protected static function bucket(): string
     {
-        return config('services.supabase.bucket');
+        return (string) config('services.supabase.bucket');
     }
 
     /*
@@ -130,6 +130,12 @@ class S3Helper
 
         $supabasePath = trim($path, '/') . '/' . $fileName;
 
+        if (!config('services.supabase.url') || !config('services.supabase.key')) {
+            // Fallback to local public storage
+            Storage::disk('public')->put($supabasePath, $fileContent);
+            return $supabasePath;
+        }
+
         $response = Http::withHeaders([
             'apikey'        => self::apiKey(),
             'Authorization' => 'Bearer ' . self::apiKey(),
@@ -150,9 +156,47 @@ class S3Helper
     {
         $supabasePath = trim($path, '/') . '/' . $fileName;
 
+        if (!config('services.supabase.url') || !config('services.supabase.key')) {
+            return Storage::disk('public')->url($supabasePath);
+        }
+
         return config('services.supabase.url') .
             "/storage/v1/object/public/" .
             self::bucket() . "/" . $supabasePath;
+    }
+
+    /**
+     * Generate a Supabase signed URL for a file (works for private buckets).
+     * Falls back to public URL if Supabase is not configured.
+     */
+    public static function getSignedUrl(string $storagePath, int $expiresIn = 3600): string
+    {
+        if (!config('services.supabase.url') || !config('services.supabase.key')) {
+            return Storage::disk('public')->url($storagePath);
+        }
+
+        $response = Http::withHeaders([
+            'apikey'        => self::apiKey(),
+            'Authorization' => 'Bearer ' . self::apiKey(),
+            'Content-Type'  => 'application/json',
+        ])->post(
+            self::baseUrl() . '/object/sign/' . self::bucket() . '/' . ltrim($storagePath, '/'),
+            ['expiresIn' => $expiresIn]
+        );
+
+        if ($response->successful()) {
+            $signedUrl = $response->json('signedURL') ?? $response->json('signedUrl');
+            if ($signedUrl) {
+                if (str_starts_with($signedUrl, '/')) {
+                    return config('services.supabase.url') . '/storage/v1' . $signedUrl;
+                }
+                return $signedUrl;
+            }
+        }
+
+        return config('services.supabase.url') .
+            "/storage/v1/object/public/" .
+            self::bucket() . "/" . ltrim($storagePath, '/');
     }
 
     public static function downloadToTemp(string $source): string

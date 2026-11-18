@@ -3,10 +3,14 @@ import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
-import { ArrowLeftRight, BookA, BookOpen, Camera, Coffee, Coins, DollarSign, Folder, History, Image, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, Store, User, UserCheck, UserCog, Utensils, MessageSquare, Wallet } from 'lucide-vue-next';
+import { type NavItem, type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/vue3';
+import { ArrowLeftRight, BookA, BookOpen, Camera, Coffee, Coins, Database, DollarSign, Folder, History, Image, Inbox, LayoutGrid, Package, Receipt, Send, ShieldCheck, Store, User, UserCheck, UserCog, Utensils, MessageSquare, Wallet } from 'lucide-vue-next';
+import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
+
+const page = usePage<SharedData>();
+const isSuperadmin = computed(() => Boolean(page.props.auth?.is_superadmin));
 
 const mainNavItems: NavItem[] = [
     {
@@ -172,7 +176,15 @@ const balanceNavItems: NavItem[] = [
         href: '/balance',
         icon: Wallet,
     },
-]
+];
+
+const systemNavItems: NavItem[] = [
+    {
+        title: 'Backup Database',
+        href: '/management/backup-databases',
+        icon: Database,
+    },
+];
 </script>
 
 <template>
@@ -197,6 +209,7 @@ const balanceNavItems: NavItem[] = [
             <NavMain :items="transactionNavItems" :title="'Transaction'" />
             <NavMain :items="shortcutNavItems" :title="'Shortcut'" />
             <NavMain :items="balanceNavItems" :title="'Finance'" />
+            <NavMain v-if="isSuperadmin" :items="systemNavItems" :title="'System'" />
         </SidebarContent>
 
         <SidebarFooter>

@@ -17,6 +17,7 @@ use App\Http\Controllers\Dashboard\Master\CustomerFeedbackDashboardController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageAdminController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageCashierController;
 use App\Http\Controllers\Dashboard\UserManagement\ManageBackofficeController;
+use App\Http\Controllers\Dashboard\Management\BackupDatabaseController;
 use App\Http\Controllers\Dashboard\Management\UnitMaterialConverterController;
 use App\Http\Controllers\Dashboard\Management\InboundOutboundMaterialController;
 use App\Http\Controllers\Dashboard\Management\ExpenseController;
@@ -280,6 +281,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('expense', [ExpenseController::class, 'store'])
             ->name('expense.store')
             ->middleware('can:transaction.history');
+
+        // Backup Database (Super Admin only)
+        Route::get('backup-databases', [BackupDatabaseController::class, 'index'])
+            ->name('backup-databases.index');
+        Route::post('backup-databases', [BackupDatabaseController::class, 'store'])
+            ->name('backup-databases.store');
+        Route::delete('backup-databases/{backupDatabase}', [BackupDatabaseController::class, 'destroy'])
+            ->name('backup-databases.destroy');
+        Route::get('backup-databases/{backupDatabase}/download', [BackupDatabaseController::class, 'download'])
+            ->name('backup-databases.download');
     });
 
     Route::prefix('transaction')->name('transaction.')->group(function () {
