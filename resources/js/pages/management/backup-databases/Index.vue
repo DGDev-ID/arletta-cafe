@@ -19,6 +19,7 @@ import { useDebounceFn } from '@vueuse/core';
 import {
     AlertCircle,
     Check,
+    CheckCircle2,
     Copy,
     Database,
     Download,
@@ -28,14 +29,31 @@ import {
     RefreshCw,
     Search,
     Trash2,
+    XCircle,
 } from 'lucide-vue-next';
 import { Notyf } from 'notyf';
-import { ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
+
+type BackupStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+interface ActiveBackup {
+    id: number;
+    name: string;
+    status: BackupStatus;
+    progress: number;
+    progress_message: string | null;
+    error_message?: string | null;
+    created_at?: string | null;
+}
 
 interface BackupItem {
     id: number;
     name: string;
-    url: string;
+    url: string | null;
+    status: BackupStatus;
+    progress: number;
+    progress_message: string | null;
+    error_message: string | null;
     created_at: string | null;
     created_at_formatted: string | null;
     created_at_diff: string | null;
@@ -60,6 +78,7 @@ interface Paginator<T> {
 const props = defineProps<{
     backups: Paginator<BackupItem>;
     filters: { search: string };
+    activeBackup?: ActiveBackup | null;
 }>();
 
 const notyf = new Notyf({
@@ -83,6 +102,73 @@ const showBackupConfirmDialog = ref(false);
 const showDeleteDialog = ref(false);
 const backupToDelete = ref<BackupItem | null>(null);
 const copiedId = ref<number | null>(null);
+
+const currentActive = ref<ActiveBackup | null>(props.activeBackup ?? null);
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+const stopPolling = () => {
+    if (pollTimer !== null) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+    }
+};
+
+const fetchStatus = async () => {
+    try {
+        const res = await fetch(route('management.backup-databases.status'), {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const prevActiveId = currentActive.value?.id;
+        currentActive.value = data.active ?? null;
+
+        if (!data.active) {
+            stopPolling();
+            if (prevActiveId && data.latest && data.latest.id === prevActiveId) {
+                if (data.latest.status === 'completed') {
+                    notyf.success('Backup database selesai!');
+                } else if (data.latest.status === 'failed') {
+                    notyf.error('Backup database gagal: ' + (data.latest.error_message || 'Terjadi kesalahan.'));
+                }
+            }
+            router.reload({ only: ['backups', 'activeBackup'] });
+        }
+    } catch {
+        // Ignore transient network errors during polling
+    }
+};
+
+const startPolling = () => {
+    if (pollTimer !== null) return;
+    pollTimer = setInterval(fetchStatus, 2000);
+};
+
+watch(
+    () => props.activeBackup,
+    (val) => {
+        currentActive.value = val ?? null;
+        if (val) {
+            startPolling();
+        } else {
+            stopPolling();
+        }
+    },
+);
+
+onMounted(() => {
+    if (currentActive.value) {
+        startPolling();
+    }
+});
+
+onUnmounted(() => {
+    stopPolling();
+});
 
 const applyFilter = useDebounceFn(() => {
     router.get(
@@ -112,6 +198,7 @@ const handleConfirmBackup = () => {
             preserveScroll: true,
             onSuccess: () => {
                 showBackupConfirmDialog.value = false;
+                startPolling();
             },
             onError: () => {
                 notyf.error('Gagal mendispatch Job Backup Database.');
@@ -148,6 +235,7 @@ const handleDelete = () => {
 };
 
 const copyUrl = async (backup: BackupItem) => {
+    if (!backup.url) return;
     try {
         await navigator.clipboard.writeText(backup.url);
         copiedId.value = backup.id;
@@ -190,11 +278,45 @@ const copyUrl = async (backup: BackupItem) => {
 
                         <Button
                             class="cursor-pointer gap-2 shadow-sm"
+                            :disabled="Boolean(currentActive)"
                             @click="showBackupConfirmDialog = true"
                         >
-                            <HardDriveDownload class="h-4 w-4" />
-                            <span>Backup Database</span>
+                            <Loader2 v-if="currentActive" class="h-4 w-4 animate-spin" />
+                            <HardDriveDownload v-else class="h-4 w-4" />
+                            <span>{{ currentActive ? 'Sedang Memproses...' : 'Backup Database' }}</span>
                         </Button>
+                    </div>
+                </div>
+
+                <!-- Live Progress Banner -->
+                <div
+                    v-if="currentActive"
+                    class="rounded-xl border border-primary/30 bg-primary/5 p-4 shadow-sm"
+                >
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                <Loader2 class="h-5 w-5 animate-spin" />
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-foreground">
+                                    Backup Database Sedang Berjalan
+                                </p>
+                                <p class="text-xs text-muted-foreground">
+                                    {{ currentActive.progress_message || 'Memproses backup database...' }}
+                                </p>
+                            </div>
+                        </div>
+                        <span class="rounded-full bg-primary/10 px-3 py-1 font-mono text-xs font-bold text-primary">
+                            {{ currentActive.progress }}%
+                        </span>
+                    </div>
+
+                    <div class="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                            class="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                            :style="{ width: `${currentActive.progress}%` }"
+                        />
                     </div>
                 </div>
 
@@ -236,6 +358,7 @@ const copyUrl = async (backup: BackupItem) => {
                                 <tr>
                                     <th class="w-14 px-4 py-3.5 text-center">#</th>
                                     <th class="px-4 py-3.5">Nama File Backup</th>
+                                    <th class="px-4 py-3.5">Status</th>
                                     <th class="px-4 py-3.5">URL Storage</th>
                                     <th class="px-4 py-3.5">Waktu Backup</th>
                                     <th class="px-4 py-3.5 text-right">Aksi</th>
@@ -243,7 +366,7 @@ const copyUrl = async (backup: BackupItem) => {
                             </thead>
                             <tbody class="divide-y divide-border">
                                 <tr v-if="backups.data.length === 0">
-                                    <td colspan="5" class="py-12 text-center">
+                                    <td colspan="6" class="py-12 text-center">
                                         <div class="flex flex-col items-center justify-center gap-3">
                                             <div class="rounded-full bg-muted p-3 text-muted-foreground">
                                                 <Database class="h-6 w-6" />
@@ -257,6 +380,7 @@ const copyUrl = async (backup: BackupItem) => {
                                             <Button
                                                 size="sm"
                                                 class="mt-2 cursor-pointer gap-2"
+                                                :disabled="Boolean(currentActive)"
                                                 @click="showBackupConfirmDialog = true"
                                             >
                                                 <HardDriveDownload class="h-4 w-4" />
@@ -289,8 +413,32 @@ const copyUrl = async (backup: BackupItem) => {
                                             </div>
                                         </div>
                                     </td>
+                                    <td class="px-4 py-3.5">
+                                        <span
+                                            v-if="backup.status === 'pending' || backup.status === 'processing'"
+                                            class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+                                        >
+                                            <Loader2 class="h-3 w-3 animate-spin" />
+                                            <span>Proses {{ backup.progress }}%</span>
+                                        </span>
+                                        <span
+                                            v-else-if="backup.status === 'failed'"
+                                            class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                                            :title="backup.error_message ?? 'Backup gagal'"
+                                        >
+                                            <XCircle class="h-3 w-3" />
+                                            <span>Gagal</span>
+                                        </span>
+                                        <span
+                                            v-else
+                                            class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                                        >
+                                            <CheckCircle2 class="h-3 w-3" />
+                                            <span>Selesai</span>
+                                        </span>
+                                    </td>
                                     <td class="max-w-xs px-4 py-3.5">
-                                        <div class="flex items-center gap-1.5">
+                                        <div v-if="backup.status === 'completed' && backup.url" class="flex items-center gap-1.5">
                                             <a
                                                 :href="backup.url"
                                                 target="_blank"
@@ -312,6 +460,12 @@ const copyUrl = async (backup: BackupItem) => {
                                                 <Copy v-else class="h-3.5 w-3.5" />
                                             </Button>
                                         </div>
+                                        <span v-else-if="backup.status === 'failed'" class="text-xs text-destructive line-clamp-1" :title="backup.error_message ?? ''">
+                                            {{ backup.error_message || 'Gagal diproses' }}
+                                        </span>
+                                        <span v-else class="text-xs italic text-muted-foreground">
+                                            {{ backup.progress_message || 'Sedang diproses...' }}
+                                        </span>
                                     </td>
                                     <td class="px-4 py-3.5">
                                         <div class="space-y-0.5">
@@ -326,6 +480,7 @@ const copyUrl = async (backup: BackupItem) => {
                                     <td class="px-4 py-3.5 text-right">
                                         <div class="flex items-center justify-end gap-1">
                                             <Button
+                                                v-if="backup.status === 'completed' && backup.url"
                                                 variant="outline"
                                                 size="sm"
                                                 class="h-8 cursor-pointer gap-1.5 text-xs"

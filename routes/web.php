@@ -285,6 +285,8 @@ Route::middleware(['auth'])->group(function () {
         // Backup Database (Super Admin only)
         Route::get('backup-databases', [BackupDatabaseController::class, 'index'])
             ->name('backup-databases.index');
+        Route::get('backup-databases/status', [BackupDatabaseController::class, 'status'])
+            ->name('backup-databases.status');
         Route::post('backup-databases', [BackupDatabaseController::class, 'store'])
             ->name('backup-databases.store');
         Route::delete('backup-databases/{backupDatabase}', [BackupDatabaseController::class, 'destroy'])

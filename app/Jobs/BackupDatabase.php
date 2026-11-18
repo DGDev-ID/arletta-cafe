@@ -21,12 +21,36 @@ class BackupDatabase implements ShouldQueue
      */
     public $timeout = 3600;
 
+    public ?int $backupDatabaseId;
+
     /**
      * Create a new job instance.
      */
-    public function __construct()
+    public function __construct(?int $backupDatabaseId = null)
     {
-        //
+        $this->backupDatabaseId = $backupDatabaseId;
+    }
+
+    /**
+     * Helper to update backup progress safely.
+     */
+    protected function updateProgress(?BackupDatabaseModel $record, string $status, int $progress, string $message, ?string $error = null): void
+    {
+        if (!$record) {
+            return;
+        }
+
+        $data = [
+            'status'           => $status,
+            'progress'         => $progress,
+            'progress_message' => $message,
+        ];
+
+        if ($error !== null) {
+            $data['error_message'] = $error;
+        }
+
+        $record->update($data);
     }
 
     /**
@@ -36,8 +60,32 @@ class BackupDatabase implements ShouldQueue
     {
         Log::info('[BackupDatabase] Starting PostgreSQL database backup...');
 
+        $record = $this->backupDatabaseId
+            ? BackupDatabaseModel::find($this->backupDatabaseId)
+            : null;
+
+        if (!$record) {
+            $record = BackupDatabaseModel::create([
+                'name'             => 'backup_' . now()->format('Y_m_d_His') . '.sql',
+                'url'              => null,
+                'status'           => BackupDatabaseModel::STATUS_PROCESSING,
+                'progress'         => 15,
+                'progress_message' => 'Menyiapkan konfigurasi database...',
+            ]);
+            $this->backupDatabaseId = $record->id;
+        } else {
+            $this->updateProgress($record, BackupDatabaseModel::STATUS_PROCESSING, 20, 'Menyiapkan konfigurasi database...');
+        }
+
         $connection = config('database.default', 'pgsql');
         $dbConfig = config("database.connections.{$connection}", []);
+
+        if (($dbConfig['driver'] ?? '') !== 'pgsql') {
+            $dbConfig = config('database.connections.pgsql', []);
+            if (($dbConfig['port'] ?? '') === '3306') {
+                $dbConfig['port'] = '5432';
+            }
+        }
 
         $host = $dbConfig['host'] ?? '127.0.0.1';
         $port = (string) ($dbConfig['port'] ?? '5432');
@@ -68,6 +116,8 @@ class BackupDatabase implements ShouldQueue
         $timestamp = now()->format('Y_m_d_His');
         $fileName = "backup_{$database}_{$timestamp}.sql";
 
+        $record->update(['name' => $fileName]);
+
         // Ensure temp directory exists in local storage disk
         if (!Storage::disk('local')->exists('temp')) {
             Storage::disk('local')->makeDirectory('temp');
@@ -87,6 +137,7 @@ class BackupDatabase implements ShouldQueue
 
         $command = [
             $pgDumpBinary,
+            '-w',
             '-h', (string) $host,
             '-p', (string) $port,
             '-U', (string) $username,
@@ -95,6 +146,7 @@ class BackupDatabase implements ShouldQueue
         ];
 
         Log::info("[BackupDatabase] Executing {$pgDumpBinary} for database '{$database}' at {$host}:{$port}");
+        $this->updateProgress($record, BackupDatabaseModel::STATUS_PROCESSING, 35, 'Menjalankan pg_dump untuk menyalin data database...');
 
         $process = Process::timeout(3600)
             ->env([
@@ -110,6 +162,7 @@ class BackupDatabase implements ShouldQueue
                 Storage::disk('local')->delete("temp/{$fileName}");
             }
 
+            $this->updateProgress($record, BackupDatabaseModel::STATUS_FAILED, 35, 'Gagal menjalankan pg_dump.', $errorOutput);
             throw new \RuntimeException("pg_dump backup failed: {$errorOutput}");
         }
 
@@ -117,11 +170,14 @@ class BackupDatabase implements ShouldQueue
             if (Storage::disk('local')->exists("temp/{$fileName}")) {
                 Storage::disk('local')->delete("temp/{$fileName}");
             }
+            $msg = 'pg_dump selesai tetapi file hasil kosong atau tidak ditemukan.';
+            $this->updateProgress($record, BackupDatabaseModel::STATUS_FAILED, 50, $msg, $msg);
             throw new \RuntimeException("pg_dump completed but output file is empty or missing.");
         }
 
         $fileSize = Storage::disk('local')->size("temp/{$fileName}");
         Log::info("[BackupDatabase] Backup dump created successfully ({$fileSize} bytes). Uploading via S3Helper...");
+        $this->updateProgress($record, BackupDatabaseModel::STATUS_PROCESSING, 65, 'Dump database selesai. Mengunggah file ke Cloud Storage...');
 
         // Upload to S3/Supabase Storage via S3Helper
         try {
@@ -131,15 +187,38 @@ class BackupDatabase implements ShouldQueue
         } catch (\Throwable $e) {
             Log::error("[BackupDatabase] Failed to upload to S3: " . $e->getMessage());
             S3Helper::removeFileTemp($fileName);
+            $this->updateProgress($record, BackupDatabaseModel::STATUS_FAILED, 65, 'Gagal mengunggah file ke Cloud Storage.', $e->getMessage());
             throw $e;
         }
 
+        $this->updateProgress($record, BackupDatabaseModel::STATUS_PROCESSING, 90, 'Menyimpan riwayat backup...');
+
         // Save backup record to database
-        $backup = BackupDatabaseModel::create([
-            'name' => $fileName,
-            'url'  => $url,
+        $record->update([
+            'name'             => $fileName,
+            'url'              => $url,
+            'status'           => BackupDatabaseModel::STATUS_COMPLETED,
+            'progress'         => 100,
+            'progress_message' => 'Backup database selesai.',
+            'error_message'    => null,
         ]);
 
-        Log::info("[BackupDatabase] Backup successfully recorded with ID {$backup->id}: {$url}");
+        Log::info("[BackupDatabase] Backup successfully recorded with ID {$record->id}: {$url}");
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('[BackupDatabase] Job failed: ' . $exception->getMessage());
+
+        if ($this->backupDatabaseId) {
+            $record = BackupDatabaseModel::find($this->backupDatabaseId);
+            if ($record && $record->status !== BackupDatabaseModel::STATUS_FAILED) {
+                $record->update([
+                    'status'           => BackupDatabaseModel::STATUS_FAILED,
+                    'progress_message' => 'Proses backup gagal.',
+                    'error_message'    => $exception->getMessage(),
+                ]);
+            }
+        }
     }
 }
