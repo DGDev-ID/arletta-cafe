@@ -84,7 +84,7 @@ class GetMenuCafeTableController extends ApiBaseController
                 ->where('status', 'pending')
                 ->orderBy('id', 'desc')
                 ->first();
-            
+
             $transformMenu = function ($menu) {
                 if ($menu->is_combo) {
                     $selectableMaterials = collect();
@@ -147,19 +147,28 @@ class GetMenuCafeTableController extends ApiBaseController
                 return $menu;
             };
 
-$menuCategories->each(function ($category) use ($transformMenu) {
-    $category->menus->each($transformMenu);
-    if ($category->relationLoaded('children')) {
-        $category->children->each(function ($child) use ($transformMenu) {
-            $child->menus->each($transformMenu);
-        });
-    }
-});
+            $menuCategories->each(function ($category) use ($transformMenu) {
+                $category->menus->each($transformMenu);
+                if ($category->relationLoaded('children')) {
+                    $category->children->each(function ($child) use ($transformMenu) {
+                        $child->menus->each($transformMenu);
+                    });
+                }
+            });
 
             $balance = Balance::first();
-            Log::info("Balance :", $balance);
-            Log::info("Balance->balance :", $balance->balance);
-            Log::info("Cafeid : ", $cafeId);
+
+            Log::info('Debug QRIS condition', [
+                'has_balance_model' => (bool) $balance,
+                'balance_raw'       => $balance?->getRawOriginal('balance'),
+                'balance_value'     => $balance?->balance,
+                'balance_type'      => gettype($balance?->balance),
+                'cond_balance'      => $balance ? ($balance->balance >= 500) : false,
+                'cafe_id'           => $cafeId,
+                'cafe_id_type'      => gettype($cafeId),
+                'cond_cafe_id'      => $cafeId == 1,
+            ]);
+
             $canQrisPayment = $balance && $balance->balance >= 500 && $cafeId == 1;
 
             return $this->success([
