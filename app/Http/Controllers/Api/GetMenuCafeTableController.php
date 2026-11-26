@@ -158,18 +158,7 @@ class GetMenuCafeTableController extends ApiBaseController
 
             $balance = Balance::first();
 
-            Log::info('Debug QRIS condition', [
-                'has_balance_model' => (bool) $balance,
-                'balance_raw'       => $balance?->getRawOriginal('balance'),
-                'balance_value'     => $balance?->balance,
-                'balance_type'      => gettype($balance?->balance),
-                'cond_balance'      => $balance ? ($balance->balance >= 500) : false,
-                'cafe_id'           => $cafeId,
-                'cafe_id_type'      => gettype($cafeId),
-                'cond_cafe_id'      => $cafeId == 1,
-            ]);
-
-            $canQrisPayment = $balance && $balance->balance >= 500 && $cafeId == 1;
+            $canQrisPayment = $balance && $balance->balance >= 500 && $cafe->id == 1;
 
             return $this->success([
                 'cafe' => $cafe,
