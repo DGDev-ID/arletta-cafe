@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Services\MenuAvailabilityService;
 use Illuminate\Http\Request;
 use App\Models\Balance;
+use Illuminate\Support\Facades\Log;
 
 class GetMenuCafeTableController extends ApiBaseController
 {
@@ -156,6 +157,9 @@ $menuCategories->each(function ($category) use ($transformMenu) {
 });
 
             $balance = Balance::first();
+            Log::info("Balance :", $balance);
+            Log::info("Balance->balance :", $balance->balance);
+            Log::info("Cafeid : ", $cafeId);
             $canQrisPayment = $balance && $balance->balance >= 500 && $cafeId == 1;
 
             return $this->success([
